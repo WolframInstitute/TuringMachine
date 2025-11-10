@@ -1,0 +1,16 @@
+[package]
+name = "ndtm_search"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bit-vec = "0.6"
+num-bigint = "0.4"
+clap = { version = "4.5.4", features = ["derive"] }
+wolfram-library-link = { git = "https://github.com/sw1sh/wolfram-library-link-rs", branch = "feature/more-types" }
+num-traits = "0.2.19"
+
+[lib]
+name = "ndtm_search"
+crate-type = ["lib", "cdylib"]
+path = "src/lib.rs"
