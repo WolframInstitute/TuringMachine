@@ -5,6 +5,8 @@ wll::generate_loader!(rustlink_autodiscover);
 use crate::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::BinaryHeap;
+// rayon prelude import only needed for parallel scope/thread utilities; remove unused glob.
 use std::env;
 
 pub mod models;
@@ -37,9 +39,9 @@ fn aborted_safe() -> bool {
     }
 }
 
-/// Exhaustive search for target value using non-deterministic TM
-/// Returns a path of (rule_number, halted) for each step
-pub fn exhaustive_search(
+/// Sequential exhaustive search for target value using non-deterministic TM.
+/// Returns Some(path) of rule numbers leading to target or None if not found within max_steps.
+pub fn exhaustive_search_seq(
     tm: &TuringMachine,
     initial: &BigUint,
     target: &BigUint,
@@ -69,13 +71,6 @@ pub fn exhaustive_search(
         }
         let step = depth + 1;
         for (new_state, rule_num, halted) in tm.ndtm_step(&current_state) {
-            if expanded.contains_key(&new_state) {
-                continue;
-            }
-            expanded.insert(
-                new_state.clone(),
-                (Some(current_state.clone()), Some(rule_num)),
-            );
             if halted {
                 let new_val = new_state.tape.to_integer();
                 if seen_values.insert(new_val.clone()) {
@@ -89,17 +84,139 @@ pub fn exhaustive_search(
                                 step, rule_num
                             );
                         }
-                        return Some(reconstruct_path(&expanded, new_state));
+                        let mut path = reconstruct_path(&expanded, current_state);
+                        path.push(rule_num);
+                        return Some(path);
                     }
                 }
             } else {
                 if step < max_steps {
+                    if expanded.contains_key(&new_state) {
+                        continue;
+                    }
+                    expanded.insert(
+                        new_state.clone(),
+                        (Some(current_state.clone()), Some(rule_num)),
+                    );
                     queue.push_back((new_state, depth + 1));
                 }
             }
         }
     }
     None
+}
+
+/// Parallel exhaustive search (breadth-wise) using rayon. Returns first path found.
+pub fn exhaustive_search_parallel(
+    tm: &TuringMachine,
+    initial: &BigUint,
+    target: &BigUint,
+    max_steps: u64,
+) -> Option<Vec<u64>> {
+    use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicUsize, Ordering}};
+    use std::cmp::Ordering as CmpOrdering;
+    #[derive(Clone)]
+    struct ScoredState {
+        score: usize, // lower is better (bit difference)
+        depth: u64,
+        state: TMState,
+        path: Vec<u64>,
+    }
+    impl PartialEq for ScoredState { fn eq(&self, other: &Self) -> bool { self.score == other.score && self.depth == other.depth } }
+    impl Eq for ScoredState {}
+    impl PartialOrd for ScoredState { fn partial_cmp(&self, other: &Self) -> Option<CmpOrdering> { Some(self.cmp(other)) } }
+    impl Ord for ScoredState { fn cmp(&self, other: &Self) -> CmpOrdering { // reverse for min-heap behavior via BinaryHeap (max-heap)
+            other.score.cmp(&self.score).then_with(|| self.depth.cmp(&other.depth))
+        } }
+    // Compute bit difference heuristic between current tape value and target value.
+    fn bit_diff(a: &BigUint, b: &BigUint) -> usize { use num_traits::Zero; if a.is_zero() { return b.bits() as usize; } if b.is_zero() { return a.bits() as usize; } let xor = a ^ b; xor.bits() as usize }
+    let initial_tape = Tape::from_integer(initial);
+    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+    let heap: Arc<Mutex<BinaryHeap<ScoredState>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+    {
+        let initial_val = initial_state.tape.to_integer();
+        let score = bit_diff(&initial_val, target);
+        heap.lock().unwrap().push(ScoredState { score, depth: 0, state: initial_state.clone(), path: Vec::new() });
+    }
+    let expanded = Arc::new(Mutex::new(HashSet::new()));
+    let found = Arc::new(AtomicBool::new(false));
+    let active_workers = Arc::new(AtomicUsize::new(0));
+    let result_path = Arc::new(Mutex::new(None));
+    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
+    let debug: i32 = debug_env.parse().unwrap_or(-1);
+    rayon::scope(|s| {
+        for _ in 0..rayon::current_num_threads() {
+            let heap = heap.clone();
+            let expanded = expanded.clone();
+            let found = found.clone();
+            let result_path = result_path.clone();
+            let tm = tm.clone();
+            let target = target.clone();
+            let active_workers = active_workers.clone();
+            s.spawn(move |_| {
+                while !found.load(Ordering::Relaxed) {
+                    if aborted_safe() {
+                        found.store(true, Ordering::Relaxed);
+                        break;
+                    }
+                    let maybe_item = { heap.lock().unwrap().pop() };
+                    if let Some(item) = maybe_item {
+                        let ScoredState { score: _score, depth, state, path } = item;
+                        active_workers.fetch_add(1, Ordering::SeqCst);
+                        if depth >= max_steps {
+                            active_workers.fetch_sub(1, Ordering::SeqCst);
+                            continue;
+                        }
+                        {
+                            let mut exp = expanded.lock().unwrap();
+                            if exp.contains(&state) {
+                                active_workers.fetch_sub(1, Ordering::SeqCst);
+                                continue;
+                            }
+                            exp.insert(state.clone());
+                        }
+                        for (ns, rule_num, halted) in tm.ndtm_step(&state) {
+                            let mut new_path = path.clone();
+                            new_path.push(rule_num);
+                            if halted {
+                                let new_val = ns.tape.to_integer();
+                                if debug >= 0 {
+                                    println!("[DBG] Thread found halted value: {}", new_val);
+                                }
+                                if new_val == target {
+                                    if debug >= 0 {
+                                        println!("[DBG] Target reached at depth {} (rule {})", depth+1, rule_num);
+                                    }
+                                    found.store(true, Ordering::SeqCst);
+                                    *result_path.lock().unwrap() = Some(new_path);
+                                    active_workers.fetch_sub(1, Ordering::SeqCst);
+                                    break;
+                                }
+                            } else {
+                                let new_val = ns.tape.to_integer();
+                                let score = bit_diff(&new_val, &target);
+                                heap.lock().unwrap().push(ScoredState { score, depth: depth+1, state: ns, path: new_path });
+                            }
+                        }
+                        // Finished processing this popped state if target not found in its expansion
+                        if !found.load(Ordering::Relaxed) {
+                            active_workers.fetch_sub(1, Ordering::SeqCst);
+                        }
+                    } else {
+                        // No work currently: termination detection
+                        if heap.lock().unwrap().is_empty() && active_workers.load(Ordering::SeqCst) == 0 {
+                            // Global exhaustion without finding target
+                            found.store(true, Ordering::SeqCst);
+                            break;
+                        }
+                        std::thread::yield_now();
+                    }
+                }
+            });
+        }
+    });
+    let out = result_path.lock().unwrap().clone();
+    out
 }
 
 fn reconstruct_path(
@@ -241,7 +358,27 @@ pub fn exhaustive_search_wl(
     if aborted_safe() {
         return Vec::new();
     }
-    match exhaustive_search(&tm, &initial_biguint, &target_biguint, max_steps) {
+    match exhaustive_search_seq(&tm, &initial_biguint, &target_biguint, max_steps) {
+        Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
+        None => Vec::new(),
+    }
+}
+
+#[wll::export]
+pub fn exhaustive_search_parallel_wl(
+    rules: Vec<String>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    target: String,
+    max_steps: u64,
+) -> Vec<String> {
+    let rule_bigints: Vec<BigInt> = match rules.iter().map(|s| s.parse::<BigInt>()).collect::<Result<Vec<_>, _>>() { Ok(v) => v, Err(_) => return Vec::new() };
+    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) { Ok(t) => t, Err(_) => return Vec::new() };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return Vec::new() };
+    let target_biguint: BigUint = match target.parse::<BigUint>() { Ok(v) => v, Err(_) => return Vec::new() };
+    if aborted_safe() { return Vec::new(); }
+    match exhaustive_search_parallel(&tm, &initial_biguint, &target_biguint, max_steps) {
         Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
         None => Vec::new(),
     }

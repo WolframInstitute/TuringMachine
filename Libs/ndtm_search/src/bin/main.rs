@@ -1,5 +1,5 @@
 use clap::Parser;
-use ndtm_search::exhaustive_search;
+use ndtm_search::{exhaustive_search_seq, exhaustive_search_parallel};
 use ndtm_search::models::TuringMachine;
 use num_bigint::{BigInt, BigUint};
 
@@ -67,7 +67,9 @@ fn main() {
         }
     };
     println!("Searching for rules {:?}...", args.rule_nums);
-    match exhaustive_search(&tm, initial, target, args.max_steps) {
+    // Choose parallel search if frontier may grow large; simple heuristic: number of rules > 1
+    let search_fn = if args.rule_nums.len() > 1 { exhaustive_search_parallel } else { exhaustive_search_seq };
+    match search_fn(&tm, initial, target, args.max_steps) {
         Some(path) => {
             println!("Target found!");
             println!("Path: {:?}", path);

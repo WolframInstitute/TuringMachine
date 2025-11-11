@@ -6,7 +6,7 @@ fn print_test_header(name: &str) {
     let _ = writeln!(io::stdout(), "\n===== Running {} =====", name);
 }
 
-use ndtm_search::exhaustive_search;
+use ndtm_search::exhaustive_search_seq;
 use ndtm_search::models::{Rule, Tape, TuringMachine};
 use ndtm_search::run_dtm;
 use num_bigint::{BigUint, BigInt, ToBigInt};
@@ -164,7 +164,7 @@ fn test_search_logic_with_ndtm() {
     let tm = TuringMachine::from_numbers(&rule_nums, 1, 2).unwrap();
     let initial_val = BigUint::from(2u32);
     let target_val = BigUint::from(3u32);
-    let _ = exhaustive_search(&tm, &initial_val, &target_val, 20);
+    let _ = exhaustive_search_seq(&tm, &initial_val, &target_val, 20);
     // All reached values are printed by exhaustive_search
 }
 
@@ -179,7 +179,7 @@ fn test_search_logic_with_two_state_ndtm() {
     let tm = TuringMachine::from_numbers(&rule_nums, 2, 2).unwrap();
     let initial_val = BigUint::from(5u32);
     let target_val = BigUint::from(21u32);
-    let _ = exhaustive_search(&tm, &initial_val, &target_val, 9);
+    let _ = exhaustive_search_seq(&tm, &initial_val, &target_val, 9);
     // All reached values are printed by exhaustive_search
 }
 

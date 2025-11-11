@@ -15,9 +15,12 @@ functions := functions = CargoLoad[
     "Functions"
 ]
 
-MultiwayTMFunctionSearchRust := MultiwayTMFunctionSearchRust = functions["exhaustive_search_wl"]
-CollectSeenValuesRust := CollectSeenValuesRust = functions["collect_seen_values_wl"]
-RunDeterministicTMRust := RunDeterministicTMRust = functions["run_dtm_wl"]
+MultiwayTMFunctionSearchRust := functions["exhaustive_search_wl"]
+MultiwayTMFunctionSearchRustParallel := functions["exhaustive_search_parallel_wl"]
+CollectSeenValuesRust := functions["collect_seen_values_wl"]
+RunDeterministicTMRust := functions["run_dtm_wl"]
+
+Options[MultiwayTMFunctionSearch] = {"Parallel" -> False}
 
 MultiwayTMFunctionSearch[
     rules : {__Integer},
@@ -25,10 +28,11 @@ MultiwayTMFunctionSearch[
     numSymbols_Integer,
     input_Integer,
     output_Integer,
-    maxSteps_Integer
+    maxSteps_Integer,
+    OptionsPattern[]
 ] := Replace[
-    List @@ FromDigits /@ MultiwayTMFunctionSearchRust[
-        ToString /@ rules,
+    List @@ FromDigits /@ If[TrueQ[OptionValue["Parallel"]], MultiwayTMFunctionSearchRustParallel, MultiwayTMFunctionSearchRust][
+        ToString /@ Developer`DataStore @@ rules,
         numStates,
         numSymbols,
         ToString[input],
@@ -38,8 +42,8 @@ MultiwayTMFunctionSearch[
     {} -> Failure["PathNotFound", <|"MessageTemplate" -> "Failed to find the target."|>]
 ]
 
-MultiwayTMFunctionSearch[rules : {__Integer}, input_Integer, output_Integer, maxSteps_Integer] :=
-    MultiwayTMFunctionSearch[rules, 2, 2, input, output, maxSteps]
+MultiwayTMFunctionSearch[rules : {__Integer}, input_Integer, output_Integer, maxSteps_Integer, opts : OptionsPattern[]] :=
+    MultiwayTMFunctionSearch[rules, 2, 2, input, output, maxSteps, opts]
 
 CollectSeenValues[
     rules : {__Integer},
@@ -48,8 +52,8 @@ CollectSeenValues[
     input_Integer,
     maxSteps_Integer
 ] :=
-    FromDigits /@ CollectSeenValuesRust[
-        ToString /@ rules,
+    List @@ FromDigits /@ CollectSeenValuesRust[
+        ToString /@ Developer`DataStore @@ rules,
         numStates,
         numSymbols,
         ToString[input],
