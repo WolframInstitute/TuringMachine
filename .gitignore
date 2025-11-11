@@ -4,3 +4,7 @@ Libs/ndtm_search/Binaries/
 Libs/ndtm_search/target/
 
 pacletextensions
+
+TuringMachineSearch/build/
+
+TuringMachineSearch/Libs/ndtm_search/target/

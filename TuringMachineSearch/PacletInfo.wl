@@ -12,7 +12,7 @@ Paclet[
         },
         {
             "Kernel", 
-            "Root" -> ".", 
+            "Root" -> "Kernel", 
             "Context" -> "TuringMachineSearch`"
         },
         {
