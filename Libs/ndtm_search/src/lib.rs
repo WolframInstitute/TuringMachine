@@ -123,6 +123,52 @@ fn reconstruct_path(
     path
 }
 
+pub fn run_dtm(
+    tm: &TuringMachine,
+    initial: &BigUint,
+    max_steps: u32,
+) -> Option<(u64, BigUint)> {
+    let initial_tape = Tape::from_integer(initial);
+    let mut state = TMState {
+        head_state: 1,
+        head_position: 0,
+        tape: initial_tape,
+    };
+    let mut steps: u64 = 0;
+    let max_steps_u64 = max_steps as u64;
+    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
+    let debug: i32 = debug_env.parse().unwrap_or(-1);
+
+    while steps < max_steps_u64 {
+        if aborted_safe() {
+            if debug >= 0 {
+                println!("[DBG] Abort requested during run_dtm; terminating early");
+            }
+            return None;
+        }
+        let (halted, next_state) = tm.step_dtm(&state);
+        state = next_state;
+        steps += 1;
+        if halted {
+            let output = state.tape.to_integer();
+            if debug >= 0 {
+                println!(
+                    "[DBG] run_dtm halted after {} steps with tape value {}",
+                    steps, output
+                );
+            }
+            return Some((steps, output));
+        }
+    }
+    if debug >= 0 {
+        println!(
+            "[DBG] run_dtm did not halt within the provided step limit ({})",
+            max_steps
+        );
+    }
+    None
+}
+
 /// Traverse the non-deterministic TM and collect all unique halted tape values encountered.
 /// Returns the set of unique tape integers (converted to u64; values > u64::MAX are skipped).
 /// No path information is retained; traversal stops after reaching `max_steps` depth.
@@ -193,6 +239,35 @@ pub fn exhaustive_search_wl(
         return Vec::new();
     }
     exhaustive_search(&tm, &initial_bigint, &target_bigint, max_steps).unwrap_or_default()
+}
+
+#[wll::export]
+pub fn run_dtm_wl(
+    rule: u64,
+    num_states: u32,
+    num_symbols: u32,
+    initial: u64,
+    max_steps: u32,
+) -> Vec<u64> {
+    let rule_bigint = rule.to_bigint().unwrap();
+    let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    let initial_bigint = match initial.to_bigint().unwrap().to_biguint() {
+        Some(v) => v,
+        None => return Vec::new(),
+    };
+    if aborted_safe() {
+        return Vec::new();
+    }
+    match run_dtm(&tm, &initial_bigint, max_steps) {
+        Some((steps, output)) => match output.to_u64() {
+            Some(output_u64) => vec![steps, output_u64],
+            None => Vec::new(),
+        },
+        None => Vec::new(),
+    }
 }
 
 #[wll::export]

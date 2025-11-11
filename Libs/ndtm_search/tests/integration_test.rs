@@ -7,9 +7,55 @@ fn print_test_header(name: &str) {
 }
 
 use ndtm_search::exhaustive_search;
-use ndtm_search::models::Tape;
-use ndtm_search::models::TuringMachine;
+use ndtm_search::models::{Rule, Tape, TuringMachine};
+use ndtm_search::run_dtm;
 use num_bigint::{BigUint, ToBigInt};
+
+#[test]
+fn test_run_dtm_halting() {
+    print_test_header("test_run_dtm_halting");
+    let mut rules = std::collections::HashMap::new();
+    rules.insert(
+        (1, 0),
+        vec![Rule {
+            rule_number: 42,
+            next_state: 1,
+            write_symbol: 1,
+            move_right: true,
+        }],
+    );
+    let tm = TuringMachine {
+        rules,
+        num_states: 1,
+        num_symbols: 2,
+    };
+    let initial = BigUint::from(0u32);
+    let result = run_dtm(&tm, &initial, 10).expect("machine should halt");
+    assert_eq!(result.0, 1);
+    assert_eq!(result.1, BigUint::from(1u32));
+}
+
+#[test]
+fn test_run_dtm_non_halting_with_limit() {
+    print_test_header("test_run_dtm_non_halting_with_limit");
+    let mut rules = std::collections::HashMap::new();
+    rules.insert(
+        (1, 0),
+        vec![Rule {
+            rule_number: 7,
+            next_state: 1,
+            write_symbol: 0,
+            move_right: false,
+        }],
+    );
+    let tm = TuringMachine {
+        rules,
+        num_states: 1,
+        num_symbols: 2,
+    };
+    let initial = BigUint::from(0u32);
+    assert!(run_dtm(&tm, &initial, 5).is_none());
+}
 
 #[test]
 fn test_tape_encoding_from_integer() {
