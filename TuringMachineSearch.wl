@@ -20,24 +20,23 @@ CollectSeenValuesRust := CollectSeenValuesRust = functions["collect_seen_values_
 RunDeterministicTMRust := RunDeterministicTMRust = functions["run_dtm_wl"]
 
 MultiwayTMFunctionSearch[
-	rules : {__Integer},
+    rules : {__Integer},
     numStates_Integer,
     numSymbols_Integer,
-	input_Integer,
-	output_Integer,
-	maxSteps_Integer
-] :=
-		Replace[
-			List @@ MultiwayTMFunctionSearchRust[
-				Developer`DataStore @@ rules,
-				numStates,
-				numSymbols,
-				input,
-				output,
-				maxSteps
-			],
-			{} -> Failure["PathNotFound", <|"MessageTemplate" -> "Failed to find the target."|>]
-		]
+    input_Integer,
+    output_Integer,
+    maxSteps_Integer
+] := Replace[
+    List @@ FromDigits /@ MultiwayTMFunctionSearchRust[
+        ToString /@ rules,
+        numStates,
+        numSymbols,
+        ToString[input],
+        ToString[output],
+        maxSteps
+    ],
+    {} -> Failure["PathNotFound", <|"MessageTemplate" -> "Failed to find the target."|>]
+]
 
 MultiwayTMFunctionSearch[rules : {__Integer}, input_Integer, output_Integer, maxSteps_Integer] :=
     MultiwayTMFunctionSearch[rules, 2, 2, input, output, maxSteps]
@@ -49,28 +48,30 @@ CollectSeenValues[
     input_Integer,
     maxSteps_Integer
 ] :=
-    List @@ CollectSeenValuesRust[
-        Developer`DataStore @@ rules,
+    FromDigits /@ CollectSeenValuesRust[
+        ToString /@ rules,
         numStates,
         numSymbols,
-        input,
+        ToString[input],
         maxSteps
     ]
 
 CollectSeenValues[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
     CollectSeenValues[rules, 2, 2, input, maxSteps]
 
-RunDeterministicTM[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] := With[{
-    result = List @@ RunDeterministicTMRust[
-        rule,
-        numStates,
-        numSymbols,
-        input,
-        maxSteps
+RunDeterministicTM[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
+    Replace[
+        RunDeterministicTMRust[
+            ToString[rule],
+            numStates,
+            numSymbols,
+            ToString[input],
+            maxSteps
+        ], {
+            _[0, ""] -> {Infinity, Undefined},
+            _[steps_, output_] :> {steps, FromDigits[output]}
+        }
     ]
-},
-    If[result === {}, {Infinity, Undefined}, result]
-]
 
 RunDeterministicTM[rule_Integer, input_Integer, maxSteps_Integer] := RunDeterministicTM[{rule, 2, 2}, input, maxSteps]
 

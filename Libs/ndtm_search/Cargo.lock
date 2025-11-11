@@ -709,10 +709,11 @@ dependencies = [
 [[package]]
 name = "wolfram-library-link"
 version = "0.2.10"
-source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#182727e9fb0e6bf27c7e5116d2648d47d16fd278"
+source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#adfda953f0a2cd9c0154543ca3bdd04ded796ac2"
 dependencies = [
  "backtrace",
  "inventory",
+ "num-bigint",
  "once_cell",
  "process_path",
  "ref-cast",
@@ -726,7 +727,7 @@ dependencies = [
 [[package]]
 name = "wolfram-library-link-macros"
 version = "0.2.10"
-source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#182727e9fb0e6bf27c7e5116d2648d47d16fd278"
+source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#adfda953f0a2cd9c0154543ca3bdd04ded796ac2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -736,7 +737,7 @@ dependencies = [
 [[package]]
 name = "wolfram-library-link-sys"
 version = "0.2.10"
-source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#182727e9fb0e6bf27c7e5116d2648d47d16fd278"
+source = "git+https://github.com/sw1sh/wolfram-library-link-rs?branch=feature%2Fmore-types#adfda953f0a2cd9c0154543ca3bdd04ded796ac2"
 dependencies = [
  "env_logger",
  "wolfram-app-discovery",

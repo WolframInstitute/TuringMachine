@@ -3,8 +3,7 @@ use wolfram_library_link as wll;
 wll::generate_loader!(rustlink_autodiscover);
 
 use crate::models::{TMState, Tape, TuringMachine};
-use num_bigint::{BigInt, BigUint, ToBigInt};
-use num_traits::ToPrimitive;
+use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 
@@ -44,7 +43,7 @@ pub fn exhaustive_search(
     tm: &TuringMachine,
     initial: &BigUint,
     target: &BigUint,
-    max_steps: u32,
+    max_steps: u64,
 ) -> Option<Vec<u64>> {
     let initial_tape = Tape::from_integer(initial);
     let initial_state = TMState {
@@ -52,7 +51,7 @@ pub fn exhaustive_search(
         head_position: 0,
         tape: initial_tape,
     };
-    let mut queue: VecDeque<(TMState, usize)> = VecDeque::new();
+    let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
     queue.push_back((initial_state.clone(), 0));
     let mut expanded: HashMap<TMState, (Option<TMState>, Option<u64>)> = HashMap::new();
     expanded.insert(initial_state, (None, None));
@@ -94,7 +93,7 @@ pub fn exhaustive_search(
                     }
                 }
             } else {
-                if step < max_steps as usize {
+                if step < max_steps {
                     queue.push_back((new_state, depth + 1));
                 }
             }
@@ -126,7 +125,7 @@ fn reconstruct_path(
 pub fn run_dtm(
     tm: &TuringMachine,
     initial: &BigUint,
-    max_steps: u32,
+    max_steps: u64,
 ) -> Option<(u64, BigUint)> {
     let initial_tape = Tape::from_integer(initial);
     let mut state = TMState {
@@ -135,11 +134,10 @@ pub fn run_dtm(
         tape: initial_tape,
     };
     let mut steps: u64 = 0;
-    let max_steps_u64 = max_steps as u64;
     let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
     let debug: i32 = debug_env.parse().unwrap_or(-1);
 
-    while steps < max_steps_u64 {
+    while steps < max_steps {
         if aborted_safe() {
             if debug >= 0 {
                 println!("[DBG] Abort requested during run_dtm; terminating early");
@@ -213,84 +211,98 @@ pub fn collect_seen_values(tm: &TuringMachine, initial: &BigUint, max_steps: u32
 
 #[wll::export]
 pub fn exhaustive_search_wl(
-    rules: Vec<u64>,
+    rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: u64,
-    target: u64,
-    max_steps: u32,
-) -> Vec<u64> {
-    let rule_bigints: Vec<BigInt> = rules.iter().map(|&n| n.to_bigint().unwrap()).collect();
-    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_bigint = initial.to_bigint().unwrap().to_biguint().unwrap();
-    let target_bigint = target.to_bigint().unwrap().to_biguint().unwrap();
-    if std::env::var("NDTM_DEBUG")
-        .ok()
-        .filter(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .is_some()
+    initial: String,
+    target: String,
+    max_steps: u64,
+) -> Vec<String> {
+    let rule_bigints: Vec<BigInt> = match rules
+        .iter()
+        .map(|s| s.parse::<BigInt>())
+        .collect::<Result<Vec<_>, _>>()
     {
-        println!(
-            "[DBG] exhaustive_search_wl initial={} target={} rules={:?}",
-            initial_bigint, target_bigint, rules
-        );
-    }
-
-    if aborted_safe() {
-        return Vec::new();
-    }
-    exhaustive_search(&tm, &initial_bigint, &target_bigint, max_steps).unwrap_or_default()
-}
-
-#[wll::export]
-pub fn run_dtm_wl(
-    rule: u64,
-    num_states: u32,
-    num_symbols: u32,
-    initial: u64,
-    max_steps: u32,
-) -> Vec<u64> {
-    let rule_bigint = rule.to_bigint().unwrap();
-    let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
         Ok(t) => t,
         Err(_) => return Vec::new(),
     };
-    let initial_bigint = match initial.to_bigint().unwrap().to_biguint() {
-        Some(v) => v,
-        None => return Vec::new(),
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let target_biguint: BigUint = match target.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
     };
     if aborted_safe() {
         return Vec::new();
     }
-    match run_dtm(&tm, &initial_bigint, max_steps) {
-        Some((steps, output)) => match output.to_u64() {
-            Some(output_u64) => vec![steps, output_u64],
-            None => Vec::new(),
-        },
+    match exhaustive_search(&tm, &initial_biguint, &target_biguint, max_steps) {
+        Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
         None => Vec::new(),
     }
 }
 
 #[wll::export]
-pub fn collect_seen_values_wl(
-    rules: Vec<u64>,
+pub fn run_dtm_wl(
+    rule: String,
     num_states: u32,
     num_symbols: u32,
-    initial: u64,
+    initial: String,
+    max_steps: u64,
+) -> (u64, String) {
+    let rule_bigint: BigInt = match rule.parse::<BigInt>() {
+        Ok(v) => v,
+        Err(_) => return (0, String::new()),
+    };
+    let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return (0, String::new()),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (0, String::new()),
+    };
+    if aborted_safe() {
+        return (0, String::new());
+    }
+    match run_dtm(&tm, &initial_biguint, max_steps) {
+        Some((steps, output)) => (steps, output.to_string()),
+        None => (0, String::new()),
+    }
+}
+
+#[wll::export]
+pub fn collect_seen_values_wl(
+    rules: Vec<String>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
     max_steps: u32,
-) -> Vec<u64> {
-    let rule_bigints: Vec<BigInt> = rules.iter().map(|&n| n.to_bigint().unwrap()).collect();
+) -> Vec<String> {
+    let rule_bigints: Vec<BigInt> = match rules
+        .iter()
+        .map(|s| s.parse::<BigInt>())
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
     let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
         Ok(t) => t,
         Err(_) => return Vec::new(),
     };
-    let initial_bigint = match initial.to_bigint().unwrap().to_biguint() {
-        Some(b) => b,
-        None => return Vec::new(),
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
     };
     if aborted_safe() {
         return Vec::new();
     }
-    let vals = collect_seen_values(&tm, &initial_bigint, max_steps);
-    // Map to u64, skip those that don't fit
-    vals.into_iter().filter_map(|v| v.to_u64()).collect()
+    let vals = collect_seen_values(&tm, &initial_biguint, max_steps);
+    vals.into_iter().map(|v| v.to_string()).collect()
 }

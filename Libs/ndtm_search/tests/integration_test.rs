@@ -9,7 +9,7 @@ fn print_test_header(name: &str) {
 use ndtm_search::exhaustive_search;
 use ndtm_search::models::{Rule, Tape, TuringMachine};
 use ndtm_search::run_dtm;
-use num_bigint::{BigUint, ToBigInt};
+use num_bigint::{BigUint, BigInt, ToBigInt};
 
 #[test]
 fn test_run_dtm_halting() {
@@ -186,48 +186,50 @@ fn test_search_logic_with_two_state_ndtm() {
 #[test]
 fn test_exhaustive_search_wl() {
     print_test_header("test_exhaustive_search_wl");
-    let rules = vec![2506, 3506, 1506];
+    let rules_u64 = vec![2506u64, 3506u64, 1506u64];
+    let rules: Vec<String> = rules_u64.iter().map(|r| r.to_string()).collect();
     let num_states = 2;
     let num_symbols = 2;
-    let initial = 5;
-    let target = 21;
+    let initial_u64 = 5u64;
+    let target_u64 = 21u64;
+    let initial = initial_u64.to_string();
+    let target = target_u64.to_string();
     let max_steps = 100;
 
     let path = ndtm_search::exhaustive_search_wl(
         rules.clone(),
         num_states,
         num_symbols,
-        initial,
-        target,
+        initial.clone(),
+        target.clone(),
         max_steps,
     );
     println!("Found path (len={}): {:?}", path.len(), path);
     assert!(!path.is_empty(), "A path should have been found");
 
-    // Replay the path using deterministic step_dtm on a TM constructed for each rule number
-    // Build a map of rule_number -> deterministic TuringMachine
-    let mut tm_map: std::collections::HashMap<u64, TuringMachine> =
+    // Replay the path: reconstruct deterministic TMs keyed by their rule string
+    let mut tm_map: std::collections::HashMap<String, TuringMachine> =
         std::collections::HashMap::new();
-    for &r in &rules {
-        let tm_single =
-            TuringMachine::from_number(&r.to_bigint().unwrap(), num_states, num_symbols)
-                .expect("Failed to construct deterministic TM for rule number");
-        tm_map.insert(r, tm_single);
+    for r_str in &rules {
+    let n_bigint = r_str.parse::<BigInt>().expect("parse rule BigInt");
+    let tm_single = TuringMachine::from_number(&n_bigint, num_states, num_symbols)
+            .expect("Failed to construct deterministic TM for rule number");
+        tm_map.insert(r_str.clone(), tm_single);
     }
     let mut state = ndtm_search::models::TMState {
         head_state: 1,
         head_position: 0,
-        tape: Tape::from_integer(&BigUint::from(initial)),
+        tape: Tape::from_integer(&BigUint::from(initial_u64)),
     };
-    for (step_idx, &rule_num) in path.iter().enumerate() {
+    for (step_idx, rule_num_str) in path.iter().enumerate() {
         let tm_single = tm_map
-            .get(&rule_num)
+            .get(rule_num_str)
             .expect("Missing TM for rule number in map");
         let (halted, new_state) = tm_single.step_dtm(&state);
         println!(
             "Replay step {} rule {} -> head_state={} head_pos={} tape={}",
             step_idx,
-            rule_num,
+            rule_num_str,
             new_state.head_state,
             new_state.head_position,
             new_state.tape.to_integer()
@@ -237,7 +239,7 @@ fn test_exhaustive_search_wl() {
             println!(
                 "Halting after step {} (rule {}) with final tape={}",
                 step_idx,
-                rule_num,
+                rule_num_str,
                 state.tape.to_integer()
             );
             break;
@@ -246,9 +248,9 @@ fn test_exhaustive_search_wl() {
     let final_val = state.tape.to_integer();
     assert_eq!(
         final_val,
-        BigUint::from(target),
+        BigUint::from(target_u64),
         "Final tape value {} does not match target {}",
         final_val,
-        target
+        target_u64
     );
 }

@@ -29,7 +29,7 @@ pub struct Args {
 
     /// The maximum number of steps to search.
     #[arg(long, default_value_t = 1000)]
-    pub max_steps: u32,
+    pub max_steps: u64,
     /// Print the rules for the given TuringMachine and exit
     #[arg(long, default_value_t = false)]
     pub print_rules: bool,
