@@ -1,6 +1,6 @@
-use ndtm_search::models::TuringMachine;
 use clap::Parser;
 use ndtm_search::exhaustive_search;
+use ndtm_search::models::TuringMachine;
 use num_bigint::{BigInt, BigUint};
 
 /// Command-line arguments for the NDTM searcher.
@@ -22,7 +22,7 @@ pub struct Args {
     /// The number of states in the TM.
     #[arg(long, default_value_t = 2)]
     pub num_states: u32,
-    
+
     /// The number of symbols (colors) on the tape.
     #[arg(long, default_value_t = 2)]
     pub num_symbols: u32,

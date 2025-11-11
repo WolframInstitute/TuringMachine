@@ -2,11 +2,10 @@ use wolfram_library_link as wll;
 
 wll::generate_loader!(rustlink_autodiscover);
 
-
-use crate::models::{TuringMachine, Tape, TMState, SearchNode};
+use crate::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_traits::ToPrimitive;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 
 pub mod models;
@@ -14,8 +13,8 @@ pub mod models;
 // Provide a safe wrapper for abort checks that tolerates tests (no WL init)
 #[inline]
 fn aborted_safe() -> bool {
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::sync::atomic::{AtomicBool, Ordering};
     // Track whether we've successfully observed a working LibraryLink context.
     static AVAILABLE: AtomicBool = AtomicBool::new(false);
     // Track whether we've already tried (and possibly failed) to access it; avoid repeated panics.
@@ -48,26 +47,36 @@ pub fn exhaustive_search(
     max_steps: u32,
 ) -> Option<Vec<u64>> {
     let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
-    let mut queue = VecDeque::new();
-    queue.push_back(SearchNode { state: initial_state, path: Vec::new() });
-    let mut expanded: HashSet<TMState> = HashSet::new();
+    let initial_state = TMState {
+        head_state: 1,
+        head_position: 0,
+        tape: initial_tape,
+    };
+    let mut queue: VecDeque<(TMState, usize)> = VecDeque::new();
+    queue.push_back((initial_state.clone(), 0));
+    let mut expanded: HashMap<TMState, (Option<TMState>, Option<u64>)> = HashMap::new();
+    expanded.insert(initial_state, (None, None));
     let mut seen_values: HashSet<BigUint> = HashSet::new();
     let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
     let debug: i32 = debug_env.parse().unwrap_or(-1);
 
-    while let Some(current_node) = queue.pop_front() {
+    while let Some((current_state, depth)) = queue.pop_front() {
         // Cooperative abort: exit early if WL requested abort
         if aborted_safe() {
-            if debug >= 0 { println!("[DBG] Abort requested by WL kernel; terminating search early"); }
+            if debug >= 0 {
+                println!("[DBG] Abort requested by WL kernel; terminating search early");
+            }
             return None;
         }
-        let step = current_node.path.len() + 1;
-        if expanded.contains(&current_node.state) { continue; }
-        expanded.insert(current_node.state.clone());
-        for (new_state, rule_num, halted) in tm.ndtm_step(&current_node.state) {
-            let mut new_path = current_node.path.clone();
-            new_path.push(rule_num);
+        let step = depth + 1;
+        for (new_state, rule_num, halted) in tm.ndtm_step(&current_state) {
+            if expanded.contains_key(&new_state) {
+                continue;
+            }
+            expanded.insert(
+                new_state.clone(),
+                (Some(current_state.clone()), Some(rule_num)),
+            );
             if halted {
                 let new_val = new_state.tape.to_integer();
                 if seen_values.insert(new_val.clone()) {
@@ -75,13 +84,18 @@ pub fn exhaustive_search(
                         println!("[DBG] Unique tape value found: {}", new_val);
                     }
                     if new_val == *target {
-                        if debug >= 0 { println!("[DBG] Target reached at step {} (after rule {})", step, rule_num); }
-                        return Some(new_path);
+                        if debug >= 0 {
+                            println!(
+                                "[DBG] Target reached at step {} (after rule {})",
+                                step, rule_num
+                            );
+                        }
+                        return Some(reconstruct_path(&expanded, new_state));
                     }
                 }
             } else {
                 if step < max_steps as usize {
-                    queue.push_back(SearchNode { state: new_state, path: new_path });
+                    queue.push_back((new_state, depth + 1));
                 }
             }
         }
@@ -89,16 +103,36 @@ pub fn exhaustive_search(
     None
 }
 
+fn reconstruct_path(
+    expanded: &HashMap<TMState, (Option<TMState>, Option<u64>)>,
+    state: TMState,
+) -> Vec<u64> {
+    let mut path = Vec::new();
+    let mut current = state;
+    while let Some((parent, rule)) = expanded.get(&current) {
+        if let Some(rule_num) = rule {
+            path.push(*rule_num);
+        }
+        if let Some(parent_state) = parent {
+            current = parent_state.clone();
+        } else {
+            break;
+        }
+    }
+    path.reverse();
+    path
+}
+
 /// Traverse the non-deterministic TM and collect all unique halted tape values encountered.
 /// Returns the set of unique tape integers (converted to u64; values > u64::MAX are skipped).
 /// No path information is retained; traversal stops after reaching `max_steps` depth.
-pub fn collect_seen_values(
-    tm: &TuringMachine,
-    initial: &BigUint,
-    max_steps: u32,
-) -> Vec<BigUint> {
+pub fn collect_seen_values(tm: &TuringMachine, initial: &BigUint, max_steps: u32) -> Vec<BigUint> {
     let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+    let initial_state = TMState {
+        head_state: 1,
+        head_position: 0,
+        tape: initial_tape,
+    };
     let mut queue: VecDeque<(TMState, usize)> = VecDeque::new();
     queue.push_back((initial_state, 0));
     let mut expanded: HashSet<TMState> = HashSet::new();
@@ -108,10 +142,14 @@ pub fn collect_seen_values(
 
     while let Some((current_state, depth)) = queue.pop_front() {
         if aborted_safe() {
-            if debug >= 0 { println!("[DBG] Abort requested; early termination in collect_seen_values"); }
+            if debug >= 0 {
+                println!("[DBG] Abort requested; early termination in collect_seen_values");
+            }
             break; // return what we have so far
         }
-        if expanded.contains(&current_state) { continue; }
+        if expanded.contains(&current_state) {
+            continue;
+        }
         expanded.insert(current_state.clone());
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
             if halted {
@@ -127,7 +165,6 @@ pub fn collect_seen_values(
     seen_values.into_iter().collect()
 }
 
-
 #[wll::export]
 pub fn exhaustive_search_wl(
     rules: Vec<u64>,
@@ -141,8 +178,15 @@ pub fn exhaustive_search_wl(
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_bigint = initial.to_bigint().unwrap().to_biguint().unwrap();
     let target_bigint = target.to_bigint().unwrap().to_biguint().unwrap();
-    if std::env::var("NDTM_DEBUG").ok().filter(|v| v=="1" || v.eq_ignore_ascii_case("true")).is_some() {
-        println!("[DBG] exhaustive_search_wl initial={} target={} rules={:?}", initial_bigint, target_bigint, rules);
+    if std::env::var("NDTM_DEBUG")
+        .ok()
+        .filter(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .is_some()
+    {
+        println!(
+            "[DBG] exhaustive_search_wl initial={} target={} rules={:?}",
+            initial_bigint, target_bigint, rules
+        );
     }
 
     if aborted_safe() {
@@ -160,9 +204,17 @@ pub fn collect_seen_values_wl(
     max_steps: u32,
 ) -> Vec<u64> {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|&n| n.to_bigint().unwrap()).collect();
-    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) { Ok(t) => t, Err(_) => return Vec::new() };
-    let initial_bigint = match initial.to_bigint().unwrap().to_biguint() { Some(b) => b, None => return Vec::new() };
-    if aborted_safe() { return Vec::new(); }
+    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    let initial_bigint = match initial.to_bigint().unwrap().to_biguint() {
+        Some(b) => b,
+        None => return Vec::new(),
+    };
+    if aborted_safe() {
+        return Vec::new();
+    }
     let vals = collect_seen_values(&tm, &initial_bigint, max_steps);
     // Map to u64, skip those that don't fit
     vals.into_iter().filter_map(|v| v.to_u64()).collect()

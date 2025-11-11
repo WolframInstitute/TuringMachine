@@ -1,6 +1,5 @@
-use ndtm_search::models::{TuringMachine, Tape, TMState};
+use ndtm_search::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigUint, ToBigInt};
-
 
 fn run_dtm_simulation(tm: &TuringMachine, initial_integer: &BigUint, max_steps: u32) -> BigUint {
     if initial_integer == &BigUint::from(0u32) {
@@ -9,7 +8,7 @@ fn run_dtm_simulation(tm: &TuringMachine, initial_integer: &BigUint, max_steps: 
     let initial_tape = Tape::from_integer(initial_integer);
 
     let mut current_state = TMState {
-        head_state: 1, // DTM starts at state 1
+        head_state: 1,    // DTM starts at state 1
         head_position: 0, // Start at the actual LSB
         tape: initial_tape,
     };
@@ -33,7 +32,8 @@ fn test_dtm_rules_convergence() {
     let k = 2; // num_symbols
     let max_steps = 50;
     let expected_outputs: Vec<u32> = vec![
-        0,0,0,4,0,0,0,8,8,0,0,12,0,0,0,16,16,16,16,20,0,0,0,24,24,0,0,28,0,0,0,32,32,32,32
+        0, 0, 0, 4, 0, 0, 0, 8, 8, 0, 0, 12, 0, 0, 0, 16, 16, 16, 16, 20, 0, 0, 0, 24, 24, 0, 0,
+        28, 0, 0, 0, 32, 32, 32, 32,
     ];
 
     let mut results_per_rule = Vec::new();
@@ -52,13 +52,18 @@ fn test_dtm_rules_convergence() {
 
     // Check that all rule sets produce the same sequence of outputs
     for i in 1..results_per_rule.len() {
-        assert_eq!(results_per_rule[0], results_per_rule[i], "Output sequences for rule {} and {} do not match!", rule_ids[0], rule_ids[i]);
+        assert_eq!(
+            results_per_rule[0], results_per_rule[i],
+            "Output sequences for rule {} and {} do not match!",
+            rule_ids[0], rule_ids[i]
+        );
     }
 
     // Check if the sequence matches the expected one
-    let final_outputs_u32: Vec<u32> = results_per_rule[0].iter()
+    let final_outputs_u32: Vec<u32> = results_per_rule[0]
+        .iter()
         .map(|n| n.try_into().unwrap_or(u32::MAX))
         .collect();
-    
+
     assert_eq!(final_outputs_u32, expected_outputs);
 }

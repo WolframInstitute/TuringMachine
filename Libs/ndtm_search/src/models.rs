@@ -1,4 +1,3 @@
-
 use bit_vec::BitVec;
 use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
@@ -44,7 +43,11 @@ impl Tape {
 
     /// Reads the bit at the given position.
     pub fn read(&self, position: usize) -> u32 {
-        if self.0.get(position).unwrap_or(false) { 1 } else { 0 }
+        if self.0.get(position).unwrap_or(false) {
+            1
+        } else {
+            0
+        }
     }
 
     /// Writes a bit at the given position, extending the tape if necessary.
@@ -100,7 +103,10 @@ impl TuringMachine {
                     for symbol in 0..k {
                         if let Some(rule) = tm.get_rule(state, symbol) {
                             let dir = if rule.move_right { 1 } else { -1 };
-                            println!("{{{}, {}}} -> {{{}, {}, {}}}", state, symbol, rule.next_state, rule.write_symbol, dir);
+                            println!(
+                                "{{{}, {}}} -> {{{}, {}, {}}}",
+                                state, symbol, rule.next_state, rule.write_symbol, dir
+                            );
                         }
                     }
                 }
@@ -112,7 +118,10 @@ impl TuringMachine {
     pub fn print_tm_rules_merged(nums: &[BigInt], s: u32, k: u32) {
         match TuringMachine::from_numbers(nums, s, k) {
             Ok(tm) => {
-                println!("Merged TuringMachine rules for {:?}, {{{}, {}}}", nums, s, k);
+                println!(
+                    "Merged TuringMachine rules for {:?}, {{{}, {}}}",
+                    nums, s, k
+                );
                 for state in 1..=s {
                     for symbol in 0..k {
                         let rules = tm.get_rules(state, symbol);
@@ -120,7 +129,11 @@ impl TuringMachine {
                             print!("{{{}, {}}} -> {{", state, symbol);
                             let mut first = true;
                             for rule in rules {
-                                if !first { print!(", "); } else { first = false; }
+                                if !first {
+                                    print!(", ");
+                                } else {
+                                    first = false;
+                                }
                                 let dir = if rule.move_right { 1 } else { -1 };
                                 print!("{{{}, {}, {}}}", rule.next_state, rule.write_symbol, dir);
                             }
@@ -138,7 +151,10 @@ impl TuringMachine {
 
         let max_n = two_s_k.pow(s_k as u32) - 1;
         if *n < BigInt::from(0) || *n > max_n {
-            return Err(format!("Rule number out of range. Must be between 0 and {}", max_n));
+            return Err(format!(
+                "Rule number out of range. Must be between 0 and {}",
+                max_n
+            ));
         }
 
         let (_sign, mut digits) = n.to_radix_be(2 * s * k);
@@ -153,8 +169,10 @@ impl TuringMachine {
 
         // Assign digits in state-major, symbol-reversed-minor (high-to-low symbol order)
         // digit_index = i * k + (k - 1 - j)
-        for i in 0..s { // state index
-            for j in 0..k { // symbol index (reversed)
+        for i in 0..s {
+            // state index
+            for j in 0..k {
+                // symbol index (reversed)
                 let digit_index = (i * k + (k - 1 - j)) as usize;
                 let digit = digits[digit_index];
 
@@ -172,12 +190,24 @@ impl TuringMachine {
                 let write_symbol = write_symbol_raw;
                 let move_right = move_raw == 1;
 
-                let rule = Rule { rule_number: rule_number_u64, next_state, write_symbol, move_right };
-                rules.entry((current_state, read_symbol)).or_default().push(rule);
+                let rule = Rule {
+                    rule_number: rule_number_u64,
+                    next_state,
+                    write_symbol,
+                    move_right,
+                };
+                rules
+                    .entry((current_state, read_symbol))
+                    .or_default()
+                    .push(rule);
             }
         }
 
-        Ok(TuringMachine { rules, num_states: s, num_symbols: k })
+        Ok(TuringMachine {
+            rules,
+            num_states: s,
+            num_symbols: k,
+        })
     }
 
     /// Constructs a non-deterministic TuringMachine from multiple rule numbers
@@ -189,7 +219,11 @@ impl TuringMachine {
                 rules.entry((state, symbol)).or_default().extend(rule_vec);
             }
         }
-        Ok(TuringMachine { rules, num_states: s, num_symbols: k })
+        Ok(TuringMachine {
+            rules,
+            num_states: s,
+            num_symbols: k,
+        })
     }
 
     pub fn get_rule(&self, state: u32, symbol: u32) -> Option<&Rule> {
@@ -198,7 +232,10 @@ impl TuringMachine {
 
     /// Returns all possible rules for a given (state, symbol) pair
     pub fn get_rules(&self, state: u32, symbol: u32) -> Vec<Rule> {
-        self.rules.get(&(state, symbol)).cloned().unwrap_or_default()
+        self.rules
+            .get(&(state, symbol))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Simulate one step of the DTM, returns (halted, new_state)
@@ -206,7 +243,9 @@ impl TuringMachine {
         let mut new_state = state.clone();
         let current_symbol = new_state.tape.read(new_state.head_position);
         if let Some(rule) = self.get_rule(new_state.head_state, current_symbol) {
-            new_state.tape.write(new_state.head_position, rule.write_symbol);
+            new_state
+                .tape
+                .write(new_state.head_position, rule.write_symbol);
             new_state.head_state = rule.next_state;
             if rule.move_right {
                 // Move right (toward LSB, lower index)
@@ -232,7 +271,9 @@ impl TuringMachine {
         let rules = self.get_rules(state.head_state, current_symbol);
         for rule in rules {
             let mut new_state = state.clone();
-            new_state.tape.write(new_state.head_position, rule.write_symbol);
+            new_state
+                .tape
+                .write(new_state.head_position, rule.write_symbol);
             new_state.head_state = rule.next_state;
             let mut halted = false;
             if rule.move_right {
@@ -251,7 +292,6 @@ impl TuringMachine {
     }
 }
 
-
 /// Represents the state of the Turing Machine.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TMState {
@@ -259,12 +299,3 @@ pub struct TMState {
     pub head_position: usize,
     pub tape: Tape,
 }
-
-/// A node in the search space, containing a state and the path to reach it.
-#[derive(Clone)]
-pub struct SearchNode {
-    pub state: TMState,
-    pub path: Vec<u64>, // Path of rule numbers
-}
-
-

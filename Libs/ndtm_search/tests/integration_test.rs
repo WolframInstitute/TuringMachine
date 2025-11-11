@@ -6,10 +6,10 @@ fn print_test_header(name: &str) {
     let _ = writeln!(io::stdout(), "\n===== Running {} =====", name);
 }
 
-use ndtm_search::models::{TuringMachine};
 use ndtm_search::exhaustive_search;
-use num_bigint::{BigUint, ToBigInt};
 use ndtm_search::models::Tape;
+use ndtm_search::models::TuringMachine;
+use num_bigint::{BigUint, ToBigInt};
 
 #[test]
 fn test_tape_encoding_from_integer() {
@@ -60,9 +60,9 @@ fn test_tape_to_integer_round_trip() {
     let cases = vec![
         BigUint::from(0u32),
         BigUint::from(1u32),
-        BigUint::from(2u32), // 10b
-        BigUint::from(255u32), // 0xFF
-        BigUint::from(256u32), // boundary to next byte
+        BigUint::from(2u32),    // 10b
+        BigUint::from(255u32),  // 0xFF
+        BigUint::from(256u32),  // boundary to next byte
         BigUint::from(1024u32), // multi-byte with zeros
     ];
     for n in cases {
@@ -125,7 +125,11 @@ fn test_search_logic_with_ndtm() {
 #[test]
 fn test_search_logic_with_two_state_ndtm() {
     print_test_header("test_search_logic_with_two_state_ndtm");
-    let rule_nums = vec![2506.to_bigint().unwrap(), 3506.to_bigint().unwrap(), 1506.to_bigint().unwrap()];
+    let rule_nums = vec![
+        2506.to_bigint().unwrap(),
+        3506.to_bigint().unwrap(),
+        1506.to_bigint().unwrap(),
+    ];
     let tm = TuringMachine::from_numbers(&rule_nums, 2, 2).unwrap();
     let initial_val = BigUint::from(5u32);
     let target_val = BigUint::from(21u32);
@@ -143,16 +147,25 @@ fn test_exhaustive_search_wl() {
     let target = 21;
     let max_steps = 100;
 
-    let path = ndtm_search::exhaustive_search_wl(rules.clone(), num_states, num_symbols, initial, target, max_steps);
+    let path = ndtm_search::exhaustive_search_wl(
+        rules.clone(),
+        num_states,
+        num_symbols,
+        initial,
+        target,
+        max_steps,
+    );
     println!("Found path (len={}): {:?}", path.len(), path);
     assert!(!path.is_empty(), "A path should have been found");
 
     // Replay the path using deterministic step_dtm on a TM constructed for each rule number
     // Build a map of rule_number -> deterministic TuringMachine
-    let mut tm_map: std::collections::HashMap<u64, TuringMachine> = std::collections::HashMap::new();
+    let mut tm_map: std::collections::HashMap<u64, TuringMachine> =
+        std::collections::HashMap::new();
     for &r in &rules {
-        let tm_single = TuringMachine::from_number(&r.to_bigint().unwrap(), num_states, num_symbols)
-            .expect("Failed to construct deterministic TM for rule number");
+        let tm_single =
+            TuringMachine::from_number(&r.to_bigint().unwrap(), num_states, num_symbols)
+                .expect("Failed to construct deterministic TM for rule number");
         tm_map.insert(r, tm_single);
     }
     let mut state = ndtm_search::models::TMState {
@@ -161,7 +174,9 @@ fn test_exhaustive_search_wl() {
         tape: Tape::from_integer(&BigUint::from(initial)),
     };
     for (step_idx, &rule_num) in path.iter().enumerate() {
-        let tm_single = tm_map.get(&rule_num).expect("Missing TM for rule number in map");
+        let tm_single = tm_map
+            .get(&rule_num)
+            .expect("Missing TM for rule number in map");
         let (halted, new_state) = tm_single.step_dtm(&state);
         println!(
             "Replay step {} rule {} -> head_state={} head_pos={} tape={}",
@@ -172,11 +187,22 @@ fn test_exhaustive_search_wl() {
             new_state.tape.to_integer()
         );
         state = new_state;
-        if halted { 
-            println!("Halting after step {} (rule {}) with final tape={}", step_idx, rule_num, state.tape.to_integer());
-            break; 
+        if halted {
+            println!(
+                "Halting after step {} (rule {}) with final tape={}",
+                step_idx,
+                rule_num,
+                state.tape.to_integer()
+            );
+            break;
         }
     }
     let final_val = state.tape.to_integer();
-    assert_eq!(final_val, BigUint::from(target), "Final tape value {} does not match target {}", final_val, target);
+    assert_eq!(
+        final_val,
+        BigUint::from(target),
+        "Final tape value {} does not match target {}",
+        final_val,
+        target
+    );
 }
