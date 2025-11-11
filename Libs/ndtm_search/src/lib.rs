@@ -11,10 +11,32 @@ use std::env;
 
 pub mod models;
 
+// Provide a safe wrapper for abort checks that tolerates tests (no WL init)
+#[inline]
+fn aborted_safe() -> bool {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    // Track whether we've successfully observed a working LibraryLink context.
+    static AVAILABLE: AtomicBool = AtomicBool::new(false);
+    // Track whether we've already tried (and possibly failed) to access it; avoid repeated panics.
+    static TRIED_ONCE: AtomicBool = AtomicBool::new(false);
 
-// Safe wrapper: returns false if not in a WL LibraryLink context
-fn wl_abort_requested() -> bool {
-    std::panic::catch_unwind(|| wll::aborted()).unwrap_or(false)
+    if AVAILABLE.load(Ordering::Relaxed) {
+        return wll::aborted();
+    }
+    if TRIED_ONCE.load(Ordering::Relaxed) {
+        // We tried before and it wasn't available; treat as not aborted.
+        return false;
+    }
+    // First (and only) probing attempt: catch potential panic caused by uninitialized LIBRARY_DATA.
+    TRIED_ONCE.store(true, Ordering::Relaxed);
+    match catch_unwind(AssertUnwindSafe(|| wll::aborted())) {
+        Ok(v) => {
+            AVAILABLE.store(true, Ordering::Relaxed);
+            v
+        }
+        Err(_) => false,
+    }
 }
 
 /// Exhaustive search for target value using non-deterministic TM
@@ -36,7 +58,7 @@ pub fn exhaustive_search(
 
     while let Some(current_node) = queue.pop_front() {
         // Cooperative abort: exit early if WL requested abort
-        if wl_abort_requested() {
+        if aborted_safe() {
             if debug >= 0 { println!("[DBG] Abort requested by WL kernel; terminating search early"); }
             return None;
         }
@@ -85,7 +107,7 @@ pub fn collect_seen_values(
     let debug: i32 = debug_env.parse().unwrap_or(-1);
 
     while let Some((current_state, depth)) = queue.pop_front() {
-        if wl_abort_requested() {
+        if aborted_safe() {
             if debug >= 0 { println!("[DBG] Abort requested; early termination in collect_seen_values"); }
             break; // return what we have so far
         }
@@ -123,8 +145,7 @@ pub fn exhaustive_search_wl(
         println!("[DBG] exhaustive_search_wl initial={} target={} rules={:?}", initial_bigint, target_bigint, rules);
     }
 
-    // If a front-end abort (e.g. user pressed Abort Evaluation) was requested, return empty path early
-    if wl_abort_requested() {
+    if aborted_safe() {
         return Vec::new();
     }
     exhaustive_search(&tm, &initial_bigint, &target_bigint, max_steps).unwrap_or_default()
@@ -141,7 +162,7 @@ pub fn collect_seen_values_wl(
     let rule_bigints: Vec<BigInt> = rules.iter().map(|&n| n.to_bigint().unwrap()).collect();
     let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) { Ok(t) => t, Err(_) => return Vec::new() };
     let initial_bigint = match initial.to_bigint().unwrap().to_biguint() { Some(b) => b, None => return Vec::new() };
-    if wl_abort_requested() { return Vec::new(); }
+    if aborted_safe() { return Vec::new(); }
     let vals = collect_seen_values(&tm, &initial_bigint, max_steps);
     // Map to u64, skip those that don't fit
     vals.into_iter().filter_map(|v| v.to_u64()).collect()
