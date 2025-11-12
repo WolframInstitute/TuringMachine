@@ -300,9 +300,15 @@ pub fn collect_seen_values(
         tape: initial_tape,
     };
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    queue.push_back((initial_state, 0));
+    queue.push_back((initial_state.clone(), 0));
     let mut expanded: HashSet<TMState> = HashSet::new();
-    let mut seen_values: HashMap<BigUint, u64> = HashMap::new();
+    // Maintain insertion order of unique halted values: Vec for ordered output, HashSet for membership test.
+    let mut seen_order: Vec<(u64, BigUint)> = Vec::new();
+    let mut seen_set: HashSet<BigUint> = HashSet::new();
+    // Always include the initial tape value at step 0.
+    let initial_val = initial_state.tape.to_integer();
+    seen_order.push((0, initial_val.clone()));
+    seen_set.insert(initial_val);
     let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
     let debug: i32 = debug_env.parse().unwrap_or(-1);
     let mut found_target = false;
@@ -320,8 +326,9 @@ pub fn collect_seen_values(
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
             if halted {
                 let val = new_state.tape.to_integer();
-                if !seen_values.contains_key(&val) {
-                    seen_values.insert(val.clone(), depth + 1);
+                if !seen_set.contains(&val) {
+                    seen_set.insert(val.clone());
+                    seen_order.push((depth + 1, val.clone()));
                     if debug >= 0 {
                         println!("[DBG] (collect) unique halted tape value: {} at step {}", val, depth + 1);
                     }
@@ -340,7 +347,7 @@ pub fn collect_seen_values(
             break;
         }
     }
-    seen_values.into_iter().map(|(v, step)| (step, v)).collect()
+    seen_order
 }
 
 
