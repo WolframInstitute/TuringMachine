@@ -6,7 +6,6 @@ use crate::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::collections::BinaryHeap;
-use std::env;
 
 pub mod models;
 
@@ -57,15 +56,10 @@ pub fn exhaustive_search_seq(
     let mut expanded: HashMap<TMState, (Option<TMState>, Option<u64>)> = HashMap::new();
     expanded.insert(initial_state, (None, None));
     let mut seen_values: HashSet<BigUint> = HashSet::new();
-    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
-    let debug: i32 = debug_env.parse().unwrap_or(-1);
 
     while let Some((current_state, depth)) = queue.pop_front() {
         // Cooperative abort: exit early if WL requested abort
         if aborted_safe() {
-            if debug >= 0 {
-                println!("[DBG] Abort requested by WL kernel; terminating search early");
-            }
             return None;
         }
         let step = depth + 1;
@@ -73,16 +67,7 @@ pub fn exhaustive_search_seq(
             if halted {
                 let new_val = new_state.tape.to_integer();
                 if seen_values.insert(new_val.clone()) {
-                    if debug >= 0 {
-                        println!("[DBG] Unique tape value found: {}", new_val);
-                    }
                     if new_val == *target {
-                        if debug >= 0 {
-                            println!(
-                                "[DBG] Target reached at step {} (after rule {})",
-                                step, rule_num
-                            );
-                        }
                         let mut path = reconstruct_path(&expanded, current_state);
                         path.push(rule_num);
                         return Some(path);
@@ -141,8 +126,6 @@ pub fn exhaustive_search_parallel(
     let found = Arc::new(AtomicBool::new(false));
     let active_workers = Arc::new(AtomicUsize::new(0));
     let result_path = Arc::new(Mutex::new(None));
-    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
-    let debug: i32 = debug_env.parse().unwrap_or(-1);
     rayon::scope(|s| {
         for _ in 0..rayon::current_num_threads() {
             let heap = heap.clone();
@@ -179,13 +162,7 @@ pub fn exhaustive_search_parallel(
                             new_path.push(rule_num);
                             if halted {
                                 let new_val = ns.tape.to_integer();
-                                if debug >= 0 {
-                                    println!("[DBG] Thread found halted value: {}", new_val);
-                                }
                                 if new_val == target {
-                                    if debug >= 0 {
-                                        println!("[DBG] Target reached at depth {} (rule {})", depth+1, rule_num);
-                                    }
                                     found.store(true, Ordering::SeqCst);
                                     *result_path.lock().unwrap() = Some(new_path);
                                     active_workers.fetch_sub(1, Ordering::SeqCst);
@@ -250,14 +227,9 @@ pub fn run_dtm(
         tape: initial_tape,
     };
     let mut steps: u64 = 0;
-    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
-    let debug: i32 = debug_env.parse().unwrap_or(-1);
 
     while steps < max_steps {
         if aborted_safe() {
-            if debug >= 0 {
-                println!("[DBG] Abort requested during run_dtm; terminating early");
-            }
             return None;
         }
         let (halted, next_state) = tm.step_dtm(&state);
@@ -265,20 +237,8 @@ pub fn run_dtm(
         steps += 1;
         if halted {
             let output = state.tape.to_integer();
-            if debug >= 0 {
-                println!(
-                    "[DBG] run_dtm halted after {} steps with tape value {}",
-                    steps, output
-                );
-            }
             return Some((steps, output));
         }
-    }
-    if debug >= 0 {
-        println!(
-            "[DBG] run_dtm did not halt within the provided step limit ({})",
-            max_steps
-        );
     }
     None
 }
@@ -309,8 +269,6 @@ pub fn collect_seen_values(
     let initial_val = initial_state.tape.to_integer();
     seen_order.push((0, initial_val.clone()));
     seen_set.insert(initial_val);
-    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
-    let debug: i32 = debug_env.parse().unwrap_or(-1);
     let mut found_target = false;
     while let Some((current_state, depth)) = queue.pop_front() {
         if aborted_safe() || depth >= max_steps {
@@ -326,9 +284,6 @@ pub fn collect_seen_values(
                 if !seen_set.contains(&val) {
                     seen_set.insert(val.clone());
                     seen_order.push((depth + 1, val.clone()));
-                    if debug >= 0 {
-                        println!("[DBG] (collect) unique halted tape value: {} at step {}", val, depth + 1);
-                    }
                     if let Some(target_val) = target {
                         if &val == target_val {
                             found_target = true;
@@ -358,14 +313,12 @@ pub fn ndtm_traverse_queue_size(
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
     queue.push_back((initial_state, 0));
     let mut expanded: HashSet<TMState> = HashSet::new();
-    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
-    let debug: i32 = debug_env.parse().unwrap_or(-1);
     while let Some((current_state, depth)) = queue.pop_front() {
-        if aborted_safe() { if debug >= 0 { println!("[DBG] Abort requested; early termination in ndtm_traverse_queue_size"); } break; }
+        if aborted_safe() || depth >= max_steps { break; }
         if expanded.contains(&current_state) { continue; }
         expanded.insert(current_state.clone());
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
-            if !halted && depth + 1 < max_steps {
+            if !halted {
                 queue.push_back((new_state, depth + 1));
             }
         }
@@ -389,9 +342,6 @@ pub fn exhaustive_search_wl(
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    if aborted_safe() {
-        return Vec::new();
-    }
     match exhaustive_search_seq(&tm, &initial_biguint, &target_biguint, max_steps) {
         Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
         None => Vec::new(),
@@ -411,7 +361,6 @@ pub fn exhaustive_search_parallel_wl(
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    if aborted_safe() { return Vec::new(); }
     match exhaustive_search_parallel(&tm, &initial_biguint, &target_biguint, max_steps) {
         Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
         None => Vec::new(),
@@ -429,9 +378,6 @@ pub fn run_dtm_wl(
     let rule_bigint: BigInt = rule.parse::<BigInt>().unwrap();
     let tm = TuringMachine::from_number(&rule_bigint, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    if aborted_safe() {
-        return (0, String::new());
-    }
     match run_dtm(&tm, &initial_biguint, max_steps) {
         Some((steps, output)) => (steps, output.to_string()),
         None => (0, String::new()),
@@ -481,6 +427,5 @@ pub fn ndtm_traverse_queue_size_wl(
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    if aborted_safe() { return 0; }
     ndtm_traverse_queue_size(&tm, &initial_biguint, max_steps)
 }

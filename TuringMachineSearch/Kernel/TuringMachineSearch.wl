@@ -33,10 +33,8 @@ TuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, inp
             numSymbols,
             ToString[input],
             maxSteps
-        ], {
-            _[0, ""] -> {Infinity, Undefined},
-            _[steps_, output_] :> {steps, FromDigits[output]}
-        }
+        ],
+        _[steps_, output_] :> If[0 < steps < maxSteps, {steps, FromDigits[output]}, {Infinity, Undefined}]
     ]
 
 TuringMachineFunction[rule_Integer, input_Integer, maxSteps_Integer] :=
