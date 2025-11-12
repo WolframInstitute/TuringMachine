@@ -8,3 +8,5 @@ pacletextensions
 TuringMachineSearch/build/
 
 TuringMachineSearch/Libs/ndtm_search/target/
+
+*.paclet

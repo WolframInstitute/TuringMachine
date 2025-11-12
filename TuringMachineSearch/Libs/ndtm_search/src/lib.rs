@@ -6,7 +6,6 @@ use crate::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::collections::BinaryHeap;
-// rayon prelude import only needed for parallel scope/thread utilities; remove unused glob.
 use std::env;
 
 pub mod models;
@@ -285,22 +284,28 @@ pub fn run_dtm(
 }
 
 /// Traverse the non-deterministic TM and collect all unique halted tape values encountered.
-/// Returns the set of unique tape integers (converted to u64; values > u64::MAX are skipped).
 /// No path information is retained; traversal stops after reaching `max_steps` depth.
-pub fn collect_seen_values(tm: &TuringMachine, initial: &BigUint, max_steps: u32) -> Vec<BigUint> {
+/// Returns Vec<(u64, BigUint)> where u64 is the step at which the value was found.
+/// If target is Some, terminates early if target value is found.
+pub fn collect_seen_values(
+    tm: &TuringMachine,
+    initial: &BigUint,
+    max_steps: u64,
+    target: Option<&BigUint>,
+) -> Vec<(u64, BigUint)> {
     let initial_tape = Tape::from_integer(initial);
     let initial_state = TMState {
         head_state: 1,
         head_position: 0,
         tape: initial_tape,
     };
-    let mut queue: VecDeque<(TMState, usize)> = VecDeque::new();
+    let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
     queue.push_back((initial_state, 0));
     let mut expanded: HashSet<TMState> = HashSet::new();
-    let mut seen_values: HashSet<BigUint> = HashSet::new();
+    let mut seen_values: HashMap<BigUint, u64> = HashMap::new();
     let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
     let debug: i32 = debug_env.parse().unwrap_or(-1);
-
+    let mut found_target = false;
     while let Some((current_state, depth)) = queue.pop_front() {
         if aborted_safe() {
             if debug >= 0 {
@@ -315,16 +320,31 @@ pub fn collect_seen_values(tm: &TuringMachine, initial: &BigUint, max_steps: u32
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
             if halted {
                 let val = new_state.tape.to_integer();
-                if seen_values.insert(val.clone()) && debug >= 0 {
-                    println!("[DBG] (collect) unique halted tape value: {}", val);
+                if !seen_values.contains_key(&val) {
+                    seen_values.insert(val.clone(), depth + 1);
+                    if debug >= 0 {
+                        println!("[DBG] (collect) unique halted tape value: {} at step {}", val, depth + 1);
+                    }
+                    if let Some(target_val) = target {
+                        if &val == target_val {
+                            found_target = true;
+                            break;
+                        }
+                    }
                 }
-            } else if depth + 1 < max_steps as usize {
+            } else if depth + 1 < max_steps {
                 queue.push_back((new_state, depth + 1));
             }
         }
+        if found_target {
+            break;
+        }
     }
-    seen_values.into_iter().collect()
+    seen_values.into_iter().map(|(v, step)| (step, v)).collect()
 }
+
+
+// Wolfram LibraryLink wrappers
 
 #[wll::export]
 pub fn exhaustive_search_wl(
@@ -419,13 +439,12 @@ pub fn collect_seen_values_wl(
     num_states: u32,
     num_symbols: u32,
     initial: String,
-    max_steps: u32,
-) -> Vec<String> {
+    max_steps: u64,
+) -> Vec<(u64, String)> {
     let rule_bigints: Vec<BigInt> = match rules
         .iter()
         .map(|s| s.parse::<BigInt>())
-        .collect::<Result<Vec<_>, _>>()
-    {
+        .collect::<Result<Vec<_>, _>>() {
         Ok(v) => v,
         Err(_) => return Vec::new(),
     };
@@ -440,6 +459,47 @@ pub fn collect_seen_values_wl(
     if aborted_safe() {
         return Vec::new();
     }
-    let vals = collect_seen_values(&tm, &initial_biguint, max_steps);
-    vals.into_iter().map(|v| v.to_string()).collect()
+    let vals = collect_seen_values(&tm, &initial_biguint, max_steps, None);
+    if aborted_safe() {
+        return Vec::new();
+    }
+    vals.into_iter().map(|(step, v)| (step, v.to_string())).collect()
+}
+
+#[wll::export]
+pub fn collect_seen_values_with_target_wl(
+    rules: Vec<String>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    target: String,
+    max_steps: u64,
+) -> Vec<(u64, String)> {
+    let rule_bigints: Vec<BigInt> = match rules
+        .iter()
+        .map(|s| s.parse::<BigInt>())
+        .collect::<Result<Vec<_>, _>>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let target_biguint: BigUint = match target.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    if aborted_safe() {
+        return Vec::new();
+    }
+    let vals = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint));
+    if aborted_safe() {
+        return Vec::new();
+    }
+    vals.into_iter().map(|(step, v)| (step, v.to_string())).collect()
 }
