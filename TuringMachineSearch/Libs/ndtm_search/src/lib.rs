@@ -292,7 +292,7 @@ pub fn collect_seen_values(
     initial: &BigUint,
     max_steps: u64,
     target: Option<&BigUint>,
-) -> Vec<(u64, BigUint)> {
+) -> (Vec<(u64, BigUint)>, usize) {
     let initial_tape = Tape::from_integer(initial);
     let initial_state = TMState {
         head_state: 1,
@@ -313,11 +313,8 @@ pub fn collect_seen_values(
     let debug: i32 = debug_env.parse().unwrap_or(-1);
     let mut found_target = false;
     while let Some((current_state, depth)) = queue.pop_front() {
-        if aborted_safe() {
-            if debug >= 0 {
-                println!("[DBG] Abort requested; early termination in collect_seen_values");
-            }
-            break; // return what we have so far
+        if aborted_safe() || depth >= max_steps {
+            break;
         }
         if expanded.contains(&current_state) {
             continue;
@@ -339,7 +336,7 @@ pub fn collect_seen_values(
                         }
                     }
                 }
-            } else if depth + 1 < max_steps {
+            } else {
                 queue.push_back((new_state, depth + 1));
             }
         }
@@ -347,7 +344,33 @@ pub fn collect_seen_values(
             break;
         }
     }
-    seen_order
+    (seen_order, queue.len())
+}
+
+/// Simple breadth traversal without collecting halted values; returns remaining queue size (0 => exhaustive termination)
+pub fn ndtm_traverse_queue_size(
+    tm: &TuringMachine,
+    initial: &BigUint,
+    max_steps: u64,
+) -> usize {
+    let initial_tape = Tape::from_integer(initial);
+    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+    let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
+    queue.push_back((initial_state, 0));
+    let mut expanded: HashSet<TMState> = HashSet::new();
+    let debug_env = env::var("NDTM_DEBUG").unwrap_or_default();
+    let debug: i32 = debug_env.parse().unwrap_or(-1);
+    while let Some((current_state, depth)) = queue.pop_front() {
+        if aborted_safe() { if debug >= 0 { println!("[DBG] Abort requested; early termination in ndtm_traverse_queue_size"); } break; }
+        if expanded.contains(&current_state) { continue; }
+        expanded.insert(current_state.clone());
+        for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
+            if !halted && depth + 1 < max_steps {
+                queue.push_back((new_state, depth + 1));
+            }
+        }
+    }
+    queue.len()
 }
 
 
@@ -362,26 +385,10 @@ pub fn exhaustive_search_wl(
     target: String,
     max_steps: u64,
 ) -> Vec<String> {
-    let rule_bigints: Vec<BigInt> = match rules
-        .iter()
-        .map(|s| s.parse::<BigInt>())
-        .collect::<Result<Vec<_>, _>>()
-    {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return Vec::new(),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let target_biguint: BigUint = match target.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
+    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
     if aborted_safe() {
         return Vec::new();
     }
@@ -400,10 +407,10 @@ pub fn exhaustive_search_parallel_wl(
     target: String,
     max_steps: u64,
 ) -> Vec<String> {
-    let rule_bigints: Vec<BigInt> = match rules.iter().map(|s| s.parse::<BigInt>()).collect::<Result<Vec<_>, _>>() { Ok(v) => v, Err(_) => return Vec::new() };
-    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) { Ok(t) => t, Err(_) => return Vec::new() };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return Vec::new() };
-    let target_biguint: BigUint = match target.parse::<BigUint>() { Ok(v) => v, Err(_) => return Vec::new() };
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
+    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
     if aborted_safe() { return Vec::new(); }
     match exhaustive_search_parallel(&tm, &initial_biguint, &target_biguint, max_steps) {
         Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
@@ -419,18 +426,9 @@ pub fn run_dtm_wl(
     initial: String,
     max_steps: u64,
 ) -> (u64, String) {
-    let rule_bigint: BigInt = match rule.parse::<BigInt>() {
-        Ok(v) => v,
-        Err(_) => return (0, String::new()),
-    };
-    let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return (0, String::new()),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (0, String::new()),
-    };
+    let rule_bigint: BigInt = rule.parse::<BigInt>().unwrap();
+    let tm = TuringMachine::from_number(&rule_bigint, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     if aborted_safe() {
         return (0, String::new());
     }
@@ -447,30 +445,12 @@ pub fn collect_seen_values_wl(
     num_symbols: u32,
     initial: String,
     max_steps: u64,
-) -> Vec<(u64, String)> {
-    let rule_bigints: Vec<BigInt> = match rules
-        .iter()
-        .map(|s| s.parse::<BigInt>())
-        .collect::<Result<Vec<_>, _>>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return Vec::new(),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    if aborted_safe() {
-        return Vec::new();
-    }
-    let vals = collect_seen_values(&tm, &initial_biguint, max_steps, None);
-    if aborted_safe() {
-        return Vec::new();
-    }
-    vals.into_iter().map(|(step, v)| (step, v.to_string())).collect()
+) -> (Vec<(u64, String)>, usize) {
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
+    let (vals, remaining) = collect_seen_values(&tm, &initial_biguint, max_steps, None);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), remaining)
 }
 
 #[wll::export]
@@ -481,32 +461,26 @@ pub fn collect_seen_values_with_target_wl(
     initial: String,
     target: String,
     max_steps: u64,
-) -> Vec<(u64, String)> {
-    let rule_bigints: Vec<BigInt> = match rules
-        .iter()
-        .map(|s| s.parse::<BigInt>())
-        .collect::<Result<Vec<_>, _>>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let tm = match TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return Vec::new(),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    let target_biguint: BigUint = match target.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
-    };
-    if aborted_safe() {
-        return Vec::new();
-    }
-    let vals = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint));
-    if aborted_safe() {
-        return Vec::new();
-    }
-    vals.into_iter().map(|(step, v)| (step, v.to_string())).collect()
+) -> (Vec<(u64, String)>, usize) {
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
+    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
+    let (vals, remaining) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint));
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), remaining)
+}
+
+#[wll::export]
+pub fn ndtm_traverse_queue_size_wl(
+    rules: Vec<String>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    max_steps: u64,
+) -> usize {
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
+    if aborted_safe() { return 0; }
+    ndtm_traverse_queue_size(&tm, &initial_biguint, max_steps)
 }
