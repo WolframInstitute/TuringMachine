@@ -284,6 +284,26 @@ impl TuringMachine {
             (true, new_state)
         }
     }
+    /// In-place deterministic step: mutates state directly. Returns true if halted after this step.
+    pub fn step_dtm_mut(&self, state: &mut TMState) -> bool {
+        let current_symbol = state.tape.read(state.head_position);
+        if let Some(rule) = self.get_rule(state.head_state, current_symbol) {
+            state.tape.write(state.head_position, rule.write_symbol);
+            state.head_state = rule.next_state;
+            if rule.move_right {
+                if state.head_position == 0 {
+                    // Halting: would move off the LSB end
+                    return true;
+                }
+                state.head_position -= 1;
+            } else {
+                state.head_position += 1;
+            }
+            false
+        } else {
+            true
+        }
+    }
     /// Non-deterministic step: returns all possible next TMState objects, rule numbers, and halting status for a given state
     pub fn ndtm_step(&self, state: &TMState) -> Vec<(TMState, u64, bool)> {
         let mut next_states = Vec::new();

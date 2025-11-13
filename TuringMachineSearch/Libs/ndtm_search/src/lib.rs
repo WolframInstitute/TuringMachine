@@ -6,8 +6,140 @@ use crate::models::{TMState, Tape, TuringMachine};
 use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::collections::BinaryHeap;
+use rayon::prelude::*;
 
 pub mod models;
+/// Build a table of deterministic TM outputs:
+/// Rows correspond to rule numbers 0 .. (2*s*k)^(s*k) - 1
+/// Columns correspond to input tape integers 0 .. max_input
+/// Each cell is Some(BigUint) if machine halts within max_steps, else None.
+pub fn dtm_output_table(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Option<BigUint>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp); // (2*s*k)^(s*k)
+    let mut table: Vec<Vec<Option<BigUint>>> = Vec::with_capacity(rule_space_size as usize);
+    for rule_num in 0..rule_space_size {
+        if aborted_safe() { break; }
+        let n_bigint = BigInt::from(rule_num);
+        let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+            Ok(t) => t,
+            Err(_) => { table.push(Vec::new()); continue; }
+        };
+    if min_input > max_input { table.push(Vec::new()); continue; }
+    let mut row: Vec<Option<BigUint>> = Vec::with_capacity((max_input - min_input + 1) as usize);
+    for input in min_input..=max_input {
+            if aborted_safe() { break; }
+            let input_big = BigUint::from(input);
+            let result = run_dtm(&tm, &input_big, max_steps).map(|(_steps, output)| output);
+            row.push(result);
+        }
+        table.push(row);
+    }
+    table
+}
+
+/// Parallel version of dtm_output_table using rayon; preserves row ordering.
+pub fn dtm_output_table_parallel(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Option<BigUint>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    (0..rule_space_size)
+        .into_par_iter()
+        .map(|rule_num| {
+            if aborted_safe() { return Vec::new(); }
+            let n_bigint = BigInt::from(rule_num);
+            let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return Vec::new(),
+            };
+            if min_input > max_input { return Vec::new(); }
+            (min_input..=max_input)
+                .map(|input| {
+                    if aborted_safe() { return None; }
+                    let input_big = BigUint::from(input);
+                    run_dtm(&tm, &input_big, max_steps).map(|(_s, out)| out)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Variant that preserves both halting step count and output value.
+/// Each cell: Some((steps, output)) if halts within max_steps else None.
+pub fn dtm_output_table_steps(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Option<(u64, BigUint)>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    let mut table: Vec<Vec<Option<(u64, BigUint)>>> = Vec::with_capacity(rule_space_size as usize);
+    for rule_num in 0..rule_space_size {
+        if aborted_safe() { break; }
+        let n_bigint = BigInt::from(rule_num);
+        let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+            Ok(t) => t,
+            Err(_) => { table.push(Vec::new()); continue; }
+        };
+    if min_input > max_input { table.push(Vec::new()); continue; }
+    let mut row: Vec<Option<(u64, BigUint)>> = Vec::with_capacity((max_input - min_input + 1) as usize);
+    for input in min_input..=max_input {
+            if aborted_safe() { break; }
+            let input_big = BigUint::from(input);
+            let result = run_dtm(&tm, &input_big, max_steps);
+            row.push(result);
+        }
+        table.push(row);
+    }
+    table
+}
+
+/// Parallel version of dtm_output_table_steps using rayon.
+pub fn dtm_output_table_steps_parallel(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Option<(u64, BigUint)>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    (0..rule_space_size)
+        .into_par_iter()
+        .map(|rule_num| {
+            if aborted_safe() { return Vec::new(); }
+            let n_bigint = BigInt::from(rule_num);
+            let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return Vec::new(),
+            };
+            if min_input > max_input { return Vec::new(); }
+            (min_input..=max_input)
+                .map(|input| {
+                    if aborted_safe() { return None; }
+                    let input_big = BigUint::from(input);
+                    run_dtm(&tm, &input_big, max_steps)
+                })
+                .collect()
+        })
+        .collect()
+}
 
 // Provide a safe wrapper for abort checks that tolerates tests (no WL init)
 #[inline]
@@ -221,19 +353,14 @@ pub fn run_dtm(
     max_steps: u64,
 ) -> Option<(u64, BigUint)> {
     let initial_tape = Tape::from_integer(initial);
-    let mut state = TMState {
-        head_state: 1,
-        head_position: 0,
-        tape: initial_tape,
-    };
+    let mut state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
     let mut steps: u64 = 0;
 
     while steps < max_steps {
         if aborted_safe() {
             return None;
         }
-        let (halted, next_state) = tm.step_dtm(&state);
-        state = next_state;
+        let halted = tm.step_dtm_mut(&mut state);
         steps += 1;
         if halted {
             let output = state.tape.to_integer();
@@ -492,4 +619,85 @@ pub fn tm_rules_from_numbers_wl(
         }
     }
     out
+}
+
+
+
+/// Non-halting entries are empty strings.
+#[wll::export]
+pub fn dtm_output_table_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<String>> {
+    let table = dtm_output_table(num_states, num_symbols, max_steps, min_input, max_input);
+    table
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|cell| match cell { Some(v) => v.to_string(), None => String::new() })
+                .collect()
+        })
+        .collect()
+}
+
+/// Parallel WL wrapper (string conversion); non-halting entries empty string.
+#[wll::export]
+pub fn dtm_output_table_parallel_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<String>> {
+    let table = dtm_output_table_parallel(num_states, num_symbols, max_steps, min_input, max_input);
+    table
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|cell| match cell { Some(v) => v.to_string(), None => String::new() })
+                .collect()
+        })
+        .collect()
+}
+
+#[wll::export]
+pub fn dtm_output_table_steps_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<(u64, String)>> {
+    let table = dtm_output_table_steps(num_states, num_symbols, max_steps, min_input, max_input);
+    table
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|cell| match cell { Some((steps, v)) => (steps, v.to_string()), None => (0u64, String::new()) })
+                .collect()
+        })
+        .collect()
+}
+
+/// Parallel WL wrapper including step counts.
+#[wll::export]
+pub fn dtm_output_table_steps_parallel_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<(u64, String)>> {
+    let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_input, max_input);
+    table
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|cell| match cell { Some((steps, v)) => (steps, v.to_string()), None => (0u64, String::new()) })
+                .collect()
+        })
+        .collect()
 }

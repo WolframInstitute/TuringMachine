@@ -12,6 +12,10 @@ TuringMachineRules::usage = "TuringMachineRules[rule, numStates, numSymbols] ret
 
 MultiwayTuringMachineRules::usage = "MultiwayTuringMachineRules[rules, numStates, numSymbols] returns an association mapping {state, symbol} to a list of transition triples {nextState, writeSymbol, direction}."
 
+TuringMachineOutputTable::usage = "TuringMachineOutputTable[numStates, numSymbols, maxSteps, maxInput] or TuringMachineOutputTable[numStates, numSymbols, maxSteps, minInput, maxInput] returns a nested list of halted outputs for every rule number and input in the range minInput..maxInput (default minInput=0). Non-halting entries are Missing[\"NonHalting\"]."
+
+TuringMachineOutputTableWithSteps::usage = "TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, maxInput] or TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, minInput, maxInput] returns a nested list where each cell is Missing[\"NonHalting\"] or {steps, output} for halting machines over inputs minInput..maxInput (default minInput=0)."
+
 ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
 
 Begin["`Private`"];
@@ -29,6 +33,8 @@ RunDeterministicTMRust := functions["run_dtm_wl"]
 MultiwayQueueSizeRust := functions["ndtm_traverse_queue_size_wl"]
 TuringMachineRulesRust := functions["tm_rules_from_number_wl"]
 MultiwayTuringMachineRulesRust := functions["tm_rules_from_numbers_wl"]
+DTMOutputTableRust := functions["dtm_output_table_parallel_wl"]
+DTMOutputTableStepsRust := functions["dtm_output_table_steps_parallel_wl"]
 
 
 TuringMachineFunction[rules : {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer, input_Integer, maxSteps_Integer] :=
@@ -149,6 +155,34 @@ MultiwayTuringMachineRules[
 ] := Rule @@@ Apply[List, MultiwayTuringMachineRulesRust[ToString /@ Developer`DataStore @@ rules, numStates, numSymbols], {0, 3}]
 
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
+
+
+TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer] :=
+    TuringMachineOutputTable[numStates, numSymbols, maxSteps, 0, maxInput]
+
+TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
+    Map[
+        If[# === "", Undefined, FromDigits[#]] &,
+        Apply[List, DTMOutputTableRust[numStates, numSymbols, maxSteps, minInput, maxInput], {0, 2}],
+        {2}
+    ]
+
+(* Convenience default for binary 2-state machines *)
+TuringMachineOutputTable[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, 0, maxInput]
+TuringMachineOutputTable[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, minInput, maxInput]
+
+TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer] :=
+    TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, 0, maxInput]
+
+TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
+    Map[
+        If[# === {0, ""}, {Infinity, Undefined}, {First[#], FromDigits[Last[#]]}] &,
+        Apply[List, DTMOutputTableStepsRust[numStates, numSymbols, maxSteps, minInput, maxInput], {0, 3}],
+        {2}
+    ]
+
+TuringMachineOutputTableWithSteps[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, 0, maxInput]
+TuringMachineOutputTableWithSteps[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, minInput, maxInput]
 
 
 End[]
