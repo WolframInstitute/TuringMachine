@@ -31,10 +31,10 @@ TuringMachineRulesRust := functions["tm_rules_from_number_wl"]
 MultiwayTuringMachineRulesRust := functions["tm_rules_from_numbers_wl"]
 
 
-TuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
+TuringMachineFunction[rules : {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer, input_Integer, maxSteps_Integer] :=
     Replace[
         RunDeterministicTMRust[
-            ToString[rule],
+            Apply[Developer`DataStore, rules, {0, 1}],
             numStates,
             numSymbols,
             ToString[input],
@@ -43,9 +43,14 @@ TuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, inp
         _[steps_, output_] :> If[0 < steps < maxSteps, {steps, FromDigits[output]}, {Infinity, Undefined}]
     ]
 
+TuringMachineFunction[rules : {({_Integer, _Integer} -> {_Integer, _Integer, _Integer}) ..}, input_Integer, maxSteps_Integer] :=
+    TuringMachineFunction[Values[rules], Sequence @@ CountDistinct /@ Thread[Keys[rules]], input, maxSteps]
+
 TuringMachineFunction[rule_Integer, input_Integer, maxSteps_Integer] :=
     TuringMachineFunction[{rule, 2, 2}, input, maxSteps]
 
+TuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
+    TuringMachineFunction[TuringMachineRules[rule, numStates, numSymbols][[All, 2]], numStates, numSymbols, input, maxSteps]
 
 Options[MultiwayTuringMachineSearch] = {"Parallel" -> False}
 
@@ -133,6 +138,9 @@ TuringMachineRules[
     numStates_Integer,
     numSymbols_Integer
 ] := Rule @@@ Apply[List, TuringMachineRulesRust[ToString[rule], numStates, numSymbols], {0, 2}]
+
+TuringMachineRules[{rule_Integer, numStates_Integer, numSymbols_Integer}] :=
+    TuringMachineRules[rule, numStates, numSymbols]
 
 MultiwayTuringMachineRules[
     rules : {__Integer},

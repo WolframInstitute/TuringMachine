@@ -1,6 +1,6 @@
 use bit_vec::BitVec;
 use num_bigint::{BigInt, BigUint};
-use std::collections::HashMap;
+// HashMap no longer needed here after refactor
 use std::hash::{Hash, Hasher};
 
 /// Represents the tape of the Turing machine.
@@ -86,7 +86,8 @@ pub struct Rule {
 
 #[derive(Debug, Clone)]
 pub struct TuringMachine {
-    pub rules: HashMap<(u32, u32), Vec<Rule>>,
+    // Indexed by (state-1)*num_symbols + symbol
+    pub rules: Vec<Vec<Rule>>,
     pub num_states: u32,
     pub num_symbols: u32,
 }
@@ -164,8 +165,8 @@ impl TuringMachine {
             digits = new_digits;
         }
 
-        // Deterministic TM: exactly one rule per (state, symbol). Preallocate map capacity.
-        let mut rules: HashMap<(u32, u32), Vec<Rule>> = HashMap::with_capacity(s_k);
+        // Deterministic TM: exactly one rule per (state, symbol). Preallocate vector capacity.
+        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); s_k];
 
         // Assign digits in state-major, symbol-reversed-minor (high-to-low symbol order)
         // digit_index = i * k + (k - 1 - j)
@@ -173,13 +174,13 @@ impl TuringMachine {
             for j in 0..k {
                 let digit_index = (i * k + (k - 1 - j)) as usize;
                 let digit_val = digits[digit_index] as u32;
-                let current_state = (i + 1) as u32;
-                let read_symbol = j as u32;
+                // state = i+1, symbol = j (used implicitly in slot computation)
                 let next_state = ((digit_val / (k * 2)) % s) + 1;
                 let write_symbol = (digit_val / 2) % k;
                 let move_right = (digit_val & 1) == 1;
                 let rule = Rule { next_state, write_symbol, move_right };
-                rules.insert((current_state, read_symbol), vec![rule]);
+                let slot = (i * k + j) as usize; // index for (state=current_state, symbol=read_symbol)
+                rules[slot] = vec![rule];
             }
         }
 
@@ -192,30 +193,69 @@ impl TuringMachine {
 
     /// Constructs a non-deterministic TuringMachine from multiple rule numbers
     pub fn from_numbers(nums: &[BigInt], s: u32, k: u32) -> Result<Self, String> {
-        let mut rules: HashMap<(u32, u32), Vec<Rule>> = HashMap::new();
+        let s_k = (s * k) as usize;
+        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); s_k];
         for n in nums {
-            let tm = TuringMachine::from_number(n, s, k)?;
-            for ((state, symbol), rule_vec) in tm.rules {
-                rules.entry((state, symbol)).or_default().extend(rule_vec);
+            let tm_single = TuringMachine::from_number(n, s, k)?;
+            for state in 1..=s {
+                for symbol in 0..k {
+                    let idx = ((state - 1) * k + symbol) as usize;
+                    // from_number guarantees exactly one rule in slot
+                    if let Some(rule) = tm_single.rules[idx].get(0) {
+                        rules[idx].push(*rule); // Rule is Copy
+                    }
+                }
             }
         }
-        Ok(TuringMachine {
-            rules,
-            num_states: s,
-            num_symbols: k,
-        })
+        Ok(TuringMachine { rules, num_states: s, num_symbols: k })
+    }
+
+    /// Constructs a deterministic TuringMachine directly from a slice of rule triples.
+    /// Each triple is (next_state, write_symbol, direction) where direction is 1 (right) or -1 (left).
+    /// The order of triples must be state-major, symbol-minor: index = (state-1)*num_symbols + symbol
+    pub fn from_rule_triples(
+        triples: &[(u32, u32, i32)],
+        num_states: u32,
+        num_symbols: u32,
+    ) -> Result<Self, String> {
+        let expected = (num_states * num_symbols) as usize;
+        if triples.len() != expected {
+            return Err(format!(
+                "Expected {} rule triples (got {}) for a deterministic TM with {} states and {} symbols",
+                expected,
+                triples.len(),
+                num_states,
+                num_symbols
+            ));
+        }
+        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); expected];
+        for (idx, (next_state, write_symbol, dir)) in triples.iter().copied().enumerate() {
+            if next_state == 0 || next_state > num_states {
+                return Err(format!("Invalid next_state {} at index {}", next_state, idx));
+            }
+            if write_symbol >= num_symbols {
+                return Err(format!("Invalid write_symbol {} at index {}", write_symbol, idx));
+            }
+            if dir != 1 && dir != -1 {
+                return Err(format!("Invalid direction {} at index {} (must be 1 or -1)", dir, idx));
+            }
+            let move_right = dir == 1;
+            rules[idx] = vec![Rule { next_state, write_symbol, move_right }];
+        }
+        Ok(TuringMachine { rules, num_states, num_symbols })
     }
 
     pub fn get_rule(&self, state: u32, symbol: u32) -> Option<&Rule> {
-        self.rules.get(&(state, symbol)).and_then(|v| v.get(0))
+        if state == 0 || state > self.num_states || symbol >= self.num_symbols { return None; }
+        let idx = ((state - 1) * self.num_symbols + symbol) as usize;
+        self.rules[idx].get(0)
     }
 
     /// Returns all possible rules for a given (state, symbol) pair
     pub fn get_rules(&self, state: u32, symbol: u32) -> Vec<Rule> {
-        self.rules
-            .get(&(state, symbol))
-            .cloned()
-            .unwrap_or_default()
+        if state == 0 || state > self.num_states || symbol >= self.num_symbols { return Vec::new(); }
+        let idx = ((state - 1) * self.num_symbols + symbol) as usize;
+        self.rules[idx].clone()
     }
 
     /// Simulate one step of the DTM, returns (halted, new_state)

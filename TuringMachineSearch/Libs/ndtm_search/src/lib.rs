@@ -389,19 +389,15 @@ pub fn exhaustive_search_parallel_wl(
 
 #[wll::export]
 pub fn run_dtm_wl(
-    rule: String,
+    rule_triples: Vec<(u32, u32, i32)>,
     num_states: u32,
     num_symbols: u32,
     initial: String,
     max_steps: u64,
 ) -> (u64, String) {
-    let rule_bigint: BigInt = rule.parse::<BigInt>().unwrap();
-    let tm = TuringMachine::from_number(&rule_bigint, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    match run_dtm(&tm, &initial_biguint, max_steps) {
-        Some((steps, output)) => (steps, output.to_string()),
-        None => (0, String::new()),
-    }
+    let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { Ok(t) => t, Err(_) => return (0, String::new()) };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return (0, String::new()) };
+    match run_dtm(&tm, &initial_biguint, max_steps) { Some((steps, out)) => (steps, out.to_string()), None => (0, String::new()) }
 }
 
 #[wll::export]
