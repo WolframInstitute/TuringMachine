@@ -429,3 +429,51 @@ pub fn ndtm_traverse_queue_size_wl(
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     ndtm_traverse_queue_size(&tm, &initial_biguint, max_steps)
 }
+
+/// Export deterministic TM rules without strings or rule numbers.
+/// Returns Vec of ((state, symbol), (next_state, write_symbol, direction)).
+/// direction: +1 for right, -1 for left.
+#[wll::export]
+pub fn tm_rules_from_number_wl(
+    rule_number: String,
+    num_states: u32,
+    num_symbols: u32,
+) -> Vec<((u32, u32), (u32, u32, i32))> {
+    let n: BigInt = rule_number.parse::<BigInt>().unwrap();
+    let tm = TuringMachine::from_number(&n, num_states, num_symbols).unwrap();
+    let mut out: Vec<((u32, u32), (u32, u32, i32))> = Vec::with_capacity((num_states * num_symbols) as usize);
+    for state in 1..=num_states {
+        for symbol in 0..num_symbols {
+            if let Some(rule) = tm.get_rule(state, symbol) {
+                out.push(((state, symbol), (rule.next_state, rule.write_symbol, if rule.move_right { 1 } else { -1 })));
+            }
+        }
+    }
+    out
+}
+
+/// Export non-deterministic TM rules from multiple rule numbers.
+/// Returns Vec of ((state, symbol), Vec<(next_state, write_symbol, direction)>).
+#[wll::export]
+pub fn tm_rules_from_numbers_wl(
+    rule_numbers: Vec<String>,
+    num_states: u32,
+    num_symbols: u32,
+) -> Vec<((u32, u32), Vec<(u32, u32, i32)>)> {
+    let nums: Vec<BigInt> = rule_numbers.into_iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&nums, num_states, num_symbols).unwrap();
+    let mut out: Vec<((u32, u32), Vec<(u32, u32, i32)>)> = Vec::with_capacity((num_states * num_symbols) as usize);
+    for state in 1..=num_states {
+        for symbol in 0..num_symbols {
+            let rules = tm.get_rules(state, symbol);
+            if !rules.is_empty() {
+                let mut variants: Vec<(u32, u32, i32)> = Vec::with_capacity(rules.len());
+                for r in rules {
+                    variants.push((r.next_state, r.write_symbol, if r.move_right { 1 } else { -1 }));
+                }
+                out.push(((state, symbol), variants));
+            }
+        }
+    }
+    out
+}

@@ -8,6 +8,10 @@ MultiwayTuringMachineFunction::usage = "MultiwayTuringMachineFunction[rules, num
 
 MultiwaywayNonHaltedStatesLeft::usage = "MultiwaywayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to 'maxSteps' steps."
 
+TuringMachineRules::usage = "TuringMachineRules[rule, numStates, numSymbols] returns an association mapping {state, symbol} to the transition triple {nextState, writeSymbol, direction}."
+
+MultiwayTuringMachineRules::usage = "MultiwayTuringMachineRules[rules, numStates, numSymbols] returns an association mapping {state, symbol} to a list of transition triples {nextState, writeSymbol, direction}."
+
 ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
 
 Begin["`Private`"];
@@ -23,6 +27,8 @@ CollectSeenValuesRust := functions["collect_seen_values_wl"]
 CollectSeenValuesWithTargetRust := functions["collect_seen_values_with_target_wl"]
 RunDeterministicTMRust := functions["run_dtm_wl"]
 MultiwayQueueSizeRust := functions["ndtm_traverse_queue_size_wl"]
+TuringMachineRulesRust := functions["tm_rules_from_number_wl"]
+MultiwayTuringMachineRulesRust := functions["tm_rules_from_numbers_wl"]
 
 
 TuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
@@ -120,6 +126,21 @@ MultiwaywayNonHaltedStatesLeft[
 
 MultiwaywayNonHaltedStatesLeft[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
     MultiwaywayNonHaltedStatesLeft[rules, 2, 2, input, maxSteps]
+
+
+TuringMachineRules[
+    rule_Integer,
+    numStates_Integer,
+    numSymbols_Integer
+] := Rule @@@ Apply[List, TuringMachineRulesRust[ToString[rule], numStates, numSymbols], {0, 2}]
+
+MultiwayTuringMachineRules[
+    rules : {__Integer},
+    numStates_Integer,
+    numSymbols_Integer
+] := Rule @@@ Apply[List, MultiwayTuringMachineRulesRust[ToString /@ Developer`DataStore @@ rules, numStates, numSymbols], {0, 3}]
+
+MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
 
 
 End[]
