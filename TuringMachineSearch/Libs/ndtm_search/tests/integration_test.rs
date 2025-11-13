@@ -18,7 +18,6 @@ fn test_run_dtm_halting() {
     rules.insert(
         (1, 0),
         vec![Rule {
-            rule_number: 42,
             next_state: 1,
             write_symbol: 1,
             move_right: true,
@@ -42,7 +41,6 @@ fn test_run_dtm_non_halting_with_limit() {
     rules.insert(
         (1, 0),
         vec![Rule {
-            rule_number: 7,
             next_state: 1,
             write_symbol: 0,
             move_right: false,

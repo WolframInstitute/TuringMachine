@@ -343,7 +343,18 @@ pub fn exhaustive_search_wl(
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
     match exhaustive_search_seq(&tm, &initial_biguint, &target_biguint, max_steps) {
-        Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
+        Some(path) => path
+            .into_iter()
+            .map(|idx| {
+                // idx is origin_index into the original rules vector
+                if (idx as usize) < rules.len() {
+                    rules[idx as usize].clone()
+                } else {
+                    // Fallback: return index as string if out of bounds (should not happen)
+                    idx.to_string()
+                }
+            })
+            .collect(),
         None => Vec::new(),
     }
 }
@@ -362,7 +373,16 @@ pub fn exhaustive_search_parallel_wl(
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
     match exhaustive_search_parallel(&tm, &initial_biguint, &target_biguint, max_steps) {
-        Some(path) => path.into_iter().map(|n| n.to_string()).collect(),
+        Some(path) => path
+            .into_iter()
+            .map(|idx| {
+                if (idx as usize) < rules.len() {
+                    rules[idx as usize].clone()
+                } else {
+                    idx.to_string()
+                }
+            })
+            .collect(),
         None => Vec::new(),
     }
 }

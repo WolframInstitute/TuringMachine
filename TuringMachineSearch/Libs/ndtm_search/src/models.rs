@@ -1,6 +1,5 @@
 use bit_vec::BitVec;
 use num_bigint::{BigInt, BigUint};
-use num_traits::ToPrimitive;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -80,7 +79,6 @@ impl Hash for Tape {
 /// Represents a transition rule for the TM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rule {
-    pub rule_number: u64,
     pub next_state: u32,
     pub write_symbol: u32,
     pub move_right: bool, // true for Right, false for Left
@@ -146,10 +144,10 @@ impl TuringMachine {
         }
     }
     pub fn from_number(n: &BigInt, s: u32, k: u32) -> Result<Self, String> {
-        let two_s_k = BigInt::from(2 * s * k);
+        let two_s_k = 2 * s * k;
         let s_k = (s * k) as usize;
 
-        let max_n = two_s_k.pow(s_k as u32) - 1;
+        let max_n = BigInt::from(two_s_k).pow(s_k as u32) - 1;
         if *n < BigInt::from(0) || *n > max_n {
             return Err(format!(
                 "Rule number out of range. Must be between 0 and {}",
@@ -157,49 +155,31 @@ impl TuringMachine {
             ));
         }
 
-        let (_sign, mut digits) = n.to_radix_be(2 * s * k);
-
-        // Pad with leading zeros to get s*k digits
-        while digits.len() < s_k {
-            digits.insert(0, 0);
+        let (_sign, mut digits) = n.to_radix_be(two_s_k);
+        if digits.len() < s_k {
+            let pad = s_k - digits.len();
+            let mut new_digits = Vec::with_capacity(s_k);
+            new_digits.extend(std::iter::repeat(0).take(pad));
+            new_digits.extend(digits);
+            digits = new_digits;
         }
 
-        let mut rules: HashMap<(u32, u32), Vec<Rule>> = HashMap::new();
-        let rule_number_u64 = n.to_u64().unwrap_or(0); // Provide a default if conversion fails
+        // Deterministic TM: exactly one rule per (state, symbol). Preallocate map capacity.
+        let mut rules: HashMap<(u32, u32), Vec<Rule>> = HashMap::with_capacity(s_k);
 
         // Assign digits in state-major, symbol-reversed-minor (high-to-low symbol order)
         // digit_index = i * k + (k - 1 - j)
         for i in 0..s {
-            // state index
             for j in 0..k {
-                // symbol index (reversed)
                 let digit_index = (i * k + (k - 1 - j)) as usize;
-                let digit = digits[digit_index];
-
+                let digit_val = digits[digit_index] as u32;
                 let current_state = (i + 1) as u32;
                 let read_symbol = j as u32;
-
-                let digit_val = digit as u32;
-
-                // Adjusted mapping to match test expectations
-                let next_state_raw = (digit_val / (k * 2)) % s;
-                let write_symbol_raw = (digit_val / 2) % k;
-                let move_raw = digit_val % 2;
-
-                let next_state = next_state_raw + 1;
-                let write_symbol = write_symbol_raw;
-                let move_right = move_raw == 1;
-
-                let rule = Rule {
-                    rule_number: rule_number_u64,
-                    next_state,
-                    write_symbol,
-                    move_right,
-                };
-                rules
-                    .entry((current_state, read_symbol))
-                    .or_default()
-                    .push(rule);
+                let next_state = ((digit_val / (k * 2)) % s) + 1;
+                let write_symbol = (digit_val / 2) % k;
+                let move_right = (digit_val & 1) == 1;
+                let rule = Rule { next_state, write_symbol, move_right };
+                rules.insert((current_state, read_symbol), vec![rule]);
             }
         }
 
@@ -269,7 +249,7 @@ impl TuringMachine {
         let mut next_states = Vec::new();
         let current_symbol = state.tape.read(state.head_position);
         let rules = self.get_rules(state.head_state, current_symbol);
-        for rule in rules {
+        for (idx, rule) in rules.into_iter().enumerate() {
             let mut new_state = state.clone();
             new_state
                 .tape
@@ -286,7 +266,8 @@ impl TuringMachine {
             } else {
                 new_state.head_position += 1;
             }
-            next_states.push((new_state, rule.rule_number, halted));
+            // Use index within the rule vector for this (state, symbol) as rule identifier
+            next_states.push((new_state, idx as u64, halted));
         }
         next_states
     }
