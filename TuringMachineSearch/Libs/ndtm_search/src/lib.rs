@@ -17,6 +17,8 @@ pub fn dtm_output_table(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> Vec<Vec<Option<BigUint>>> {
@@ -24,7 +26,8 @@ pub fn dtm_output_table(
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp); // (2*s*k)^(s*k)
     let mut table: Vec<Vec<Option<BigUint>>> = Vec::with_capacity(rule_space_size as usize);
-    for rule_num in 0..rule_space_size {
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    for rule_num in min_rule..=max_rule {
         if aborted_safe() { break; }
         let n_bigint = BigInt::from(rule_num);
         let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
@@ -49,13 +52,16 @@ pub fn dtm_output_table_parallel(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> Vec<Vec<Option<BigUint>>> {
     let base: u64 = (2 * num_states * num_symbols) as u64;
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp);
-    (0..rule_space_size)
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    (min_rule..=max_rule)
         .into_par_iter()
         .map(|rule_num| {
             if aborted_safe() { return Vec::new(); }
@@ -82,6 +88,8 @@ pub fn dtm_output_table_steps(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> Vec<Vec<Option<(u64, BigUint)>>> {
@@ -89,7 +97,8 @@ pub fn dtm_output_table_steps(
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp);
     let mut table: Vec<Vec<Option<(u64, BigUint)>>> = Vec::with_capacity(rule_space_size as usize);
-    for rule_num in 0..rule_space_size {
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    for rule_num in min_rule..=max_rule {
         if aborted_safe() { break; }
         let n_bigint = BigInt::from(rule_num);
         let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
@@ -114,13 +123,16 @@ pub fn dtm_output_table_steps_parallel(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> Vec<Vec<Option<(u64, BigUint)>>> {
     let base: u64 = (2 * num_states * num_symbols) as u64;
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp);
-    (0..rule_space_size)
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    (min_rule..=max_rule)
         .into_par_iter()
         .map(|rule_num| {
             if aborted_safe() { return Vec::new(); }
@@ -379,7 +391,8 @@ pub fn collect_seen_values(
     initial: &BigUint,
     max_steps: u64,
     target: Option<&BigUint>,
-) -> (Vec<(u64, BigUint)>, usize) {
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, BigUint)>, Vec<usize>, bool) {
     let initial_tape = Tape::from_integer(initial);
     let initial_state = TMState {
         head_state: 1,
@@ -388,23 +401,36 @@ pub fn collect_seen_values(
     };
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
     queue.push_back((initial_state.clone(), 0));
-    let mut expanded: HashSet<TMState> = HashSet::new();
-    // Maintain insertion order of unique halted values: Vec for ordered output, HashSet for membership test.
+    // Track insertion depth of each expanded state
+    let mut expanded: HashMap<TMState, u64> = HashMap::new();
     let mut seen_order: Vec<(u64, BigUint)> = Vec::new();
     let mut seen_set: HashSet<BigUint> = HashSet::new();
-    // Always include the initial tape value at step 0.
     let initial_val = initial_state.tape.to_integer();
     seen_order.push((0, initial_val.clone()));
     seen_set.insert(initial_val);
     let mut found_target = false;
+    let mut queue_sizes: Vec<usize> = Vec::new();
+    let mut cycle_detected = false;
+    let mut last_depth = 0u64;
     while let Some((current_state, depth)) = queue.pop_front() {
-        if aborted_safe() || depth >= max_steps {
-            break;
+        if aborted_safe() || depth >= max_steps { break; }
+        if depth > last_depth {
+            queue_sizes.push(queue.len());
+            last_depth = depth;
         }
-        if expanded.contains(&current_state) {
-            continue;
+        if let Some(prev_depth) = expanded.get(&current_state) {
+            // Cycle if we encounter same state at a greater depth
+            if depth > *prev_depth {
+                cycle_detected = true;
+                if terminate_on_cycle { break; }
+                // Record cycle occurrence (using current tape value) with cycle flag
+                let cycle_val = current_state.tape.to_integer();
+                seen_order.push((depth, cycle_val));
+            }
+            continue; // don't expand again
+        } else {
+            expanded.insert(current_state.clone(), depth);
         }
-        expanded.insert(current_state.clone());
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
             if halted {
                 let val = new_state.tape.to_integer();
@@ -422,11 +448,10 @@ pub fn collect_seen_values(
                 queue.push_back((new_state, depth + 1));
             }
         }
-        if found_target {
-            break;
-        }
+        if found_target { break; }
     }
-    (seen_order, queue.len())
+    queue_sizes.push(queue.len());
+    (seen_order, queue_sizes, cycle_detected)
 }
 
 /// Simple breadth traversal without collecting halted values; returns remaining queue size (0 => exhaustive termination)
@@ -534,12 +559,13 @@ pub fn collect_seen_values_wl(
     num_symbols: u32,
     initial: String,
     max_steps: u64,
-) -> (Vec<(u64, String)>, usize) {
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    let (vals, remaining) = collect_seen_values(&tm, &initial_biguint, max_steps, None);
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), remaining)
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
 #[wll::export]
@@ -550,13 +576,14 @@ pub fn collect_seen_values_with_target_wl(
     initial: String,
     target: String,
     max_steps: u64,
-) -> (Vec<(u64, String)>, usize) {
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
     let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    let (vals, remaining) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint));
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), remaining)
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
 #[wll::export]
@@ -629,10 +656,12 @@ pub fn dtm_output_table_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table(num_states, num_symbols, max_steps, min_input, max_input);
+    let table = dtm_output_table(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
@@ -642,10 +671,12 @@ pub fn dtm_output_table_parallel_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table_parallel(num_states, num_symbols, max_steps, min_input, max_input);
+    let table = dtm_output_table_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
@@ -654,10 +685,12 @@ pub fn dtm_output_table_steps_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table_steps(num_states, num_symbols, max_steps, min_input, max_input);
+    let table = dtm_output_table_steps(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
@@ -668,9 +701,11 @@ pub fn dtm_output_table_steps_parallel_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_input, max_input);
+    let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }

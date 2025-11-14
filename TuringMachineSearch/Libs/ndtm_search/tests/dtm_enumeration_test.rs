@@ -18,12 +18,15 @@ fn test_full_dtm_enumeration_table() {
     let max_input: u32 = 1024;
 
     let start_native = std::time::Instant::now();
-    let table_native = dtm_output_table(s, k, max_steps, 0, max_input);
+    let base: u64 = (2 * s * k) as u64;
+    let exp: u32 = (s * k) as u32;
+    let rule_space_size: u64 = base.pow(exp); // total rules
+    let table_native = dtm_output_table(s, k, max_steps, 0, rule_space_size - 1, 0, max_input);
     let elapsed_native = start_native.elapsed();
     println!("[timing] Native table construction took {:?}", elapsed_native);
 
     let start_parallel = std::time::Instant::now();
-    let table_parallel = dtm_output_table_parallel(s, k, max_steps, 0, max_input);
+    let table_parallel = dtm_output_table_parallel(s, k, max_steps, 0, rule_space_size - 1, 0, max_input);
     let elapsed_parallel = start_parallel.elapsed();
     println!("[timing] Parallel table construction took {:?}", elapsed_parallel);
 
