@@ -15,7 +15,7 @@ fn test_full_dtm_enumeration_table() {
     let s: u32 = 2;
     let k: u32 = 2;
     let max_steps: u64 = 512;
-    let max_input: u32 = 64;
+    let max_input: u32 = 1024;
 
     let start_native = std::time::Instant::now();
     let table_native = dtm_output_table(s, k, max_steps, 0, max_input);

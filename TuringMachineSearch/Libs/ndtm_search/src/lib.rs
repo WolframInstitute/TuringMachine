@@ -631,16 +631,9 @@ pub fn dtm_output_table_wl(
     max_steps: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<String>> {
+) -> wll::NumericArray<u8> {
     let table = dtm_output_table(num_states, num_symbols, max_steps, min_input, max_input);
-    table
-        .into_iter()
-        .map(|row| {
-            row.into_iter()
-                .map(|cell| match cell { Some(v) => v.to_string(), None => String::new() })
-                .collect()
-        })
-        .collect()
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
 /// Parallel WL wrapper (string conversion); non-halting entries empty string.
@@ -651,16 +644,9 @@ pub fn dtm_output_table_parallel_wl(
     max_steps: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<String>> {
+) -> wll::NumericArray<u8> {
     let table = dtm_output_table_parallel(num_states, num_symbols, max_steps, min_input, max_input);
-    table
-        .into_iter()
-        .map(|row| {
-            row.into_iter()
-                .map(|cell| match cell { Some(v) => v.to_string(), None => String::new() })
-                .collect()
-        })
-        .collect()
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
 #[wll::export]
@@ -670,17 +656,11 @@ pub fn dtm_output_table_steps_wl(
     max_steps: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<(u64, String)>> {
+) -> wll::NumericArray<u8> {
     let table = dtm_output_table_steps(num_states, num_symbols, max_steps, min_input, max_input);
-    table
-        .into_iter()
-        .map(|row| {
-            row.into_iter()
-                .map(|cell| match cell { Some((steps, v)) => (steps, v.to_string()), None => (0u64, String::new()) })
-                .collect()
-        })
-        .collect()
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
+
 
 /// Parallel WL wrapper including step counts.
 #[wll::export]
@@ -690,14 +670,7 @@ pub fn dtm_output_table_steps_parallel_wl(
     max_steps: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<(u64, String)>> {
+) -> wll::NumericArray<u8> {
     let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_input, max_input);
-    table
-        .into_iter()
-        .map(|row| {
-            row.into_iter()
-                .map(|cell| match cell { Some((steps, v)) => (steps, v.to_string()), None => (0u64, String::new()) })
-                .collect()
-        })
-        .collect()
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }

@@ -161,27 +161,22 @@ TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer
     TuringMachineOutputTable[numStates, numSymbols, maxSteps, 0, maxInput]
 
 TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
-    Map[
-        If[# === "", Undefined, FromDigits[#]] &,
-        Apply[List, DTMOutputTableRust[numStates, numSymbols, maxSteps, minInput, maxInput], {0, 2}],
-        {2}
-    ]
+    BinaryDeserialize @ ByteArray @ DTMOutputTableRust[numStates, numSymbols, maxSteps, minInput, maxInput] /. Null -> Undefined
 
 (* Convenience default for binary 2-state machines *)
 TuringMachineOutputTable[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, 0, maxInput]
+
 TuringMachineOutputTable[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, minInput, maxInput]
+
 
 TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer] :=
     TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, 0, maxInput]
 
 TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
-    Map[
-        If[# === {0, ""}, {Infinity, Undefined}, {First[#], FromDigits[Last[#]]}] &,
-        Apply[List, DTMOutputTableStepsRust[numStates, numSymbols, maxSteps, minInput, maxInput], {0, 3}],
-        {2}
-    ]
+    BinaryDeserialize @ ByteArray @ DTMOutputTableStepsRust[numStates, numSymbols, maxSteps, minInput, maxInput] /. Null -> {Infinity, Undefined}
 
 TuringMachineOutputTableWithSteps[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, 0, maxInput]
+
 TuringMachineOutputTableWithSteps[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, minInput, maxInput]
 
 
