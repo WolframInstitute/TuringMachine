@@ -6,7 +6,7 @@ MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, 
 
 MultiwayTuringMachineFunction::usage = "MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, maxSteps] traverses a non-deterministic Turing machine and returns all unique tape values from halted states."
 
-MultiwaywayNonHaltedStatesLeft::usage = "MultiwaywayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to 'maxSteps' steps."
+MultiwayNonHaltedStatesLeft::usage = "MultiwayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to 'maxSteps' steps."
 
 TuringMachineRules::usage = "TuringMachineRules[rule, numStates, numSymbols] returns an association mapping {state, symbol} to the transition triple {nextState, writeSymbol, direction}."
 
@@ -120,7 +120,7 @@ MultiwayTuringMachineFunction[rules : {__Integer}, input_, args : Repeated[_Inte
     MultiwayTuringMachineFunction[rules, 2, 2, input, args]
 
 
-MultiwaywayNonHaltedStatesLeft[
+MultiwayNonHaltedStatesLeft[
     rules : {__Integer},
     numStates_Integer,
     numSymbols_Integer,
@@ -135,8 +135,8 @@ MultiwaywayNonHaltedStatesLeft[
         maxSteps
     ]
 
-MultiwaywayNonHaltedStatesLeft[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
-    MultiwaywayNonHaltedStatesLeft[rules, 2, 2, input, maxSteps]
+MultiwayNonHaltedStatesLeft[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
+    MultiwayNonHaltedStatesLeft[rules, 2, 2, input, maxSteps]
 
 
 TuringMachineRules[
@@ -157,27 +157,32 @@ MultiwayTuringMachineRules[
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
 
 
-TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer] :=
-    TuringMachineOutputTable[numStates, numSymbols, maxSteps, 0, maxInput]
+TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer, "Bytes"] :=
+    ByteArray @ DTMOutputTableRust[numStates, numSymbols, maxSteps, minInput, maxInput]
 
-TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
-    BinaryDeserialize @ ByteArray @ DTMOutputTableRust[numStates, numSymbols, maxSteps, minInput, maxInput] /. Null -> Undefined
+TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer, Automatic] :=
+    BinaryDeserialize @ TuringMachineOutputTable[numStates, numSymbols, maxSteps, minInput, maxInput, "Bytes"] /. Null -> Undefined
 
-(* Convenience default for binary 2-state machines *)
-TuringMachineOutputTable[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, 0, maxInput]
+TuringMachineOutputTable[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] :=
+    TuringMachineOutputTable[numStates, numSymbols, maxSteps, 0, maxInput, prop]
 
-TuringMachineOutputTable[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTable[2, 2, maxSteps, minInput, maxInput]
+TuringMachineOutputTable[maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] := TuringMachineOutputTable[2, 2, maxSteps, 0, maxInput, prop]
+
+TuringMachineOutputTable[maxSteps_Integer, minInput_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] := TuringMachineOutputTable[2, 2, maxSteps, minInput, maxInput, prop]
 
 
-TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer] :=
-    TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, 0, maxInput]
+TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer, "Bytes"] :=
+    ByteArray @ DTMOutputTableStepsRust[numStates, numSymbols, maxSteps, minInput, maxInput]
 
-TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer] :=
-    BinaryDeserialize @ ByteArray @ DTMOutputTableStepsRust[numStates, numSymbols, maxSteps, minInput, maxInput] /. Null -> {Infinity, Undefined}
+TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer, maxInput_Integer, Automatic] :=
+    BinaryDeserialize @ TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, minInput, maxInput, "Bytes"] /. Null -> {Infinity, Undefined}
 
-TuringMachineOutputTableWithSteps[maxSteps_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, 0, maxInput]
+TuringMachineOutputTableWithSteps[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] :=
+    TuringMachineOutputTableWithSteps[numStates, numSymbols, maxSteps, 0, maxInput, prop]
 
-TuringMachineOutputTableWithSteps[maxSteps_Integer, minInput_Integer, maxInput_Integer] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, minInput, maxInput]
+TuringMachineOutputTableWithSteps[maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, 0, maxInput, prop]
+
+TuringMachineOutputTableWithSteps[maxSteps_Integer, minInput_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] := TuringMachineOutputTableWithSteps[2, 2, maxSteps, minInput, maxInput, prop]
 
 
 End[]
