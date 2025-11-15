@@ -405,9 +405,6 @@ pub fn collect_seen_values(
     let mut expanded: HashMap<TMState, u64> = HashMap::new();
     let mut seen_order: Vec<(u64, BigUint)> = Vec::new();
     let mut seen_set: HashSet<BigUint> = HashSet::new();
-    let initial_val = initial_state.tape.to_integer();
-    seen_order.push((0, initial_val.clone()));
-    seen_set.insert(initial_val);
     let mut found_target = false;
     let mut queue_sizes: Vec<usize> = Vec::new();
     let mut cycle_detected = false;
