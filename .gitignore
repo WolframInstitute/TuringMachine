@@ -10,3 +10,7 @@ TuringMachineSearch/build/
 TuringMachineSearch/Libs/ndtm_search/target/
 
 *.paclet
+
+target/
+
+TuringMachineSearch/Binaries/

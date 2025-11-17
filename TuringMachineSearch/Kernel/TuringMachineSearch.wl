@@ -36,11 +36,13 @@ RunDeterministicTMRust := functions["run_dtm_wl"]
 MultiwayQueueSizeRust := functions["ndtm_traverse_queue_size_wl"]
 TuringMachineRulesRust := functions["tm_rules_from_number_wl"]
 MultiwayTuringMachineRulesRust := functions["tm_rules_from_numbers_wl"]
-DTMOutputTableRust := functions["dtm_output_table_parallel_wl"]
-DTMOutputTableStepsRust := functions["dtm_output_table_steps_parallel_wl"]
+DTMOutputTableValueRust := functions["dtm_output_table_parallel_wl"]
+DTMOutputTablePairRust := functions["dtm_output_table_steps_parallel_wl"]
+DTMOutputTableFloatPairRust := functions["dtm_output_table_steps_parallel_f64_wl"]
+DTMOutputTableStepsRust := functions["dtm_output_table_steps_parallel_steps_u64_wl"]
 
 
-TuringMachineRuleCount[s_Integer, k_Integer] := (2 s k) ^ (s k) - 1
+TuringMachineRuleCount[s_Integer, k_Integer] := (2 s k) ^ (s k)
 
 
 Options[OneSidedTuringMachineFunction] = {Method -> "External"}
@@ -74,46 +76,42 @@ OneSidedTuringMachineFunction[
 OneSidedTuringMachineFunction[rules : {({_Integer, _Integer} -> {_Integer, _Integer, _Integer}) ..}, input_Integer, maxSteps_Integer, prop : _String | All : "Value", opts : OptionsPattern[]] :=
     OneSidedTuringMachineFunction[{Values[rules], Splice[CountDistinct /@ Thread[Keys[rules]]]}, input, maxSteps, prop, opts]
 
-OneSidedTuringMachineFunction[rule_Integer, input_Integer, maxSteps_Integer, prop_String : "Value", opts : OptionsPattern[]] :=
+OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer, prop : _String | All : "Value", opts : OptionsPattern[]] :=
+    OneSidedTuringMachineFunction[{TuringMachineRuleCases[{rule, numStates, numSymbols}][[All, 2]], numStates, numSymbols}, input, maxSteps, prop, opts]
+
+OneSidedTuringMachineFunction[rule_Integer, input : _Integer | {_Integer, _Integer}, maxSteps_Integer, prop : _String | All : "Value", opts : OptionsPattern[]] :=
     OneSidedTuringMachineFunction[{rule, 2, 2}, input, maxSteps, prop]
 
-OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer, prop : _String | All : "Value", opts : OptionsPattern[]] :=
-    OneSidedTuringMachineFunction[{TuringMachineRuleCases[rule, numStates, numSymbols][[All, 2]], numStates, numSymbols}, input, maxSteps, prop, opts]
-
-OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, "Value", OptionsPattern[]] :=
-    Switch[OptionValue[Method], "External", TuringMachineOutput[rule, numStates, numSymbols, maxSteps, {minInput, maxInput}], _, Undefined]
-
-OneSidedTuringMachineFunction[rule : _Integer, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, "Value", OptionsPattern[]] :=
-    Switch[OptionValue[Method], "External", TuringMachineOutput[rule, maxSteps, {minInput, maxInput}], _, Undefined]
-
-OneSidedTuringMachineFunction[{All, numStates_Integer, numSymbols_Integer}, input_, maxSteps_Integer, "Value", OptionsPattern[]] :=
-    Switch[
-        OptionValue[Method],
+OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, prop : "Value" | "Steps" | "Array" | All : "Value", OptionsPattern[]] :=
+    Switch[OptionValue[Method],
         "External",
-            If[ MatchQ[input, _Integer],
-                First /@ TuringMachineOutput[numStates, numSymbols, maxSteps, {input, input}],
-                TuringMachineOutput[numStates, numSymbols, maxSteps, input]
-            ]
-        ,
+            With[{f = Switch[prop,
+                "Value", TuringMachineOutput,
+                "Steps", TuringMachineSteps,
+                All, TuringMachineOutputWithSteps,
+                "Array", TuringMachineOutputWithStepsFloat
+            ]},
+                f[rule, numStates, numSymbols, maxSteps, {minInput, maxInput}]
+            ],
         _,
             Undefined
-    ]
+        ]
 
-OneSidedTuringMachineFunction[rule : _Integer, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, prop : "Steps" | All, OptionsPattern[]] :=
-    Switch[OptionValue[Method], "External", Switch[prop, "Steps", Map[First], _, Identity] @ TuringMachineOutputWithSteps[rule, maxSteps, {minInput, maxInput}], _, Undefined]
-
-OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, prop : "Steps" | All, OptionsPattern[]] :=
-    Switch[OptionValue[Method], "External", Switch[prop, "Steps", Map[First], _, Identity] @ TuringMachineOutputWithSteps[rule, numStates, numSymbols, maxSteps, {minInput, maxInput}], _, Undefined]
-
-
-OneSidedTuringMachineFunction[{All, numStates_Integer, numSymbols_Integer}, input_, maxSteps_Integer, prop : "Steps" | All, OptionsPattern[]] :=
+OneSidedTuringMachineFunction[{All, numStates_Integer, numSymbols_Integer}, input : _Integer | {_Integer, _Integer}, maxSteps_Integer, prop : "Value" | "Steps" | "Array" | All, OptionsPattern[]] :=
     Switch[
         OptionValue[Method],
         "External",
-            If[ MatchQ[input, _Integer],
-                First /@ TuringMachineOutputWithSteps[numStates, numSymbols, maxSteps, {input, input}],
-                TuringMachineOutputWithSteps[numStates, numSymbols, maxSteps, input]
-            ] // Switch[prop, "Steps", If[MatchQ[input, _Integer], Map[First], Map[First, #, {2}] & ], _, Identity]
+            With[{f = Switch[prop,
+                "Value", TuringMachineOutput,
+                "Steps", TuringMachineSteps,
+                All, TuringMachineOutputWithSteps,
+                "Array", TuringMachineOutputWithStepsFloat
+            ]},
+                If[ MatchQ[input, _Integer],
+                    f[numStates, numSymbols, maxSteps, {input, input}][[All, All, 1]],
+                    f[numStates, numSymbols, maxSteps, input]
+                ]
+            ]
         ,
         _,
             Undefined
@@ -224,12 +222,12 @@ MultiwayTuringMachineRules[
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
 
 
-MapApply[{f, fRust, null} |-> (
-    f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, "Bytes"] :=
-        ByteArray @ fRust[numStates, numSymbols, maxSteps, minRule, maxRule, minInput, maxInput];
+MapApply[{f, fRust, import, none} |-> (
+    f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, "Raw"] :=
+        fRust[numStates, numSymbols, maxSteps, minRule, maxRule, minInput, maxInput];
 
     f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, ___] :=
-        BinaryDeserialize @ f[{minRule, maxRule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, "Bytes"] /. Null -> null;
+        If[none === None, Identity, ReplaceAll[None -> none]] @ import @ f[{minRule, maxRule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, "Raw"];
 
     f[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] :=
         f[numStates, numSymbols, maxSteps, {1, maxInput}, prop];
@@ -258,7 +256,12 @@ MapApply[{f, fRust, null} |-> (
         If[prop === Automatic, First, Identity] @ f[{rule, rule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, prop];
 )
     ,
-    {{TuringMachineOutput, DTMOutputTableRust, Undefined}, {TuringMachineOutputWithSteps, DTMOutputTableStepsRust, {Infinity, Undefined}}}
+    {
+        {TuringMachineOutput, DTMOutputTableValueRust, BinaryDeserialize @* ByteArray, Undefined},
+        {TuringMachineOutputWithSteps, DTMOutputTablePairRust, BinaryDeserialize @* ByteArray, {Infinity, Undefined}},
+        {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, Normal, None},
+        {TuringMachineSteps, DTMOutputTableStepsRust, Normal, None}
+    }
 ]
 
 

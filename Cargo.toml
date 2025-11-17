@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "TuringMachineSearch/Libs/ndtm_search",
+]
+resolver = "2"

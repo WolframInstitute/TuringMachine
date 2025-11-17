@@ -1,3 +1,4 @@
+use num_traits::ToPrimitive;
 use wolfram_library_link as wll;
 
 wll::generate_loader!(rustlink_autodiscover);
@@ -153,30 +154,110 @@ pub fn dtm_output_table_steps_parallel(
         .collect()
 }
 
+/// Parallel version returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
+pub fn dtm_output_table_steps_parallel_f64(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<f64> {
+    use std::sync::{Arc, Mutex};
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    let out = Arc::new(Mutex::new(vec![0.0; num_rules * num_inputs * 2]));
+    (min_rule..=max_rule).into_par_iter().for_each(|rule_num| {
+        let rule_idx_val = (rule_num - min_rule) as usize;
+        if aborted_safe() { return; }
+        let n_bigint = BigInt::from(rule_num);
+        let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+            Ok(t) => t,
+            Err(_) => return,
+        };
+        for (input_idx, input) in (min_input..=max_input).enumerate() {
+            if aborted_safe() { return; }
+            let input_big = BigUint::from(input);
+            let result = run_dtm(&tm, &input_big, max_steps);
+            let offset = (rule_idx_val * num_inputs + input_idx) * 2;
+            let mut out_guard = out.lock().unwrap();
+            match result {
+                Some((steps, value)) => {
+                    out_guard[offset] = steps as f64;
+                    out_guard[offset + 1] = value.to_f64().unwrap_or(0.0);
+                },
+                None => {
+                    out_guard[offset] = 0.0;
+                    out_guard[offset + 1] = 0.0;
+                }
+            }
+        }
+    });
+    match Arc::try_unwrap(out) {
+        Ok(mutex) => mutex.into_inner().unwrap(),
+        Err(arc) => arc.lock().unwrap().clone(),
+    }
+}
+
+/// Parallel version returning just halting steps as u64 (0 for non-halting) flattened row-major.
+pub fn dtm_output_table_steps_parallel_steps_u64(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<u64> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    if min_input > max_input { return Vec::new(); }
+    let rows: Vec<Vec<u64>> = (min_rule..=max_rule)
+        .into_par_iter()
+        .map(|rule_num| {
+            if aborted_safe() { return Vec::new(); }
+            let n_bigint = BigInt::from(rule_num);
+            let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return Vec::new(),
+            };
+            (min_input..=max_input)
+                .map(|input| {
+                    if aborted_safe() { return 0u64; }
+                    let input_big = BigUint::from(input);
+                    match run_dtm(&tm, &input_big, max_steps) { Some((steps,_)) => steps, None => 0 }
+                })
+                .collect()
+        })
+        .collect();
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    let mut out = Vec::with_capacity(num_rules * num_inputs);
+    for row in rows { out.extend(row); }
+    out
+}
+
+
 // Provide a safe wrapper for abort checks that tolerates tests (no WL init)
 #[inline]
 fn aborted_safe() -> bool {
+    if cfg!(test) { return false; }
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::sync::atomic::{AtomicBool, Ordering};
-    // Track whether we've successfully observed a working LibraryLink context.
     static AVAILABLE: AtomicBool = AtomicBool::new(false);
-    // Track whether we've already tried (and possibly failed) to access it; avoid repeated panics.
     static TRIED_ONCE: AtomicBool = AtomicBool::new(false);
-
-    if AVAILABLE.load(Ordering::Relaxed) {
-        return wll::aborted();
-    }
-    if TRIED_ONCE.load(Ordering::Relaxed) {
-        // We tried before and it wasn't available; treat as not aborted.
-        return false;
-    }
-    // First (and only) probing attempt: catch potential panic caused by uninitialized LIBRARY_DATA.
+    if AVAILABLE.load(Ordering::Relaxed) { return wll::aborted(); }
+    if TRIED_ONCE.load(Ordering::Relaxed) { return false; }
     TRIED_ONCE.store(true, Ordering::Relaxed);
     match catch_unwind(AssertUnwindSafe(|| wll::aborted())) {
-        Ok(v) => {
-            AVAILABLE.store(true, Ordering::Relaxed);
-            v
-        }
+        Ok(v) => { AVAILABLE.store(true, Ordering::Relaxed); v }
         Err(_) => false,
     }
 }
@@ -368,10 +449,25 @@ pub fn run_dtm(
     let mut state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
     let mut steps: u64 = 0;
 
+    // Optimization 1: If all deterministic rules move left, the machine will
+    // forever drift left (or oscillate if left movement is clamped) without
+    // reaching a halting configuration (given current halting semantics). Return None immediately.
+    // (Assumes halting requires a rule transition evaluated during stepping; if such
+    // a halting rule existed it would be encountered regardless of direction.)
+    let always_left = tm.rules.iter().all(|variants| variants.iter().all(|r| !r.move_right));
+    if always_left { return None; }
+
+    // Optimization 2 (heuristic): If the head has moved strictly right beyond max_steps - steps
+    // before halting, we assume it will not halt within the remaining allotted steps.
+    // This is a conservative early exit; rightward drift past max_steps implies any
+    // potential halting transition would require > max_steps moves to revisit earlier cells.
+    // We apply this check each iteration before performing the next step.
+
     while steps < max_steps {
         if aborted_safe() {
             return None;
         }
+        if state.head_position as u64 >= max_steps - steps { return None; }
         let halted = tm.step_dtm_mut(&mut state);
         steps += 1;
         if halted {
@@ -705,4 +801,39 @@ pub fn dtm_output_table_steps_parallel_wl(
 ) -> wll::NumericArray<u8> {
     let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+}
+
+/// Parallel WL wrapper returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
+#[wll::export]
+pub fn dtm_output_table_steps_parallel_f64_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<f64> {
+    let arr = dtm_output_table_steps_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    // Dimensions: [num_rules, num_inputs, 2] where last index 0 = steps, 1 = value
+    wll::NumericArray::from_array(&[num_rules, num_inputs, 2], &arr)
+}
+
+/// WL wrapper returning a 2D NumericArray<u64> of steps (0 for non-halting). Dimensions: [num_rules, num_inputs]
+#[wll::export]
+pub fn dtm_output_table_steps_parallel_steps_u64_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<u64> {
+    let arr = dtm_output_table_steps_parallel_steps_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    wll::NumericArray::from_array(&[num_rules, num_inputs], &arr)
 }
