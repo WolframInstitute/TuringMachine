@@ -193,7 +193,7 @@ pub fn dtm_output_table_steps_parallel_f64(
                 },
                 None => {
                     out_guard[offset] = 0.0;
-                    out_guard[offset + 1] = 0.0;
+                    out_guard[offset + 1] = -1.0;
                 }
             }
         }
