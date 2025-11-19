@@ -22,6 +22,8 @@ TuringMachineWidths::usage = "TuringMachineWidths[numStates, numSymbols, maxStep
 
 TuringMachineOutputWithStepsWidthFloat::usage = "TuringMachineOutputWithStepsWidthFloat[numStates, numSymbols, maxSteps, minInput, maxInput] returns a 3D numeric array of shape {rules, inputs, 3} with triples {steps, value, width}; non-halting entries are {0.0, -1.0, 0.0}."
 
+NonTerminatingTuringMachineQ::usage = "NonTerminatingTuringMachineQ[rules, numStates, numSymbols, input, maxSteps] returns True if the machine enters a cycle within maxSteps, False otherwise."
+
 ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
 
 
@@ -46,6 +48,7 @@ DTMOutputTableWidthRust := functions["dtm_output_table_parallel_width_u64_wl"]
 DTMOutputTableTripleRust := functions["dtm_output_table_triple_parallel_wl"]
 DTMOutputTableFloatPairRust := functions["dtm_output_table_pair_parallel_f64_wl"]
 DTMOutputTableFloatTripleRust := functions["dtm_output_table_triple_parallel_f64_wl"]
+DetectCycleRust := functions["detect_cycle_wl"]
 
 
 TuringMachineRuleCount[s_Integer, k_Integer] := (2 s k) ^ (s k)
@@ -214,6 +217,28 @@ MultiwayNonHaltedStatesLeft[
 
 MultiwayNonHaltedStatesLeft[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
     MultiwayNonHaltedStatesLeft[rules, 2, 2, input, maxSteps]
+
+
+NonTerminatingTuringMachineQ[
+    rules : {__Integer},
+    numStates_Integer,
+    numSymbols_Integer,
+    input_Integer,
+    maxSteps_Integer
+] :=
+    DetectCycleRust[
+        ToString /@ Developer`DataStore @@ rules,
+        numStates,
+        numSymbols,
+        ToString[input],
+        maxSteps
+    ]
+
+NonTerminatingTuringMachineQ[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[rules, 2, 2, input, maxSteps]
+
+NonTerminatingTuringMachineQ[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[{rule}, numStates, numSymbols, input, maxSteps]
 
 
 TuringMachineRuleCases[
