@@ -32,4 +32,3 @@ ENV WSTP_COMPILER_ADDITIONS=/usr/local/Wolfram/WolframEngine/14.3/SystemFiles/Li
 
 
 COPY docker_build.wl ./docker_build.wl
-ENTRYPOINT ["wolframscript", "-code", "<<docker_build.wl"]
