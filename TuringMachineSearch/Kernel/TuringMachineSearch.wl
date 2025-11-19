@@ -1,18 +1,31 @@
 BeginPackage["TuringMachineSearch`", "ExtensionCargo`"]
 
-TuringMachineRuleCount::usage = "TuringMachineRuleCount[numStates, numSymbols] returns the total number of distinct Turing machine rules possible with 'numStates' states and 'numSymbols' symbols."
+ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
 
-OneSidedTuringMachineFunction::usage = "OneSidedTuringMachineFunction[rule, input, maxSteps] runs the deterministic Turing machine defined by 'rule' for at most 'maxSteps' steps and returns {steps, output} if it halts, otherwise {Infinity, Undefined}."
+TuringMachineRuleCount::usage = "TuringMachineRuleCount[numStates, numSymbols] returns the total number of distinct Turing machine rules possible with numStates states and numSymbols symbols."
 
-MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, output, maxSteps] attempts to find a sequence of transitions in a non-deterministic Turing machine defined by 'rules' that transforms 'input' into 'output' within 'maxSteps' steps."
+OneSidedTuringMachineFunction::usage = "OneSidedTuringMachineFunction[rule, input, maxSteps] runs the deterministic Turing machine defined by rule for at most maxSteps steps and returns the output value.
+OneSidedTuringMachineFunction[rule, input, maxSteps, prop] returns the specified property: \"Value\" (default), \"Steps\", \"MaxWidth\", or All.
+- \"Value\": Returns the integer value of the tape.
+- \"Steps\": Returns the number of steps taken.
+- \"MaxWidth\": Returns the maximum width of the tape visited.
+- All: Returns {steps, value, width}.
+Returns {Infinity, Undefined, Infinity} (or parts thereof) if it does not halt within maxSteps."
 
-MultiwayTuringMachineFunction::usage = "MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, maxSteps] traverses a non-deterministic Turing machine and returns all unique tape values from halted states."
+MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, output, maxSteps] attempts to find a sequence of transitions in a non-deterministic Turing machine defined by a list of integer rules that transforms input into output within maxSteps steps (assumes 2 states, 2 symbols).
+MultiwayTuringMachineSearch[rules, numStates, numSymbols, input, output, maxSteps] allows specifying the number of states and symbols."
 
-MultiwayNonHaltedStatesLeft::usage = "MultiwayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to 'maxSteps' steps."
+MultiwayTuringMachineFunction::usage = "MultiwayTuringMachineFunction[rules, input, maxSteps] traverses a non-deterministic Turing machine defined by a list of integer rules and returns all unique tape values from halted states (assumes 2 states, 2 symbols).
+MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, maxSteps] allows specifying the number of states and symbols.
+MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, target, maxSteps] stops early if the target output is found."
+
+MultiwayNonHaltedStatesLeft::usage = "MultiwayNonHaltedStatesLeft[rules, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to maxSteps steps (assumes 2 states, 2 symbols).
+MultiwayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] allows specifying the number of states and symbols."
 
 TuringMachineRuleCases::usage = "TuringMachineRuleCases[{rule, numStates, numSymbols}] returns an association mapping {state, symbol} to the transition triple {nextState, writeSymbol, direction}."
 
-MultiwayTuringMachineRules::usage = "MultiwayTuringMachineRules[rules, numStates, numSymbols] returns an association mapping {state, symbol} to a list of transition triples {nextState, writeSymbol, direction}."
+MultiwayTuringMachineRules::usage = "MultiwayTuringMachineRules[rules, numStates, numSymbols] returns an association mapping {state, symbol} to a list of transition triples {nextState, writeSymbol, direction}.
+MultiwayTuringMachineRules[rules] assumes 2 states and 2 symbols."
 
 TuringMachineOutput::usage = "TuringMachineOutput[numStates, numSymbols, maxSteps, maxInput] or TuringMachineOutput[numStates, numSymbols, maxSteps, minInput, maxInput] returns a nested list of halted outputs for every rule number and input in the range minInput..maxInput (default minInput=0). Non-halting entries are Missing[\"NonHalting\"]."
 
@@ -20,11 +33,19 @@ TuringMachineOutputWithSteps::usage = "TuringMachineOutputWithSteps[numStates, n
 
 TuringMachineWidths::usage = "TuringMachineWidths[numStates, numSymbols, maxSteps, maxInput] or TuringMachineWidths[numStates, numSymbols, maxSteps, minInput, maxInput] returns a matrix of maximum head widths (max absolute head position reached) for halting deterministic machines; non-halting entries are 0."
 
-TuringMachineOutputWithStepsWidthFloat::usage = "TuringMachineOutputWithStepsWidthFloat[numStates, numSymbols, maxSteps, minInput, maxInput] returns a 3D numeric array of shape {rules, inputs, 3} with triples {steps, value, width}; non-halting entries are {0.0, -1.0, 0.0}."
+TuringMachineOutputWithStepsWidthsFloat::usage = "TuringMachineOutputWithStepsWidthsFloat[numStates, numSymbols, maxSteps, minInput, maxInput] returns a 3D numeric array of shape {rules, inputs, 3} with triples {steps, value, width}; non-halting entries are {0.0, -1.0, 0.0}."
 
-NonTerminatingTuringMachineQ::usage = "NonTerminatingTuringMachineQ[rules, numStates, numSymbols, input, maxSteps] returns True if the machine enters a cycle within maxSteps, False otherwise."
+TuringMachineSteps::usage = "TuringMachineSteps[numStates, numSymbols, maxSteps, maxInput] returns a matrix of step counts for halting machines."
 
-ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
+TuringMachineOutputWithStepsWidths::usage = "TuringMachineOutputWithStepsWidths[numStates, numSymbols, maxSteps, maxInput] returns a nested list of {steps, output, width} for halting machines."
+
+TuringMachineOutputWithStepsFloat::usage = "TuringMachineOutputWithStepsFloat[numStates, numSymbols, maxSteps, maxInput] returns a 3D numeric array of {steps, output}."
+
+TuringMachineOutputWithStepsWidthsFloat::usage = "TuringMachineOutputWithStepsWidthsFloat[numStates, numSymbols, maxSteps, maxInput] returns a 3D numeric array of {steps, output, width}."
+
+NonTerminatingTuringMachineQ::usage = "NonTerminatingTuringMachineQ[rules, input, maxSteps] returns True if the machine defined by integer rules enters a cycle within maxSteps (assumes 2 states, 2 symbols).
+NonTerminatingTuringMachineQ[rules, numStates, numSymbols, input, maxSteps] allows specifying the number of states and symbols.
+NonTerminatingTuringMachineQ[{rule, numStates, numSymbols}, input, maxSteps] checks a specific deterministic rule."
 
 
 Begin["`Private`"];
@@ -240,6 +261,8 @@ NonTerminatingTuringMachineQ[rules : {__Integer}, input_Integer, maxSteps_Intege
 NonTerminatingTuringMachineQ[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
     NonTerminatingTuringMachineQ[{rule}, numStates, numSymbols, input, maxSteps]
 
+NonTerminatingTuringMachineQ[rule_Integer, input_Integer, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[{rule}, 2, 2, input, maxSteps]
 
 TuringMachineRuleCases[
     rule_Integer,
