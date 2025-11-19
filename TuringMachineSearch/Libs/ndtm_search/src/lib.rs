@@ -40,7 +40,7 @@ pub fn dtm_output_table(
     for input in min_input..=max_input {
             if aborted_safe() { break; }
             let input_big = BigUint::from(input);
-            let result = run_dtm(&tm, &input_big, max_steps).map(|(_steps, output)| output);
+            let result = run_dtm(&tm, &input_big, max_steps).map(|(_steps, output, _maxw)| output);
             row.push(result);
         }
         table.push(row);
@@ -76,7 +76,7 @@ pub fn dtm_output_table_parallel(
                 .map(|input| {
                     if aborted_safe() { return None; }
                     let input_big = BigUint::from(input);
-                    run_dtm(&tm, &input_big, max_steps).map(|(_s, out)| out)
+                    run_dtm(&tm, &input_big, max_steps).map(|(_s, out, _maxw)| out)
                 })
                 .collect()
         })
@@ -85,7 +85,7 @@ pub fn dtm_output_table_parallel(
 
 /// Variant that preserves both halting step count and output value.
 /// Each cell: Some((steps, output)) if halts within max_steps else None.
-pub fn dtm_output_table_steps(
+pub fn dtm_output_table_triple(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -93,11 +93,11 @@ pub fn dtm_output_table_steps(
     max_rule: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<Option<(u64, BigUint)>>> {
+) -> Vec<Vec<Option<(u64, BigUint, u64)>>> {
     let base: u64 = (2 * num_states * num_symbols) as u64;
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp);
-    let mut table: Vec<Vec<Option<(u64, BigUint)>>> = Vec::with_capacity(rule_space_size as usize);
+    let mut table: Vec<Vec<Option<(u64, BigUint, u64)>>> = Vec::with_capacity(rule_space_size as usize);
     if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
     for rule_num in min_rule..=max_rule {
         if aborted_safe() { break; }
@@ -107,20 +107,20 @@ pub fn dtm_output_table_steps(
             Err(_) => { table.push(Vec::new()); continue; }
         };
     if min_input > max_input { table.push(Vec::new()); continue; }
-    let mut row: Vec<Option<(u64, BigUint)>> = Vec::with_capacity((max_input - min_input + 1) as usize);
+    let mut row: Vec<Option<(u64, BigUint, u64)>> = Vec::with_capacity((max_input - min_input + 1) as usize);
     for input in min_input..=max_input {
             if aborted_safe() { break; }
             let input_big = BigUint::from(input);
             let result = run_dtm(&tm, &input_big, max_steps);
-            row.push(result);
+            row.push(result.map(|(s, out, maxw)| (s, out, maxw)));
         }
         table.push(row);
     }
     table
 }
 
-/// Parallel version of dtm_output_table_steps using rayon.
-pub fn dtm_output_table_steps_parallel(
+/// Parallel version of dtm_output_table_steps_width using rayon.
+pub fn dtm_output_table_triple_parallel(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -128,7 +128,7 @@ pub fn dtm_output_table_steps_parallel(
     max_rule: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<Vec<Option<(u64, BigUint)>>> {
+) -> Vec<Vec<Option<(u64, BigUint, u64)>>> {
     let base: u64 = (2 * num_states * num_symbols) as u64;
     let exp: u32 = (num_states * num_symbols) as u32;
     let rule_space_size: u64 = base.pow(exp);
@@ -147,7 +147,7 @@ pub fn dtm_output_table_steps_parallel(
                 .map(|input| {
                     if aborted_safe() { return None; }
                     let input_big = BigUint::from(input);
-                    run_dtm(&tm, &input_big, max_steps)
+                    run_dtm(&tm, &input_big, max_steps).map(|(s, out, pos)| (s, out, pos + 1))
                 })
                 .collect()
         })
@@ -155,7 +155,7 @@ pub fn dtm_output_table_steps_parallel(
 }
 
 /// Parallel version returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
-pub fn dtm_output_table_steps_parallel_f64(
+pub fn dtm_output_table_pair_parallel_f64(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -186,8 +186,8 @@ pub fn dtm_output_table_steps_parallel_f64(
             let result = run_dtm(&tm, &input_big, max_steps);
             let offset = (rule_idx_val * num_inputs + input_idx) * 2;
             let mut out_guard = out.lock().unwrap();
-            match result {
-                Some((steps, value)) => {
+                match result {
+                Some((steps, value, _maxw)) => {
                     out_guard[offset] = steps as f64;
                     out_guard[offset + 1] = value.to_f64().unwrap_or(0.0);
                 },
@@ -205,7 +205,7 @@ pub fn dtm_output_table_steps_parallel_f64(
 }
 
 /// Parallel version returning just halting steps as u64 (0 for non-halting) flattened row-major.
-pub fn dtm_output_table_steps_parallel_steps_u64(
+pub fn dtm_output_table_parallel_steps_u64(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -232,7 +232,7 @@ pub fn dtm_output_table_steps_parallel_steps_u64(
                 .map(|input| {
                     if aborted_safe() { return 0u64; }
                     let input_big = BigUint::from(input);
-                    match run_dtm(&tm, &input_big, max_steps) { Some((steps,_)) => steps, None => 0 }
+                    match run_dtm(&tm, &input_big, max_steps) { Some((steps,_,_)) => steps, None => 0 }
                 })
                 .collect()
         })
@@ -242,6 +242,98 @@ pub fn dtm_output_table_steps_parallel_steps_u64(
     let mut out = Vec::with_capacity(num_rules * num_inputs);
     for row in rows { out.extend(row); }
     out
+}
+
+/// Parallel version returning just maximum head width (max head position reached) as u64 (0 for non-halting) flattened row-major.
+pub fn dtm_output_table_parallel_width_u64(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<u64> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    if min_input > max_input { return Vec::new(); }
+    let rows: Vec<Vec<u64>> = (min_rule..=max_rule)
+        .into_par_iter()
+        .map(|rule_num| {
+            if aborted_safe() { return Vec::new(); }
+            let n_bigint = BigInt::from(rule_num);
+            let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return Vec::new(),
+            };
+            (min_input..=max_input)
+                .map(|input| {
+                    if aborted_safe() { return 0u64; }
+                    let input_big = BigUint::from(input);
+                    match run_dtm(&tm, &input_big, max_steps) { Some((_,_,pos)) => pos + 1, None => 0 }
+                })
+                .collect()
+        })
+        .collect();
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    let mut out = Vec::with_capacity(num_rules * num_inputs);
+    for row in rows { out.extend(row); }
+    out
+}
+
+/// Parallel version returning contiguous array of f64 triples (step, value, width), {0.0, -1.0, 0.0} for non-halting cases.
+pub fn dtm_output_table_triple_parallel_f64(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<f64> {
+    use std::sync::{Arc, Mutex};
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    let out = Arc::new(Mutex::new(vec![0.0; num_rules * num_inputs * 3]));
+    (min_rule..=max_rule).into_par_iter().for_each(|rule_num| {
+        let rule_idx_val = (rule_num - min_rule) as usize;
+        if aborted_safe() { return; }
+        let n_bigint = BigInt::from(rule_num);
+        let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+            Ok(t) => t,
+            Err(_) => return,
+        };
+        for (input_idx, input) in (min_input..=max_input).enumerate() {
+            if aborted_safe() { return; }
+            let input_big = BigUint::from(input);
+            let result = run_dtm(&tm, &input_big, max_steps);
+            let offset = (rule_idx_val * num_inputs + input_idx) * 3;
+            let mut out_guard = out.lock().unwrap();
+            match result {
+                Some((steps, value, pos)) => {
+                    out_guard[offset] = steps as f64;
+                    out_guard[offset + 1] = value.to_f64().unwrap_or(0.0);
+                    out_guard[offset + 2] = (pos + 1) as f64;
+                }
+                None => {
+                    out_guard[offset] = 0.0;
+                    out_guard[offset + 1] = -1.0; // sentinel for non-halting value
+                    out_guard[offset + 2] = 0.0;  // width 0 for non-halting
+                }
+            }
+        }
+    });
+    match Arc::try_unwrap(out) {
+        Ok(mutex) => mutex.into_inner().unwrap(),
+        Err(arc) => arc.lock().unwrap().clone(),
+    }
 }
 
 
@@ -444,10 +536,12 @@ pub fn run_dtm(
     tm: &TuringMachine,
     initial: &BigUint,
     max_steps: u64,
-) -> Option<(u64, BigUint)> {
+) -> Option<(u64, BigUint, u64)> {
     let initial_tape = Tape::from_integer(initial);
     let mut state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
     let mut steps: u64 = 0;
+    // Track maximum absolute head position (distance from start) seen during evolution
+    let mut max_head_pos: u64 = state.head_position as u64;
 
     // Optimization 1: If all deterministic rules move left, the machine will
     // forever drift left (or oscillate if left movement is clamped) without
@@ -469,10 +563,13 @@ pub fn run_dtm(
         }
         if state.head_position as u64 >= max_steps - steps { return None; }
         let halted = tm.step_dtm_mut(&mut state);
+        // update max_head_pos after the step
+        let cur_pos = state.head_position as u64;
+        if cur_pos > max_head_pos { max_head_pos = cur_pos; }
         steps += 1;
         if halted {
             let output = state.tape.to_integer();
-            return Some((steps, output));
+            return Some((steps, output, max_head_pos));
         }
     }
     None
@@ -516,9 +613,6 @@ pub fn collect_seen_values(
             if depth > *prev_depth {
                 cycle_detected = true;
                 if terminate_on_cycle { break; }
-                // Record cycle occurrence (using current tape value) with cycle flag
-                let cycle_val = current_state.tape.to_integer();
-                seen_order.push((depth, cycle_val));
             }
             continue; // don't expand again
         } else {
@@ -639,10 +733,10 @@ pub fn run_dtm_wl(
     num_symbols: u32,
     initial: String,
     max_steps: u64,
-) -> (u64, String) {
-    let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { Ok(t) => t, Err(_) => return (0, String::new()) };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return (0, String::new()) };
-    match run_dtm(&tm, &initial_biguint, max_steps) { Some((steps, out)) => (steps, out.to_string()), None => (0, String::new()) }
+) -> (u64, String, u64) {
+    let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { Ok(t) => t, Err(_) => return (0, String::new(), 0) };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return (0, String::new(), 0) };
+    match run_dtm(&tm, &initial_biguint, max_steps) { Some((steps, out, maxw)) => (steps, out.to_string(), maxw), None => (0, String::new(), 0) }
 }
 
 #[wll::export]
@@ -774,7 +868,7 @@ pub fn dtm_output_table_parallel_wl(
 }
 
 #[wll::export]
-pub fn dtm_output_table_steps_wl(
+pub fn dtm_output_table_triple_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -783,14 +877,14 @@ pub fn dtm_output_table_steps_wl(
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table_steps(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let table = dtm_output_table_triple(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
 
 /// Parallel WL wrapper including step counts.
 #[wll::export]
-pub fn dtm_output_table_steps_parallel_wl(
+pub fn dtm_output_table_triple_parallel_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -799,13 +893,13 @@ pub fn dtm_output_table_steps_parallel_wl(
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u8> {
-    let table = dtm_output_table_steps_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let table = dtm_output_table_triple_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
 /// Parallel WL wrapper returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
 #[wll::export]
-pub fn dtm_output_table_steps_parallel_f64_wl(
+pub fn dtm_output_table_pair_parallel_f64_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -814,7 +908,7 @@ pub fn dtm_output_table_steps_parallel_f64_wl(
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<f64> {
-    let arr = dtm_output_table_steps_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let arr = dtm_output_table_pair_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
     // Dimensions: [num_rules, num_inputs, 2] where last index 0 = steps, 1 = value
@@ -823,7 +917,7 @@ pub fn dtm_output_table_steps_parallel_f64_wl(
 
 /// WL wrapper returning a 2D NumericArray<u64> of steps (0 for non-halting). Dimensions: [num_rules, num_inputs]
 #[wll::export]
-pub fn dtm_output_table_steps_parallel_steps_u64_wl(
+pub fn dtm_output_table_parallel_steps_u64_wl(
     num_states: u32,
     num_symbols: u32,
     max_steps: u64,
@@ -832,8 +926,42 @@ pub fn dtm_output_table_steps_parallel_steps_u64_wl(
     min_input: u32,
     max_input: u32,
 ) -> wll::NumericArray<u64> {
-    let arr = dtm_output_table_steps_parallel_steps_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let arr = dtm_output_table_parallel_steps_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
     wll::NumericArray::from_array(&[num_rules, num_inputs], &arr)
+}
+
+/// WL wrapper returning a 2D NumericArray<u64> of max widths (0 for non-halting). Dimensions: [num_rules, num_inputs]
+#[wll::export]
+pub fn dtm_output_table_parallel_width_u64_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<u64> {
+    let arr = dtm_output_table_parallel_width_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    wll::NumericArray::from_array(&[num_rules, num_inputs], &arr)
+}
+
+/// WL wrapper returning a 3D NumericArray<f64> of triples (steps,value,width); non-halting has {0.0,-1.0,0.0}
+#[wll::export]
+pub fn dtm_output_table_triple_parallel_f64_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<f64> {
+    let arr = dtm_output_table_triple_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    wll::NumericArray::from_array(&[num_rules, num_inputs, 3], &arr)
 }
