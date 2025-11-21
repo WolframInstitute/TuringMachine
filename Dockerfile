@@ -25,10 +25,9 @@ ENV PATH="/opt/rust/cargo/bin:${PATH}"
 USER wolframengine
 WORKDIR /opt/turingmachinesearch
 
+RUN rustup default stable
+
 ARG WOLFRAMSCRIPT_ENTITLEMENTID
 ENV WOLFRAMSCRIPT_ENTITLEMENTID=${WOLFRAMSCRIPT_ENTITLEMENTID}
-
-ENV WSTP_COMPILER_ADDITIONS=/usr/local/Wolfram/WolframEngine/14.3/SystemFiles/Links/WSTP/DeveloperKit/Linux-x86-64/CompilerAdditions/
-
 
 COPY docker_build.wl ./docker_build.wl

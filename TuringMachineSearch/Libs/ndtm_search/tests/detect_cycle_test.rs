@@ -1,4 +1,4 @@
-use ndtm_search::{detect_cycle, models::{TuringMachine, TMState, Tape}};
+use ndtm_search::{detect_cycle, models::{TuringMachine}};
 use num_bigint::BigUint;
 
 #[test]

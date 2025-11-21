@@ -3,3 +3,6 @@ members = [
     "TuringMachineSearch/Libs/ndtm_search",
 ]
 resolver = "2"
+
+[patch.crates-io]
+wolfram-app-discovery = { git = "https://github.com/sw1sh/wolfram-app-discovery-rs", branch = "bugfix/wstp_discovery" }
