@@ -127,11 +127,30 @@ OneSidedTuringMachineFunctionNative[rules_List, input_Integer, args___] :=
 
 Options[OneSidedTuringMachineFunction] = {Method -> "External"}
 
+ResourceFunction["AddCodeCompletion"]["OneSidedTuringMachineFunction"][
+    None, None, None, {"Value", "Steps", "MaxWidth", "StepsWidth", "Pair", "Array", "Triple", "RawValue", "RawSteps", "RawMaxWidth", "RawStepsWidth"}
+]
+
+functionSelect[prop : _String | All : "Value"] := Switch[prop,
+    "Value", TuringMachineOutput,
+    "RawValue", RawTuringMachineOutput,
+    "Steps", TuringMachineSteps,
+    "RawSteps", RawTuringMachineSteps,
+    "MaxWidth", TuringMachineWidths,
+    "RawMaxWidth", RawTuringMachineWidths,
+    "StepsWidth", TuringMachineStepsWidths,
+    "RawStepsWidth", RawTuringMachineStepsWidths,
+    "Pair", TuringMachineOutputWithStepsFloat,
+    "Array" | "Triple", TuringMachineOutputWithStepsWidthsFloat,
+    All, TuringMachineOutputWithStepsWidths,
+    _, Missing[prop]
+]
+
 OneSidedTuringMachineFunction[
     {rules : {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer},
     input_Integer,
     maxSteps_Integer,
-    prop : "Value" | "Steps" | "MaxWidth" | "StepsWidth" | All : "Value",
+    prop : _String | All : "Value",
     OptionsPattern[]
 ] :=
     Switch[OptionValue[Method],
@@ -145,8 +164,20 @@ OneSidedTuringMachineFunction[
                 maxSteps
             ],
             _[steps_, output_, width_] :> If[0 < steps < maxSteps,
-                Switch[prop, "Steps", steps, "Value", FromDigits[output], "MaxWidth", width, "StepsWidth", {steps, width}, All, {steps, FromDigits[output], width}],
-                Switch[prop, "Steps", Infinity, "Value", Undefined, "MaxWidth", Infinity, "StepsWidth", {Infinity, Infinity}, All, {Infinity, Undefined, Infinity}]
+                Switch[prop,
+                    "Steps" | "RawSteps", steps,
+                    "Value", FromDigits[output], "RawValue", output,
+                    "MaxWidth" | "RawMaxWidth", width,
+                    "StepsWidth" | "RawStepsWidth", {steps, width},
+                    All, {steps, FromDigits[output], width}
+                ],
+                Switch[prop,
+                    "Steps", Infinity, "RawSteps", steps,
+                    "Value", Undefined, "RawValue", output,
+                    "MaxWidth", Infinity, "RawMaxWidth", width,
+                    "StepsWidth", {Infinity, Infinity}, "RawStepsWidth", {steps, width},
+                    All, {Infinity, Undefined, Infinity}
+                ]
             ]
         ],
         "Native",
@@ -172,16 +203,7 @@ OneSidedTuringMachineFunction[rule_Integer, input : _Integer | {_Integer, _Integ
 OneSidedTuringMachineFunction[{rule_Integer, numStates_Integer, numSymbols_Integer}, {minInput_Integer, maxInput_Integer}, maxSteps_Integer, prop : _String | All : "Value", OptionsPattern[]] :=
     Switch[OptionValue[Method],
         "External",
-            With[{f = Switch[prop,
-                "Value", TuringMachineOutput,
-                "Steps", TuringMachineSteps,
-                "MaxWidth", TuringMachineWidths,
-                "StepsWidth", TuringMachineStepsWidths,
-                "Pair", TuringMachineOutputWithStepsFloat,
-                "Array" | "Triple", TuringMachineOutputWithStepsWidthsFloat,
-                All, TuringMachineOutputWithStepsWidths,
-                _, Return[$Failed]
-            ]},
+            With[{f = functionSelect[prop]},
                 f[rule, numStates, numSymbols, maxSteps, {minInput, maxInput}]
             ],
         "Native",
@@ -194,16 +216,7 @@ OneSidedTuringMachineFunction[{All, numStates_Integer, numSymbols_Integer}, inpu
     Switch[
         OptionValue[Method],
         "External",
-            With[{f = Switch[prop,
-                "Value", TuringMachineOutput,
-                "Steps", TuringMachineSteps,
-                "MaxWidth", TuringMachineWidths,
-                "StepsWidth", TuringMachineStepsWidths,
-                "Pair", TuringMachineOutputWithStepsFloat,
-                "Array" | "Triple", TuringMachineOutputWithStepsWidthsFloat,
-                All, TuringMachineOutputWithStepsWidths,
-                _, Return[$Failed]
-            ]},
+            With[{f = functionSelect[prop]},
                 If[ MatchQ[input, _Integer],
                     f[numStates, numSymbols, maxSteps, {input, input}][[All, All, 1]],
                     f[numStates, numSymbols, maxSteps, input]
@@ -345,12 +358,12 @@ MultiwayTuringMachineRules[
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
 
 
-MapApply[{f, fRust, import, none} |-> (
+MapApply[{f, fRust, import, none, subst} |-> (
     f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, "Raw"] :=
         fRust[numStates, numSymbols, maxSteps, minRule, maxRule, minInput, maxInput];
 
     f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, ___] :=
-        If[none === None, Identity, ReplaceAll[None -> none]] @ import @ f[{minRule, maxRule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, "Raw"];
+        If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[{minRule, maxRule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, "Raw"];
 
     f[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] :=
         f[numStates, numSymbols, maxSteps, {1, maxInput}, prop];
@@ -380,13 +393,17 @@ MapApply[{f, fRust, import, none} |-> (
 )
     ,
     {
-        {TuringMachineOutput, DTMOutputTableValueRust, BinaryDeserialize @* ByteArray, Undefined},
-        {TuringMachineSteps, DTMOutputTableStepsRust, Normal, None},
-        {TuringMachineWidths, DTMOutputTableWidthRust, Normal, None},
-        {TuringMachineStepsWidths, DTMOutputTableStepsWidthRust, Normal, None},
-        {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, BinaryDeserialize @* ByteArray, {Infinity, Undefined, Infinity}},
-        {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, Normal, None},
-        {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, Normal, None}
+        {TuringMachineOutput, DTMOutputTableValueRust, BinaryDeserialize @* ByteArray, None, Undefined},
+        {TuringMachineSteps, DTMOutputTableStepsRust, Normal, 0, Infinity},
+        {TuringMachineWidths, DTMOutputTableWidthRust, Normal, 0, Infinity},
+        {TuringMachineStepsWidths, DTMOutputTableStepsWidthRust, Normal, {0, _}, {Infinity, Infinity}},
+        {RawTuringMachineOutput, DTMOutputTableValueRust, ByteArray, None, Inherited},
+        {RawTuringMachineSteps, DTMOutputTableStepsRust, Normal, 0, Inherited},
+        {RawTuringMachineWidths, DTMOutputTableWidthRust, Normal, 0, Inherited},
+        {RawTuringMachineStepsWidths, DTMOutputTableStepsWidthRust, Normal, {0, _}, Inherited},
+        {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, BinaryDeserialize @* ByteArray, {0, _, _}, {Infinity, Undefined, Infinity}},
+        {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, Normal, None, Inherited},
+        {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, Normal, None, Inherited}
     }
 ]
 

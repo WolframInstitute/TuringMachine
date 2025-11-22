@@ -1057,8 +1057,11 @@ pub fn dtm_output_table_parallel_steps_width_u64_wl(
     max_rule: u64,
     min_input: u32,
     max_input: u32,
-) -> Vec<u64> {
-    dtm_output_table_parallel_steps_width_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input)
+) -> wll::NumericArray<u64> {
+    let arr = dtm_output_table_parallel_steps_width_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    let num_rules = (max_rule - min_rule + 1) as usize;
+    let num_inputs = (max_input - min_input + 1) as usize;
+    wll::NumericArray::from_array(&[num_rules, num_inputs, 2], &arr)
 }
 
 /// WL wrapper returning a 3D NumericArray<f64> of triples (steps,value,width); non-halting has {0.0,-1.0,0.0}
