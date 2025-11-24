@@ -1,6 +1,5 @@
 use bit_vec::BitVec;
 use num_bigint::{BigInt, BigUint};
-// HashMap no longer needed here after refactor
 use std::hash::{Hash, Hasher};
 
 /// Represents the tape of the Turing machine.

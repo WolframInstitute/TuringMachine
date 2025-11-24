@@ -4,7 +4,13 @@ A Wolfram Language paclet for searching and analyzing Turing machines, powered b
 
 ## Build Instructions
 
-To build this paclet, you need to have Rust installed.
+*Note: Rust is provisioned automatically by the ExtensionCargo paclet.*
+*Required paclets come automatically in Wolfram Language 15.0+. For earlier versions, install them first:*
+
+```wolfram
+PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
+PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
+```
 
 1.  Ensure you have `wolframscript` installed and available in your path.
 2.  Run the build script:
