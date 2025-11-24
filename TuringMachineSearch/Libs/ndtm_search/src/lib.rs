@@ -652,14 +652,16 @@ pub fn collect_seen_values(
     let mut seen_set: HashSet<BigUint> = HashSet::new();
     let mut found_target = false;
     let mut queue_sizes: Vec<usize> = Vec::new();
+    queue_sizes.push(1); // initial queue size
     let mut cycle_detected = false;
     let mut last_depth = 0u64;
     while let Some((current_state, depth)) = queue.pop_front() {
-        if aborted_safe() || depth >= max_steps { break; }
         if depth > last_depth {
-            queue_sizes.push(queue.len());
+            // +1 for the current popped state
+            queue_sizes.push(queue.len() + 1);
             last_depth = depth;
         }
+        if aborted_safe() || depth >= max_steps { break; }
         if let Some(prev_depth) = expanded.get(&current_state) {
             // Cycle if we encounter same state at a greater depth
             if depth > *prev_depth {
@@ -1087,4 +1089,142 @@ pub fn dtm_output_table_triple_parallel_f64_wl(
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
     wll::NumericArray::from_array(&[num_rules, num_inputs, 3], &arr)
+}
+
+#[wll::export]
+pub fn collect_seen_values_tuples_wl(
+    rules: Vec<(u32, u32, u32, u32, i32)>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_tuples(&rules, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+}
+
+#[wll::export]
+pub fn collect_seen_values_with_target_tuples_wl(
+    rules: Vec<(u32, u32, u32, u32, i32)>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    target: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_tuples(&rules, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let target_biguint: BigUint = match target.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+}
+
+#[wll::export]
+pub fn collect_seen_values_triples_wl(
+    rules: Vec<(u32, u32, i32)>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_triples(&rules, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+}
+
+#[wll::export]
+pub fn collect_seen_values_with_target_triples_wl(
+    rules: Vec<(u32, u32, i32)>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    target: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_triples(&rules, num_states, num_symbols) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let target_biguint: BigUint = match target.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+}
+
+
+#[wll::export]
+pub fn collect_seen_values_tuples_inferred_wl(
+    rules: Vec<(u32, u32, u32, u32, i32)>,
+    initial: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_tuples_inferred(&rules) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+}
+
+#[wll::export]
+pub fn collect_seen_values_with_target_tuples_inferred_wl(
+    rules: Vec<(u32, u32, u32, u32, i32)>,
+    initial: String,
+    target: String,
+    max_steps: u64,
+    terminate_on_cycle: bool,
+) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+    let tm = match TuringMachine::from_rule_tuples_inferred(&rules) {
+        Ok(t) => t,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let target_biguint: BigUint = match target.parse::<BigUint>() {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new(), false),
+    };
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }

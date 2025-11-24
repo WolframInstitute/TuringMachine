@@ -16,9 +16,9 @@ fn test_run_dtm_halting() {
     print_test_header("test_run_dtm_halting");
     let num_states = 1u32;
     let num_symbols = 2u32;
-    let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); (num_states * num_symbols) as usize];
+    let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); (num_states * num_symbols) as usize];
     let idx = ((1 - 1) * num_symbols + 0) as usize;
-    rules[idx] = vec![Rule { next_state: 1, write_symbol: 1, move_right: true }];
+    rules[idx] = vec![Some(Rule { next_state: 1, write_symbol: 1, move_right: true })];
     let tm = TuringMachine { rules, num_states, num_symbols };
     let initial = BigUint::from(0u32);
     let result = run_dtm(&tm, &initial, 10).expect("machine should halt");
@@ -31,9 +31,9 @@ fn test_run_dtm_non_halting_with_limit() {
     print_test_header("test_run_dtm_non_halting_with_limit");
     let num_states = 1u32;
     let num_symbols = 2u32;
-    let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); (num_states * num_symbols) as usize];
+    let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); (num_states * num_symbols) as usize];
     let idx = ((1 - 1) * num_symbols + 0) as usize;
-    rules[idx] = vec![Rule { next_state: 1, write_symbol: 0, move_right: false }];
+    rules[idx] = vec![Some(Rule { next_state: 1, write_symbol: 0, move_right: false })];
     let tm = TuringMachine { rules, num_states, num_symbols };
     let initial = BigUint::from(0u32);
     assert!(run_dtm(&tm, &initial, 5).is_none());

@@ -252,6 +252,82 @@ impl TuringMachine {
         Ok(TuringMachine { rules, num_states, num_symbols })
     }
 
+    /// Constructs a non-deterministic TuringMachine from a list of explicit rule tuples.
+    /// Each tuple is (state, symbol, next_state, write_symbol, direction).
+    pub fn from_rule_tuples(
+        tuples: &[(u32, u32, u32, u32, i32)],
+        num_states: u32,
+        num_symbols: u32,
+    ) -> Result<Self, String> {
+        let s_k = (num_states * num_symbols) as usize;
+        let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); s_k];
+        
+        for (idx, (state, symbol, next_state, write_symbol, dir)) in tuples.iter().copied().enumerate() {
+            if state == 0 || state > num_states {
+                return Err(format!("Invalid state {} at index {}", state, idx));
+            }
+            if symbol >= num_symbols {
+                return Err(format!("Invalid symbol {} at index {}", symbol, idx));
+            }
+            if next_state == 0 || next_state > num_states {
+                return Err(format!("Invalid next_state {} at index {}", next_state, idx));
+            }
+            if write_symbol >= num_symbols {
+                return Err(format!("Invalid write_symbol {} at index {}", write_symbol, idx));
+            }
+            if dir != 1 && dir != -1 {
+                return Err(format!("Invalid direction {} at index {} (must be 1 or -1)", dir, idx));
+            }
+            
+            let move_right = dir == 1;
+            let rule = Rule { next_state, write_symbol, move_right };
+            let slot = ((state - 1) * num_symbols + symbol) as usize;
+            
+            // Check for duplicates to avoid redundancy
+            let exists = rules[slot].iter().any(|opt| opt.as_ref() == Some(&rule));
+            if !exists {
+                rules[slot].push(Some(rule));
+            }
+        }
+        
+        Ok(TuringMachine { rules, num_states, num_symbols })
+    }
+
+    pub fn from_rule_tuples_inferred(
+        tuples: &[(u32, u32, u32, u32, i32)],
+    ) -> Result<Self, String> {
+        let mut max_state = 0;
+        let mut max_symbol = 0;
+        for (state, symbol, next_state, write_symbol, _) in tuples.iter().copied() {
+            if state > max_state { max_state = state; }
+            if next_state > max_state { max_state = next_state; }
+            if symbol > max_symbol { max_symbol = symbol; }
+            if write_symbol > max_symbol { max_symbol = write_symbol; }
+        }
+        // Symbols are 0-indexed, so count is max + 1
+        Self::from_rule_tuples(tuples, max_state, max_symbol + 1)
+    }
+
+    pub fn from_rule_triples_inferred(
+        _triples: &[(u32, u32, i32)],
+    ) -> Result<Self, String> {
+        // For triples, we can't infer the input state/symbol directly from the triple itself because
+        // the triple is (next_state, write_symbol, direction) and its index implies the input state/symbol.
+        // However, if we assume standard ordering (state-major, symbol-minor), we can try to infer.
+        // But usually triples are provided for a specific s,k.
+        // If the user provides a flat list of triples, they MUST match s*k.
+        // We can try to factor the length.
+        // But simpler: just assume 2,2 if not provided? Or try to find s,k such that s*k = len.
+        // But there might be multiple factors.
+        // Actually, the user request "same for rust functions" implies explicit tuples should infer.
+        // For triples (dense DTM), inference is ambiguous without s,k unless we assume s=2 or something.
+        // Let's stick to tuples for inference.
+        // But wait, if the user provides triples, they are usually for a specific machine.
+        // If the user provides `{{1,1,1}, ...}` as a list of triples, we don't know s,k.
+        // Let's just implement tuple inference for now as that's unambiguous.
+        Err("Inference not supported for triples (ambiguous dimensions)".to_string())
+    }
+
     pub fn get_rule(&self, state: u32, symbol: u32) -> Option<&Rule> {
         if state == 0 || state > self.num_states || symbol >= self.num_symbols { return None; }
         let idx = ((state - 1) * self.num_symbols + symbol) as usize;
