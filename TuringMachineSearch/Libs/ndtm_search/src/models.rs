@@ -85,8 +85,11 @@ pub struct Rule {
 
 #[derive(Debug, Clone)]
 pub struct TuringMachine {
-    // Indexed by (state-1)*num_symbols + symbol
-    pub rules: Vec<Vec<Rule>>,
+    // Indexed by (state-1)*num_symbols + symbol.
+    // For nondeterministic machines each slot is a Vec<Option<Rule>>.
+    // Duplicate rules for a slot are stored as None to preserve index positions
+    // without recomputing identical TMState transitions.
+    pub rules: Vec<Vec<Option<Rule>>>,
     pub num_states: u32,
     pub num_symbols: u32,
 }
@@ -126,14 +129,12 @@ impl TuringMachine {
                         if !rules.is_empty() {
                             print!("{{{}, {}}} -> {{", state, symbol);
                             let mut first = true;
-                            for rule in rules {
-                                if !first {
-                                    print!(", ");
-                                } else {
-                                    first = false;
+                            for opt_rule in rules {
+                                if let Some(rule) = opt_rule {
+                                    if !first { print!(", "); } else { first = false; }
+                                    let dir = if rule.move_right { 1 } else { -1 };
+                                    print!("{{{}, {}, {}}}", rule.next_state, rule.write_symbol, dir);
                                 }
-                                let dir = if rule.move_right { 1 } else { -1 };
-                                print!("{{{}, {}, {}}}", rule.next_state, rule.write_symbol, dir);
                             }
                             println!("}}");
                         }
@@ -165,7 +166,7 @@ impl TuringMachine {
         }
 
         // Deterministic TM: exactly one rule per (state, symbol). Preallocate vector capacity.
-        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); s_k];
+        let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); s_k];
 
         // Assign digits in state-major, symbol-reversed-minor (high-to-low symbol order)
         // digit_index = i * k + (k - 1 - j)
@@ -179,7 +180,7 @@ impl TuringMachine {
                 let move_right = (digit_val & 1) == 1;
                 let rule = Rule { next_state, write_symbol, move_right };
                 let slot = (i * k + j) as usize; // index for (state=current_state, symbol=read_symbol)
-                rules[slot] = vec![rule];
+                rules[slot] = vec![Some(rule)];
             }
         }
 
@@ -193,15 +194,22 @@ impl TuringMachine {
     /// Constructs a non-deterministic TuringMachine from multiple rule numbers
     pub fn from_numbers(nums: &[BigInt], s: u32, k: u32) -> Result<Self, String> {
         let s_k = (s * k) as usize;
-        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); s_k];
+        let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); s_k];
         for n in nums {
             let tm_single = TuringMachine::from_number(n, s, k)?;
             for state in 1..=s {
                 for symbol in 0..k {
                     let idx = ((state - 1) * k + symbol) as usize;
-                    // from_number guarantees exactly one rule in slot
-                    if let Some(rule) = tm_single.rules[idx].get(0) {
-                        rules[idx].push(*rule); // Rule is Copy
+                    // from_number guarantees exactly one Some(rule) in slot
+                    if let Some(Some(rule)) = tm_single.rules[idx].get(0) {
+                        // Check if this rule already exists (ignore None placeholders)
+                        let exists = rules[idx].iter().any(|opt| opt.as_ref() == Some(rule));
+                        if exists {
+                            // store None placeholder to maintain index consistency
+                            rules[idx].push(None);
+                        } else {
+                            rules[idx].push(Some(*rule));
+                        }
                     }
                 }
             }
@@ -227,7 +235,7 @@ impl TuringMachine {
                 num_symbols
             ));
         }
-        let mut rules: Vec<Vec<Rule>> = vec![Vec::new(); expected];
+        let mut rules: Vec<Vec<Option<Rule>>> = vec![Vec::new(); expected];
         for (idx, (next_state, write_symbol, dir)) in triples.iter().copied().enumerate() {
             if next_state == 0 || next_state > num_states {
                 return Err(format!("Invalid next_state {} at index {}", next_state, idx));
@@ -239,7 +247,7 @@ impl TuringMachine {
                 return Err(format!("Invalid direction {} at index {} (must be 1 or -1)", dir, idx));
             }
             let move_right = dir == 1;
-            rules[idx] = vec![Rule { next_state, write_symbol, move_right }];
+            rules[idx] = vec![Some(Rule { next_state, write_symbol, move_right })];
         }
         Ok(TuringMachine { rules, num_states, num_symbols })
     }
@@ -247,11 +255,12 @@ impl TuringMachine {
     pub fn get_rule(&self, state: u32, symbol: u32) -> Option<&Rule> {
         if state == 0 || state > self.num_states || symbol >= self.num_symbols { return None; }
         let idx = ((state - 1) * self.num_symbols + symbol) as usize;
-        self.rules[idx].get(0)
+        // deterministic case: first Some
+        self.rules[idx].iter().find_map(|opt| opt.as_ref())
     }
 
     /// Returns all possible rules for a given (state, symbol) pair
-    pub fn get_rules(&self, state: u32, symbol: u32) -> Vec<Rule> {
+    pub fn get_rules(&self, state: u32, symbol: u32) -> Vec<Option<Rule>> {
         if state == 0 || state > self.num_states || symbol >= self.num_symbols { return Vec::new(); }
         let idx = ((state - 1) * self.num_symbols + symbol) as usize;
         self.rules[idx].clone()
@@ -308,25 +317,26 @@ impl TuringMachine {
         let mut next_states = Vec::new();
         let current_symbol = state.tape.read(state.head_position);
         let rules = self.get_rules(state.head_state, current_symbol);
-        for (idx, rule) in rules.into_iter().enumerate() {
-            let mut new_state = state.clone();
-            new_state
-                .tape
-                .write(new_state.head_position, rule.write_symbol);
-            new_state.head_state = rule.next_state;
-            let mut halted = false;
-            if rule.move_right {
-                if new_state.head_position == 0 {
-                    // Halting move: do not update position
-                    halted = true;
+        for (idx, opt_rule) in rules.into_iter().enumerate() {
+            if let Some(rule) = opt_rule {
+                let mut new_state = state.clone();
+                new_state.tape.write(new_state.head_position, rule.write_symbol);
+                new_state.head_state = rule.next_state;
+                let mut halted = false;
+                if rule.move_right {
+                    if new_state.head_position == 0 {
+                        halted = true;
+                    } else {
+                        new_state.head_position -= 1;
+                    }
                 } else {
-                    new_state.head_position -= 1;
+                    new_state.head_position += 1;
                 }
+                next_states.push((new_state, idx as u64, halted));
             } else {
-                new_state.head_position += 1;
+                // None placeholder: skip computation, index preserved
+                continue;
             }
-            // Use index within the rule vector for this (state, symbol) as rule identifier
-            next_states.push((new_state, idx as u64, halted));
         }
         next_states
     }

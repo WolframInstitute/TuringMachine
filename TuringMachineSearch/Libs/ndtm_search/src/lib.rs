@@ -3,7 +3,7 @@ use wolfram_library_link as wll;
 
 wll::generate_loader!(rustlink_autodiscover);
 
-use crate::models::{TMState, Tape, TuringMachine};
+use crate::models::{TMState, Tape, TuringMachine, Rule};
 use num_bigint::{BigInt, BigUint};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::collections::BinaryHeap;
@@ -593,7 +593,14 @@ pub fn run_dtm(
     // reaching a halting configuration (given current halting semantics). Return None immediately.
     // (Assumes halting requires a rule transition evaluated during stepping; if such
     // a halting rule existed it would be encountered regardless of direction.)
-    let always_left = tm.rules.iter().all(|variants| variants.iter().all(|r| !r.move_right));
+    // Updated for Option<Rule>: if any variant is None (a deduplicated placeholder), we conservatively
+    // disable the always-left optimization (treat as potentially right-moving) to avoid false halting.
+    let always_left = tm.rules.iter().all(|variants| {
+        variants.iter().all(|opt| match opt {
+            Some(rule) => !rule.move_right,
+            None => false, // unknown due to deduplication; be conservative
+        })
+    });
     if always_left { return None; }
 
     // Optimization 2 (heuristic): If the head has moved strictly right beyond max_steps - steps
@@ -922,9 +929,10 @@ pub fn tm_rules_from_numbers_wl(
     for state in 1..=num_states {
         for symbol in 0..num_symbols {
             let rules = tm.get_rules(state, symbol);
-            if !rules.is_empty() {
-                let mut variants: Vec<(u32, u32, i32)> = Vec::with_capacity(rules.len());
-                for r in rules {
+            let some_rules: Vec<Rule> = rules.into_iter().filter_map(|opt| opt).collect();
+            if !some_rules.is_empty() {
+                let mut variants: Vec<(u32, u32, i32)> = Vec::with_capacity(some_rules.len());
+                for r in some_rules {
                     variants.push((r.next_state, r.write_symbol, if r.move_right { 1 } else { -1 }));
                 }
                 out.push(((state, symbol), variants));
