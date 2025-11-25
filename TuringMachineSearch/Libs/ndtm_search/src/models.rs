@@ -3,63 +3,131 @@ use num_bigint::{BigInt, BigUint};
 use std::hash::{Hash, Hasher};
 
 /// Represents the tape of the Turing machine.
+/// Binary variant uses BitVec for k=2 (optimized).
+/// General variant uses Vec<u8> for k>2, storing both data and the number of symbols.
 #[derive(Clone, Debug, Eq)]
-pub struct Tape(pub BitVec);
+pub enum Tape {
+    Binary(BitVec),
+    General(Vec<u8>, u32), // (data, num_symbols)
+}
 
 impl Tape {
-    /// Creates a new tape from an integer.
+    /// Creates a new binary tape from an integer (k=2).
     pub fn from_integer(n: &BigUint) -> Self {
-        if n == &BigUint::from(0u32) {
-            return Tape(BitVec::from_elem(1, false));
-        }
-        let bytes = n.to_bytes_le();
-        let mut bv = BitVec::new();
-        for byte in bytes {
-            for i in 0..8 {
-                bv.push((byte >> i) & 1 == 1);
+        Self::from_integer_base(n, 2)
+    }
+
+    /// Creates a new tape from an integer with a specified base (number of symbols).
+    pub fn from_integer_base(n: &BigUint, k: u32) -> Self {
+        if k == 2 {
+            // Binary optimization
+            if n == &BigUint::from(0u32) {
+                return Tape::Binary(BitVec::from_elem(1, false));
             }
+            let bytes = n.to_bytes_le();
+            let mut bv = BitVec::new();
+            for byte in bytes {
+                for i in 0..8 {
+                    bv.push((byte >> i) & 1 == 1);
+                }
+            }
+            // Trim leading zeros that are not part of the number's representation
+            while bv.len() > 1 && !bv[bv.len() - 1] {
+                bv.pop();
+            }
+            Tape::Binary(bv)
+        } else {
+            // General k-ary representation
+            if n == &BigUint::from(0u32) {
+                return Tape::General(vec![0], k);
+            }
+            let mut data = Vec::new();
+            let mut num = n.clone();
+            let base = BigUint::from(k);
+            while num > BigUint::from(0u32) {
+                let digit = (&num % &base).to_u32_digits();
+                data.push(if digit.is_empty() { 0 } else { digit[0] as u8 });
+                num /= &base;
+            }
+            // Ensure at least one digit
+            if data.is_empty() {
+                data.push(0);
+            }
+            Tape::General(data, k)
         }
-        // Trim leading zeros that are not part of the number's representation
-        while bv.len() > 1 && !bv[bv.len() - 1] {
-            bv.pop();
-        }
-        Tape(bv)
     }
 
     /// Converts the tape back to an integer.
     pub fn to_integer(&self) -> BigUint {
-        let mut bytes = vec![0u8; (self.0.len() + 7) / 8];
-        for (i, bit) in self.0.iter().enumerate() {
-            if bit {
-                let byte_index = i / 8;
-                let bit_index = i % 8;
-                bytes[byte_index] |= 1 << bit_index;
+        match self {
+            Tape::Binary(bv) => {
+                let mut bytes = vec![0u8; (bv.len() + 7) / 8];
+                for (i, bit) in bv.iter().enumerate() {
+                    if bit {
+                        let byte_index = i / 8;
+                        let bit_index = i % 8;
+                        bytes[byte_index] |= 1 << bit_index;
+                    }
+                }
+                BigUint::from_bytes_le(&bytes)
+            }
+            Tape::General(data, k) => {
+                let mut result = BigUint::from(0u32);
+                let base = BigUint::from(*k);
+                for (i, &digit) in data.iter().enumerate() {
+                    result += BigUint::from(digit) * base.pow(i as u32);
+                }
+                result
             }
         }
-        BigUint::from_bytes_le(&bytes)
     }
 
-    /// Reads the bit at the given position.
+    /// Reads the symbol at the given position.
     pub fn read(&self, position: usize) -> u32 {
-        if self.0.get(position).unwrap_or(false) {
-            1
-        } else {
-            0
+        match self {
+            Tape::Binary(bv) => {
+                if bv.get(position).unwrap_or(false) {
+                    1
+                } else {
+                    0
+                }
+            }
+            Tape::General(data, _k) => {
+                if position < data.len() {
+                    data[position] as u32
+                } else {
+                    0 // Default blank symbol
+                }
+            }
         }
     }
 
-    /// Writes a bit at the given position, extending the tape if necessary.
+    /// Writes a symbol at the given position, extending the tape if necessary.
     pub fn write(&mut self, position: usize, value: u32) {
-        let bool_val = value != 0;
-        if position >= self.0.len() {
-            self.0.grow(position - self.0.len() + 1, false);
+        match self {
+            Tape::Binary(bv) => {
+                let bool_val = value != 0;
+                if position >= bv.len() {
+                    bv.grow(position - bv.len() + 1, false);
+                }
+                bv.set(position, bool_val);
+            }
+            Tape::General(data, k) => {
+                assert!(value < *k, "Symbol {} out of range for k={}", value, k);
+                if position >= data.len() {
+                    data.resize(position + 1, 0);
+                }
+                data[position] = value as u8;
+            }
         }
-        self.0.set(position, bool_val);
     }
 
     /// Returns the length of the tape.
     pub fn len(&self) -> usize {
-        self.0.len()
+        match self {
+            Tape::Binary(bv) => bv.len(),
+            Tape::General(data, _k) => data.len(),
+        }
     }
 }
 

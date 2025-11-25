@@ -90,14 +90,17 @@ OneSidedTuringMachineFunctionNative[
     {minInput_Integer, maxInput_Integer},
     maxSteps_Integer,
     prop : _String | All : "Value"
-] := With[{
+] := Enclose @ With[{
+    k = First @ ConfirmBy[Replace[rules, {{_, _, k_} :> k, cases_ :> Max[cases[[All, 1, 2]]] + 1}, 1], Apply[Equal]]
+},
+    {
     finalStates = Table[
-        With[{digits = IntegerDigits[i, 2]}, {init = {{1, Length[digits], -1}, {digits, 0}}},
+        With[{digits = IntegerDigits[i, k]}, {init = {{1, Length[digits], -1}, {digits, 0}}},
             Replace[
                 NestWhile[Apply[{TuringMachine[rule][#1], #2 + 1, Max[#3, - #1[[1, 3]]]} &], {init, 0, 1}, #[[1, 1, 3]] < 0 &, 1, maxSteps],
                 {
                     {state_, steps_, maxWidth_} :> If[state[[1, 3]] == 0,
-                        {steps, FromDigits[state[[2, 1, ;; -2]], 2], maxWidth},
+                        {steps, FromDigits[state[[2, 1, ;; -2]], k], maxWidth},
                         {Infinity, Undefined, Infinity}
                     ]
                 }
@@ -125,10 +128,10 @@ OneSidedTuringMachineFunctionNative[{All, numStates_Integer, numSymbols_Integer}
     ]
 
 OneSidedTuringMachineFunctionNative[rule : {_Integer, _Integer, _Integer}, args___] :=
-    First @ OneSidedTuringMachineFunctionNative[{rule}, args]
+    Enclose @ First @ Confirm @ OneSidedTuringMachineFunctionNative[{rule}, args]
 
 OneSidedTuringMachineFunctionNative[rules_List, input_Integer, args___] :=
-    First /@ OneSidedTuringMachineFunctionNative[rules, {input, input}, args]
+    Enclose[First /@ Confirm @ OneSidedTuringMachineFunctionNative[rules, {input, input}, args]]
 
 
 Options[OneSidedTuringMachineFunction] = {Method -> "External"}

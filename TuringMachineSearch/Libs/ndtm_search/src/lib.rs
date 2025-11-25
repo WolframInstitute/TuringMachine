@@ -582,7 +582,7 @@ pub fn run_dtm(
     initial: &BigUint,
     max_steps: u64,
 ) -> Option<(u64, BigUint, u64)> {
-    let initial_tape = Tape::from_integer(initial);
+    let initial_tape = Tape::from_integer_base(initial, tm.num_symbols);
     let mut state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
     let mut steps: u64 = 0;
     // Track maximum absolute head position (distance from start) seen during evolution
