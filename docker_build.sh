@@ -1,6 +1,6 @@
 docker build -t turingmachine-search .
 
-ENTITLEMENT_ID=$(wolframscript -c 'Quiet @ CreateLicenseEntitlement[]["EntitlementID"]')
+ENTITLEMENT_ID=$(wolframscript -c 'CreateLicenseEntitlement[]["EntitlementID"]' | tail -n 1)
 
 echo "Using Entitlement ID: $ENTITLEMENT_ID"
 

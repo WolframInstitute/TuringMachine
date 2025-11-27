@@ -52,9 +52,20 @@ NonTerminatingTuringMachineQ[{rule, numStates, numSymbols}, input, maxSteps] che
 
 Begin["`Private`"];
 
-functions := functions = CargoLoad[
-    PacletObject["TuringMachineSearch"],
-    "Functions"
+functions := functions = Replace[
+    CargoLoad[
+        PacletObject["TuringMachineSearch"],
+        "Functions"
+    ],
+    _ ? FailureQ :> Replace[
+        CargoBuild[PacletObject["TuringMachineSearch"]], {
+            f_ ? FailureQ :> Function @ Function @ f,
+            files_ :> CargoLoad[
+                files,
+                "Functions"
+            ]
+        }
+    ]
 ]
 
 MultiwayTMFunctionSearchRust := functions["exhaustive_search_wl"]
@@ -442,7 +453,7 @@ MultiwayTuringMachineRules[
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
 
 
-MapApply[{f, fRust, import, none, subst} |-> (
+MapApply[Function[{f, fRust, import, none, subst},
     f[{minRule_Integer, maxRule_Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, "Raw"] :=
         fRust[numStates, numSymbols, maxSteps, minRule, maxRule, minInput, maxInput];
 
@@ -474,9 +485,11 @@ MapApply[{f, fRust, import, none, subst} |-> (
 
     f[rule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, prop : _String | Automatic : Automatic] :=
         If[prop === Automatic, First, Identity] @ f[{rule, rule}, numStates, numSymbols, maxSteps, {minInput, maxInput}, prop];
-)
     ,
-    {
+    HoldAll
+]
+    ,
+    Unevaluated @ {
         {TuringMachineOutput, DTMOutputTableValueRust, BinaryDeserialize @* ByteArray, None, Undefined},
         {TuringMachineSteps, DTMOutputTableStepsRust, Normal, 0, Infinity},
         {TuringMachineWidths, DTMOutputTableWidthRust, Normal, 0, Infinity},
