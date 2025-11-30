@@ -61,23 +61,11 @@ impl Tape {
     pub fn to_integer(&self) -> BigUint {
         match self {
             Tape::Binary(bv) => {
-                let mut bytes = vec![0u8; (bv.len() + 7) / 8];
-                for (i, bit) in bv.iter().enumerate() {
-                    if bit {
-                        let byte_index = i / 8;
-                        let bit_index = i % 8;
-                        bytes[byte_index] |= 1 << bit_index;
-                    }
-                }
-                BigUint::from_bytes_le(&bytes)
+                let data: Vec<u8> = bv.iter().map(|b| if b { 1 } else { 0 }).collect();
+                BigUint::from_radix_le(&data, 2).unwrap_or_else(|| BigUint::from(0u32))
             }
             Tape::General(data, k) => {
-                let mut result = BigUint::from(0u32);
-                let base = BigUint::from(*k);
-                for (i, &digit) in data.iter().enumerate() {
-                    result += BigUint::from(digit) * base.pow(i as u32);
-                }
-                result
+                BigUint::from_radix_le(data, *k).unwrap_or_else(|| BigUint::from(0u32))
             }
         }
     }
@@ -108,14 +96,18 @@ impl Tape {
             Tape::Binary(bv) => {
                 let bool_val = value != 0;
                 if position >= bv.len() {
-                    bv.grow(position - bv.len() + 1, false);
+                    // Grow by doubling, but ensure we reach at least position + 1
+                    let new_len = (bv.len() * 2).max(position + 1);
+                    bv.grow(new_len - bv.len(), false);
                 }
                 bv.set(position, bool_val);
             }
             Tape::General(data, k) => {
                 assert!(value < *k, "Symbol {} out of range for k={}", value, k);
                 if position >= data.len() {
-                    data.resize(position + 1, 0);
+                    // Grow by doubling, but ensure we reach at least position + 1
+                    let new_len = (data.len() * 2).max(position + 1);
+                    data.resize(new_len, 0);
                 }
                 data[position] = value as u8;
             }
