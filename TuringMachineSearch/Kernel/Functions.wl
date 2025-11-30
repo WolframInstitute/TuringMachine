@@ -79,6 +79,7 @@ CollectSeenValuesWithTargetTuplesInferredRust := functions["collect_seen_values_
 CollectSeenValuesTriplesRust := functions["collect_seen_values_triples_wl"]
 CollectSeenValuesWithTargetTriplesRust := functions["collect_seen_values_with_target_triples_wl"]
 RunDeterministicTMRust := functions["run_dtm_wl"]
+RunDeterministicTMWithHistoryRust := functions["run_dtm_with_history_wl"]
 MultiwayQueueSizeRust := functions["ndtm_traverse_queue_size_wl"]
 TuringMachineRulesRust := functions["tm_rules_from_number_wl"]
 MultiwayTuringMachineRulesRust := functions["tm_rules_from_numbers_wl"]
@@ -89,6 +90,8 @@ DTMOutputTableStepsWidthRust := functions["dtm_output_table_parallel_steps_width
 DTMOutputTableTripleRust := functions["dtm_output_table_triple_parallel_wl"]
 DTMOutputTableFloatPairRust := functions["dtm_output_table_pair_parallel_f64_wl"]
 DTMOutputTableFloatTripleRust := functions["dtm_output_table_triple_parallel_f64_wl"]
+DTMOutputTableTripleWithHistoryRust := functions["dtm_output_table_triple_with_history_wl"]
+DTMOutputTableTripleWithHistoryParallelRust := functions["dtm_output_table_triple_with_history_parallel_wl"]
 DetectCycleRust := functions["detect_cycle_wl"]
 
 
@@ -105,20 +108,21 @@ OneSidedTuringMachineFunctionNative[
     k = First @ ConfirmBy[Replace[rules, {{_, _, k_} :> k, cases_ :> Max[cases[[All, 1, 2]]] + 1}, 1], Apply[Equal]]
 },
     {
-    finalStates = Table[
+    states = Table[
         With[{digits = IntegerDigits[i, k]}, {init = {{1, Length[digits], -1}, {digits, 0}}},
-            Replace[
-                NestWhile[Apply[{TuringMachine[rule][#1], #2 + 1, Max[#3, - #1[[1, 3]]]} &], {init, 0, 1}, #[[1, 1, 3]] < 0 &, 1, maxSteps],
-                {
-                    {state_, steps_, maxWidth_} :> If[state[[1, 3]] == 0,
-                        {steps, FromDigits[state[[2, 1, ;; -2]], k], maxWidth},
-                        {Infinity, Undefined, Infinity}
-                    ]
-                }
-            ]
+            NestWhileList[Apply[{TuringMachine[rule][#1], #2 + 1, Max[#3, - #1[[1, 3]]]} &], {init, 0, 1}, #[[1, 1, 3]] < 0 &, 1, maxSteps]
         ],
         {rule, rules},
         {i, minInput, maxInput}
+    ]
+}, {
+    finalStates = Replace[
+        states[[All, All, -1]],
+        {state_, steps_, maxWidth_} :> If[state[[1, 3]] == 0,
+            {steps, FromDigits[state[[2, 1, ;; -2]], k], maxWidth},
+            {Infinity, Undefined, Infinity}
+        ],
+        {3}
     ]
 },
     Switch[prop,
@@ -128,6 +132,8 @@ OneSidedTuringMachineFunctionNative[
         "StepsWidth", finalStates[[All, All, {1, 3}]],
         "Pair", finalStates[[All, All, ;; 2]],
         All | "Array" | "Triple", finalStates,
+        "History" | "Evolution" | "EvolutionHistory",
+            Map[{#[[1, 1]], - #[[1, 3]], FromDigits[#[[2, 1, If[#[[1, 3]] == 0, ;; -2, All]]], k]} &, states[[All, All, All, 1]], {3}],
         _, Return[$Failed]
     ]
 ]
@@ -148,7 +154,7 @@ OneSidedTuringMachineFunctionNative[rules_List, input_Integer, args___] :=
 Options[OneSidedTuringMachineFunction] = {Method -> "External"}
 
 ResourceFunction["AddCodeCompletion"]["OneSidedTuringMachineFunction"][
-    None, None, None, {"Value", "Steps", "Width", "StepsWidth", "Pair", "Array", "Triple", "RawValue", "RawSteps", "RawWidth", "RawStepsWidth"}
+    None, None, None, {"Value", "Steps", "Width", "StepsWidth", "Pair", "Array", "Triple", "RawValue", "RawSteps", "RawWidth", "RawStepsWidth", "History"}
 ]
 
 functionSelect[prop : _String | All : "Value"] := Switch[prop,
@@ -162,6 +168,7 @@ functionSelect[prop : _String | All : "Value"] := Switch[prop,
     "RawStepsWidth", RawTuringMachineStepsWidths,
     "Pair", TuringMachineOutputWithStepsFloat,
     "Array" | "Triple", TuringMachineOutputWithStepsWidthsFloat,
+    "History" | "Evolution" | "EvolutionHistory", TuringMachineEvolution,
     All, TuringMachineOutputWithStepsWidths,
     _, Missing[prop]
 ]
@@ -175,28 +182,41 @@ OneSidedTuringMachineFunction[
 ] :=
     Switch[OptionValue[Method],
         "External",
-        Replace[
-            RunDeterministicTMRust[
-                Apply[Developer`DataStore, rules, {0, 1}],
-                numStates,
-                numSymbols,
-                ToString[input],
-                maxSteps
-            ],
-            _[steps_, output_, width_] :> If[0 < steps < maxSteps,
-                Switch[prop,
-                    "Steps" | "RawSteps", steps,
-                    "Value", FromDigits[output], "RawValue", output,
-                    "MaxWidth" | "Width" | "RawMaxWidth", width,
-                    "StepsWidth" | "RawStepsWidth", {steps, width},
-                    All, {steps, FromDigits[output], width}
+        If[ MatchQ[prop, "History" | "Evolution" | "EvolutionHistory"],
+            List @@ Replace[
+                RunDeterministicTMWithHistoryRust[
+                    Apply[Developer`DataStore, rules, {0, 1}],
+                    numStates,
+                    numSymbols,
+                    ToString[input],
+                    maxSteps
                 ],
-                Switch[prop,
-                    "Steps", Infinity, "RawSteps", steps,
-                    "Value", Undefined, "RawValue", output,
-                    "MaxWidth" | "Width", Infinity, "RawMaxWidth" | "RawWidth", width,
-                    "StepsWidth", {Infinity, Infinity}, "RawStepsWidth", {steps, width},
-                    All, {Infinity, Undefined, Infinity}
+                _[state_, pos_, value_] :> {state, pos, FromDigits[value]},
+                1
+            ],
+            Replace[
+                RunDeterministicTMRust[
+                    Apply[Developer`DataStore, rules, {0, 1}],
+                    numStates,
+                    numSymbols,
+                    ToString[input],
+                    maxSteps
+                ],
+                _[steps_, output_, width_] :> If[0 < steps < maxSteps,
+                    Switch[prop,
+                        "Steps" | "RawSteps", steps,
+                        "Value", FromDigits[output], "RawValue", output,
+                        "MaxWidth" | "Width" | "RawMaxWidth", width,
+                        "StepsWidth" | "RawStepsWidth", {steps, width},
+                        All, {steps, FromDigits[output], width}
+                    ],
+                    Switch[prop,
+                        "Steps", Infinity, "RawSteps", steps,
+                        "Value", Undefined, "RawValue", output,
+                        "MaxWidth" | "Width", Infinity, "RawMaxWidth" | "RawWidth", width,
+                        "StepsWidth", {Infinity, Infinity}, "RawStepsWidth", {steps, width},
+                        All, {Infinity, Undefined, Infinity}
+                    ]
                 ]
             ]
         ],
@@ -500,7 +520,8 @@ MapApply[Function[{f, fRust, import, none, subst},
         {RawTuringMachineStepsWidths, DTMOutputTableStepsWidthRust, Normal, {0, _}, Inherited},
         {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, BinaryDeserialize @* ByteArray, None, {Infinity, Undefined, Infinity}},
         {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, Normal, None, Inherited},
-        {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, Normal, None, Inherited}
+        {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, Normal, None, Inherited},
+        {TuringMachineEvolution, DTMOutputTableTripleWithHistoryParallelRust, BinaryDeserialize @* ByteArray, None, Inherited}
     }
 ]
 

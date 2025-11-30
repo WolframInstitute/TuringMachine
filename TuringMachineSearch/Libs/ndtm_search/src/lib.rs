@@ -154,6 +154,79 @@ pub fn dtm_output_table_triple_parallel(
         .collect()
 }
 
+/// Variant that returns complete evolution history for each (rule, input) pair.
+/// Each cell is a Vec of (state, head_position, tape_value) for each step.
+/// Empty vector indicates the machine didn't halt within max_steps.
+pub fn dtm_output_table_triple_with_history(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Vec<(u32, usize, BigUint)>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    let mut table: Vec<Vec<Vec<(u32, usize, BigUint)>>> = Vec::with_capacity(rule_space_size as usize);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    for rule_num in min_rule..=max_rule {
+        if aborted_safe() { break; }
+        let n_bigint = BigInt::from(rule_num);
+        let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+            Ok(t) => t,
+            Err(_) => { table.push(Vec::new()); continue; }
+        };
+    if min_input > max_input { table.push(Vec::new()); continue; }
+    let mut row: Vec<Vec<(u32, usize, BigUint)>> = Vec::with_capacity((max_input - min_input + 1) as usize);
+    for input in min_input..=max_input {
+            if aborted_safe() { break; }
+            let input_big = BigUint::from(input);
+            let result = run_dtm_with_history(&tm, &input_big, max_steps);
+            row.push(result);
+        }
+        table.push(row);
+    }
+    table
+}
+
+/// Parallel version of dtm_output_table_triple_with_history using rayon.
+pub fn dtm_output_table_triple_with_history_parallel(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Vec<(u32, usize, BigUint)>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    (min_rule..=max_rule)
+        .into_par_iter()
+        .map(|rule_num| {
+            if aborted_safe() { return Vec::new(); }
+            let n_bigint = BigInt::from(rule_num);
+            let tm = match models::TuringMachine::from_number(&n_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return Vec::new(),
+            };
+            if min_input > max_input { return Vec::new(); }
+            (min_input..=max_input)
+                .map(|input| {
+                    if aborted_safe() { return Vec::new(); }
+                    let input_big = BigUint::from(input);
+                    run_dtm_with_history(&tm, &input_big, max_steps)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+
 /// Parallel version returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
 pub fn dtm_output_table_pair_parallel_f64(
     num_states: u32,
@@ -627,6 +700,56 @@ pub fn run_dtm(
     None
 }
 
+/// Run a deterministic TM with history tracking.
+/// Returns a Vec of (state, head_position, tape_value) for each step.
+pub fn run_dtm_with_history(
+    tm: &TuringMachine,
+    initial: &BigUint,
+    max_steps: u64,
+) -> Vec<(u32, usize, BigUint)> {
+    let initial_tape = Tape::from_integer_base(initial, tm.num_symbols);
+    let mut state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+    let mut steps: u64 = 0;
+    let mut history: Vec<(u32, usize, BigUint)> = Vec::new();
+    history.push((state.head_state, state.head_position + 1, state.tape.to_integer()));
+
+    while steps < max_steps {
+        if aborted_safe() {
+            return history;
+        }
+        let current_symbol = state.tape.read(state.head_position);
+        if let Some(rule) = tm.get_rule(state.head_state, current_symbol) {
+            state.tape.write(state.head_position, rule.write_symbol);
+            let next_state = rule.next_state;
+            let tape_value = state.tape.to_integer();
+            
+            state.head_state = next_state;
+            let halted = if rule.move_right {
+                if state.head_position == 0 {
+                    true
+                } else {
+                    state.head_position -= 1;
+                    false
+                }
+            } else {
+                state.head_position += 1;
+                false
+            };
+
+            steps += 1;
+            if halted {
+                history.push((next_state, 0, tape_value));
+                return history;
+            } else {
+                history.push((next_state, state.head_position + 1, tape_value));
+            }
+        } else {
+            return history;
+        }
+    }
+    history
+}
+
 /// Traverse the non-deterministic TM and collect all unique halted tape values encountered.
 /// No path information is retained; traversal stops after reaching `max_steps` depth.
 /// Returns Vec<(u64, BigUint)> where u64 is the step at which the value was found.
@@ -834,6 +957,30 @@ pub fn run_dtm_wl(
 }
 
 #[wll::export]
+pub fn run_dtm_with_history_wl(
+    rule_triples: Vec<(u32, u32, i32)>,
+    num_states: u32,
+    num_symbols: u32,
+    initial: String,
+    max_steps: u64,
+) -> Vec<(u32, u64, String)> {
+    let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { 
+        Ok(t) => t, 
+        Err(_) => return Vec::new() 
+    };
+    let initial_biguint: BigUint = match initial.parse::<BigUint>() { 
+        Ok(v) => v, 
+        Err(_) => return Vec::new() 
+    };
+    let history = run_dtm_with_history(&tm, &initial_biguint, max_steps);
+    // Convert usize to u64 and BigUint to String for WL
+    history.into_iter()
+        .map(|(state, pos, value)| (state, pos as u64, value.to_string()))
+        .collect()
+}
+
+
+#[wll::export]
 pub fn collect_seen_values_wl(
     rules: Vec<String>,
     num_states: u32,
@@ -1004,6 +1151,46 @@ pub fn dtm_output_table_triple_parallel_wl(
 ) -> wll::NumericArray<u8> {
     let table = dtm_output_table_triple_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+}
+
+/// WL wrapper for dtm_output_table_triple_with_history (sequential version).
+#[wll::export]
+pub fn dtm_output_table_triple_with_history_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<u8> {
+    let table = dtm_output_table_triple_with_history(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    // Convert usize to u64 for WXF serialization
+    let table_u64: Vec<Vec<Vec<(u32, u64, BigUint)>>> = table
+        .into_iter()
+        .map(|row| row.into_iter().map(|history| history.into_iter().map(|(s, p, v)| (s, p as u64, v)).collect()).collect())
+        .collect();
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table_u64).unwrap())
+}
+
+/// WL wrapper for dtm_output_table_triple_with_history_parallel (parallel version).
+#[wll::export]
+pub fn dtm_output_table_triple_with_history_parallel_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<u8> {
+    let table = dtm_output_table_triple_with_history_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    // Convert usize to u64 for WXF serialization
+    let table_u64: Vec<Vec<Vec<(u32, u64, BigUint)>>> = table
+        .into_iter()
+        .map(|row| row.into_iter().map(|history| history.into_iter().map(|(s, p, v)| (s, p as u64, v)).collect()).collect())
+        .collect();
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table_u64).unwrap())
 }
 
 /// Parallel WL wrapper returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
