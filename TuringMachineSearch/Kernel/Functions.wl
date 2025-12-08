@@ -513,11 +513,11 @@ MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[ru
 
 
 MapApply[Function[{f, fRust, fVecRust, import, none, subst},
-    f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, "Raw"] :=
+    f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, "Raw"] :=
         fRust[numStates, numSymbols, maxSteps, minRule, maxRule, minInput, maxInput];
 
-    f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, {minInput_Integer, maxInput_Integer}, ___] :=
-        If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[minRule ;; maxRule, numStates, numSymbols, maxSteps, {minInput, maxInput}, "Raw"];
+    f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, ___] :=
+        If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[minRule ;; maxRule, numStates, numSymbols, maxSteps, minInput ;; maxInput, "Raw"];
 
     f[numStates_Integer, numSymbols_Integer, maxSteps_Integer, maxInput_Integer, prop : _String | Automatic : Automatic] :=
         f[numStates, numSymbols, maxSteps, 1 ;; maxInput, prop];
@@ -547,21 +547,21 @@ MapApply[Function[{f, fRust, fVecRust, import, none, subst},
 
     (* Vec-based patterns: explicit list of rules with range of inputs using Span *)
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, Developer`DataStore @@ rules, Developer`DataStore @@ Range[minInput, maxInput]];
+        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ rules, ToString /@ Developer`DataStore @@ Range[minInput, maxInput]];
 
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[rules, numStates, numSymbols, maxSteps, minInput ;; maxInput, "Raw"];
 
     (* Vec-based patterns: range of rules with explicit list of inputs using Span *)
     f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, Developer`DataStore @@ Range[minRule, maxRule], inputs];
+        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ Range[minRule, maxRule], ToString /@ Developer`DataStore @@ inputs];
 
     f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[minRule ;; maxRule, numStates, numSymbols, maxSteps, inputs, "Raw"];
 
     (* Vec-based patterns: explicit list of both rules and inputs *)
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, Developer`DataStore @@ rules, Developer`DataStore @@ inputs];
+        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ rules, ToString /@ Developer`DataStore @@ inputs];
 
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[rules, numStates, numSymbols, maxSteps, inputs, "Raw"];
