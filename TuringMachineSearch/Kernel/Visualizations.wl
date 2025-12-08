@@ -1,5 +1,5 @@
 
-BeginPackage["TuringMachineSearch`Visualizations`"]
+BeginPackage["TuringMachineSearch`Visualizations`", "TuringMachineSearch`"]
 
 OneSidedTuringMachinePlot::usage = 
   "OneSidedTuringMachinePlot[rule, input, maxsteps, opts] generates a visualization of the evolution of a one-sided Turing machine.
@@ -18,6 +18,7 @@ OneSidedTuringMachinePlot::usage =
    - \"TerminationColumnColor\": color for the termination column (default: GrayLevel[.7]).
    - ImageSize: size of the image (default: 50)."
 
+OneSidedTuringMachineEvolution
 
 Begin["`Private`"]
 
@@ -31,6 +32,20 @@ CalculateOutput[{headstate_, tape_}, OptionsPattern[{"UndefinedValue" -> Undefin
 
 CalculateOutput[s_String, OptionsPattern[{"UndefinedValue" -> Undefined}]] := CalculateOutput[ToExpression[s]] 
 
+
+OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integer, maxSteps_Integer, width_ : Automatic] := With[
+    {history = OneSidedTuringMachineFunction[{rule, s, k}, input, maxSteps, "History"]},
+    {w = Replace[width, Automatic :> Max[history[[All, 2]]] + 1]}
+,
+    Replace[
+        history,
+        {state_, pos_, value_} :> {
+            {state, w - pos, 1 - pos},
+            PadLeft[Append[0] @ IntegerDigits[value, k], w]
+        },
+        1
+    ]
+]
 
 Options[OneSidedTuringMachinePlot] = Join[{
     "Width" -> "Maximum", 
@@ -48,40 +63,33 @@ Options[OneSidedTuringMachinePlot] = Join[{
 OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : OptionsPattern[]] := 
     OneSidedTuringMachinePlot[rule, input, {maxsteps, "Maximum"}, opts]
 
-OneSidedTuringMachinePlot[rule_, input_Integer, {maxsteps_Integer, width_}, opts : OptionsPattern[]] := Block[{
-    t = 0, states
-},
-    states = NestWhileList[
-        (t++; TuringMachine[rule, #]) &,
-        EncodeInput[input, maxsteps],
-        #[[1, 2]] <= maxsteps + 1 &,
-        1,
-        maxsteps
-    ];
-    OneSidedTuringMachinePlot[states, "Width" -> width, "Input" -> input, opts]
-]
+OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer}, input_Integer, {maxsteps_Integer, width_}, opts : OptionsPattern[]] :=
+    OneSidedTuringMachinePlot[
+        OneSidedTuringMachineEvolution[rule, input, maxsteps, Replace[width, "Maximum" -> Automatic]],
+        "Width" -> width, "Input" -> input, opts
+    ]
 
 OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
-    wval = If[# === "Maximum", Length[states[[1, -1]]] - 1, #] &[OptionValue["Width"]]
+    wval = If[# === "Maximum", Max[- states[[All, 1, 3]]] + 1, # - 1] &[OptionValue["Width"]]
 }, {
-    leftcut = Length[states[[1, -1]]] - wval,
+    leftcut = Max[Length[states[[1, 2]]] - wval, 1],
     labelInputQ = TrueQ[OptionValue["LabelInput"]],
     labelOutputQ = TrueQ[OptionValue["LabelOutput"]]
 },
    ArrayPlot[
-        MapAt[-1 &, Last[#][[leftcut ;;]] & /@ states, {All, -1}], 
+        MapAt[-1 &, #[[2, leftcut ;;]] & /@ states, {All, -1}], 
         FilterRules[FilterRules[{opts}, Options[ArrayPlot]], Except[ImageSize]], 
         ImageSize -> Replace[OptionValue[ImageSize], {
-            s_Integer :> {s / 10, s / 12} * {wval, Length[states]},
-            {w_, f_ /; Head[f] === Function} :> {w, f[Length[states]]}
+            s_Integer :> s / 10 * {wval + 1, Length[states]},
+            {w_, f_Function} :> {w, f[Length[states]]}
         }],
         Mesh -> True,
         AspectRatio -> Full,
         ColorRules -> {
             0 -> GrayLevel[1], 
             1 -> RGBColor[0.965, 0.401, 0.18], 
-            2 -> RGBColor[0.977, 0.952, 0.], -1 -> 
-            OptionValue["TerminationColumnColor"]
+            2 -> RGBColor[0.977, 0.952, 0.],
+            -1 -> OptionValue["TerminationColumnColor"]
         },
         Epilog -> With[{
             headpoints = CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="],
@@ -98,7 +106,7 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
                     Function[{coord, headstate}, 
                         FilledCurve[
                             BezierCurve[
-                                RotationTransform[headangles[[headstate]], coord] /@ (# + coord & /@ headpoints)
+                                RotationTransform[- headangles[[headstate]], coord] /@ (# + coord & /@ headpoints)
                             ]
                         ]
                     ],
