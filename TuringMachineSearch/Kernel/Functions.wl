@@ -356,7 +356,7 @@ OneSidedTuringMachineFind[
 	]
 ]
 
-OneSidedTuringMachineFindFaster[___] := {}
+OneSidedTuringMachineFind[___] := {}
 
 
 Options[MultiwayTuringMachineSearch] = {"Parallel" -> False}
