@@ -115,6 +115,8 @@ DTMOutputTableTripleVecRust := functions["dtm_output_table_triple_parallel_vec_w
 DTMOutputTableStepsVecRust := functions["dtm_output_table_parallel_steps_u64_vec_wl"]
 DTMOutputTableWidthVecRust := functions["dtm_output_table_parallel_width_u64_vec_wl"]
 DTMOutputTableStepsWidthVecRust := functions["dtm_output_table_parallel_steps_width_u64_vec_wl"]
+DTMOutputTableStepsValueRust := functions["dtm_output_table_parallel_steps_value_wl"]
+DTMOutputTableStepsValueVecRust := functions["dtm_output_table_parallel_steps_value_vec_wl"]
 DTMOutputTableFloatPairVecRust := functions["dtm_output_table_pair_parallel_f64_vec_wl"]
 DTMOutputTableFloatTripleVecRust := functions["dtm_output_table_triple_parallel_f64_vec_wl"]
 DTMOutputTableTripleWithHistoryVecRust := functions["dtm_output_table_triple_with_history_parallel_vec_wl"]
@@ -154,6 +156,7 @@ OneSidedTuringMachineFunctionNative[
         "Steps", finalStates[[All, All, 1]],
         "Value", finalStates[[All, All, 2]],
         "MaxWidth" | "Width", finalStates[[All, All, 3]],
+        "StepsValue", finalStates[[All, All, {1, 2}]],
         "StepsWidth", finalStates[[All, All, {1, 3}]],
         "Pair", finalStates[[All, All, ;; 2]],
         All | "Array" | "Triple", finalStates,
@@ -179,7 +182,7 @@ OneSidedTuringMachineFunctionNative[rules_List, input_Integer, args___] :=
 Options[OneSidedTuringMachineFunction] = {Method -> "External"}
 
 ResourceFunction["AddCodeCompletion"]["OneSidedTuringMachineFunction"][
-    None, None, None, {"Value", "Steps", "Width", "StepsWidth", "Pair", "Array", "Triple", "RawValue", "RawSteps", "RawWidth", "RawStepsWidth", "History"}
+    None, None, None, {"Value", "Steps", "Width", "StepsWidth", "StepsValue", "Pair", "Array", "Triple", "RawValue", "RawSteps", "RawWidth", "RawStepsWidth", "History"}
 ]
 
 functionSelect[prop : _String | All : "Value"] := Switch[prop,
@@ -191,6 +194,7 @@ functionSelect[prop : _String | All : "Value"] := Switch[prop,
     "RawMaxWidth" | "RawWidth", RawTuringMachineWidths,
     "StepsWidth", TuringMachineStepsWidths,
     "RawStepsWidth", RawTuringMachineStepsWidths,
+    "StepsValue", TuringMachineStepsValue,
     "Pair", TuringMachineOutputWithStepsFloat,
     "Array" | "Triple", TuringMachineOutputWithStepsWidthsFloat,
     "History" | "Evolution" | "EvolutionHistory", TuringMachineEvolution,
@@ -232,6 +236,8 @@ OneSidedTuringMachineFunction[
                         "Steps" | "RawSteps", steps,
                         "Value", FromDigits[output], "RawValue", output,
                         "MaxWidth" | "Width" | "RawMaxWidth", width,
+                        "StepsValue", {steps, FromDigits[output]},
+                        "RawStepsValue", {steps, output},
                         "StepsWidth" | "RawStepsWidth", {steps, width},
                         All, {steps, FromDigits[output], width}
                     ],
@@ -239,6 +245,7 @@ OneSidedTuringMachineFunction[
                         "Steps", Infinity, "RawSteps", steps,
                         "Value", Undefined, "RawValue", output,
                         "MaxWidth" | "Width", Infinity, "RawMaxWidth" | "RawWidth", width,
+                        "StepsValue", {Infinity, Undefined}, "RawStepsValue", {steps, output},
                         "StepsWidth", {Infinity, Infinity}, "RawStepsWidth", {steps, width},
                         All, {Infinity, Undefined, Infinity}
                     ]
@@ -319,15 +326,45 @@ OneSidedTuringMachineFind[
 	maxSteps_Integer,
 	args___
 ] := OneSidedTuringMachineFind[
+	rule,
+	{1, maxInput},
+	maxSteps,
+	args
+]
+
+OneSidedTuringMachineFind[
+	rule : _Integer | {Repeated[_Integer, {3}]},
+	{minInput_Integer, maxInput_Integer},
+	maxSteps_Integer,
+	args___
+] := OneSidedTuringMachineFind[
 	MapThread[
 		Prepend,
 		{
-			OneSidedTuringMachineFunction[rule, {1, maxInput}, maxSteps, All][[All, ;; 2]],
-			Range[maxInput]
+			OneSidedTuringMachineFunction[rule, {minInput, maxInput}, maxSteps, "StepsValue"],
+			Range[minInput, maxInput]
 		}
 	],
 	args
 ]
+
+OneSidedTuringMachineFind[
+	stepValues : {{_Integer, _Integer} ..},
+	args___
+] := OneSidedTuringMachineFind[
+	MapIndexed[Join[#2, #1] &, stepValues],
+	args
+]
+
+OneSidedTuringMachineFind[
+	{values : {__Integer}},
+    maxSteps_Integer,
+	args___
+] := OneSidedTuringMachineFind[
+	MapIndexed[Join[#2, {maxSteps, #1}] &, values],
+	args
+]
+
 OneSidedTuringMachineFind[
 	inputStepValues : {{_Integer, _Integer, _Integer} ..},
 	sk : {_Integer, _Integer} : {2, 2},
@@ -355,6 +392,8 @@ OneSidedTuringMachineFind[
         |>
 	]
 ]
+
+
 
 OneSidedTuringMachineFind[___] := {}
 
@@ -635,6 +674,7 @@ MapApply[Function[{f, fRust, fVecRust, import, none, subst},
         {RawTuringMachineWidths, DTMOutputTableWidthRust, DTMOutputTableWidthVecRust, Normal, 0, Inherited},
         {RawTuringMachineStepsWidths, DTMOutputTableStepsWidthRust, DTMOutputTableStepsWidthVecRust, Normal, {0, _}, Inherited},
         {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, DTMOutputTableTripleVecRust, BinaryDeserialize @* ByteArray, None, {Infinity, Undefined, Infinity}},
+        {TuringMachineStepsValue, DTMOutputTableStepsValueRust, DTMOutputTableStepsValueVecRust, BinaryDeserialize @* ByteArray, None, {Infinity, Undefined}},
         {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, DTMOutputTableFloatPairVecRust, Normal, None, Inherited},
         {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, DTMOutputTableFloatTripleVecRust, Normal, None, Inherited},
         {TuringMachineEvolution, DTMOutputTableTripleWithHistoryParallelRust, DTMOutputTableTripleWithHistoryVecRust, BinaryDeserialize @* ByteArray, None, Inherited}

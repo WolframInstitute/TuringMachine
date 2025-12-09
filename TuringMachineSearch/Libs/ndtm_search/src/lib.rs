@@ -233,6 +233,27 @@ pub fn dtm_output_table_parallel_steps_width_u64(
     dtm_output_table_parallel_steps_width_u64_vec(num_states, num_symbols, max_steps, &rules, &inputs)
 }
 
+/// Parallel version returning (steps, value) pairs with full precision (BigUint values).
+/// Each cell: Some((steps, output)) if halts within max_steps, else None.
+pub fn dtm_output_table_parallel_steps_value(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> Vec<Vec<Option<(u64, BigUint)>>> {
+    let base: u64 = (2 * num_states * num_symbols) as u64;
+    let exp: u32 = (num_states * num_symbols) as u32;
+    let rule_space_size: u64 = base.pow(exp);
+    if min_rule > max_rule || max_rule >= rule_space_size { return Vec::new(); }
+    if min_input > max_input { return Vec::new(); }
+    let rules: Vec<BigInt> = (min_rule..=max_rule).map(BigInt::from).collect();
+    let inputs: Vec<BigUint> = (min_input..=max_input).map(BigUint::from).collect();
+    dtm_output_table_parallel_steps_value_vec(num_states, num_symbols, max_steps, &rules, &inputs)
+}
+
 /// Parallel version returning contiguous array of f64 triples (step, value, width), {0.0, -1.0, 0.0} for non-halting cases.
 pub fn dtm_output_table_triple_parallel_f64(
     num_states: u32,
@@ -429,6 +450,34 @@ pub fn dtm_output_table_pair_parallel_f64_vec(
         })
         .collect();
     rows.into_iter().flatten().collect()
+}
+
+/// Parallel version returning (steps, value) pairs with full precision for explicit vectors.
+pub fn dtm_output_table_parallel_steps_value_vec(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    rules: &[BigInt],
+    inputs: &[BigUint],
+) -> Vec<Vec<Option<(u64, BigUint)>>> {
+    rules
+        .par_iter()
+        .map(|rule_num| {
+            let tm = match models::TuringMachine::from_number(rule_num, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return inputs.iter().map(|_| None).collect(),
+            };
+            inputs
+                .iter()
+                .map(|input| {
+                    match run_dtm(&tm, input, max_steps) {
+                        Some((steps, val, _)) => Some((steps, val)),
+                        None => None
+                    }
+                })
+                .collect()
+        })
+        .collect()
 }
 
 /// Parallel version returning f64 triples (step, value, width) for explicit vectors.
@@ -1292,6 +1341,21 @@ pub fn dtm_output_table_parallel_steps_width_u64_wl(
     wll::NumericArray::from_array(&[num_rules, num_inputs, 2], &arr)
 }
 
+/// WL wrapper returning (steps, value) pairs with full precision via WXF serialization.
+#[wll::export]
+pub fn dtm_output_table_parallel_steps_value_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    min_rule: u64,
+    max_rule: u64,
+    min_input: u32,
+    max_input: u32,
+) -> wll::NumericArray<u8> {
+    let table = dtm_output_table_parallel_steps_value(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+}
+
 /// WL wrapper returning a 3D NumericArray<f64> of triples (steps,value,width); non-halting has {0.0,-1.0,0.0}
 #[wll::export]
 pub fn dtm_output_table_triple_parallel_f64_wl(
@@ -1410,6 +1474,21 @@ pub fn dtm_output_table_pair_parallel_f64_vec_wl(
     let num_rules = rules_big.len();
     let num_inputs = inputs_big.len();
     wll::NumericArray::from_array(&[num_rules, num_inputs * 2], &arr)
+}
+
+/// WL wrapper for vec-based steps/value with full precision.
+#[wll::export]
+pub fn dtm_output_table_parallel_steps_value_vec_wl(
+    num_states: u32,
+    num_symbols: u32,
+    max_steps: u64,
+    rules: Vec<String>,
+    inputs: Vec<String>,
+) -> wll::NumericArray<u8> {
+    let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
+    let table = dtm_output_table_parallel_steps_value_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
+    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
 }
 
 /// WL wrapper for vec-based f64 triples.
