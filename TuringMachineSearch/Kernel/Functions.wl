@@ -12,6 +12,8 @@ OneSidedTuringMachineFunction[rule, input, maxSteps, prop] returns the specified
 - All: Returns {steps, value, width}.
 Returns {Infinity, Undefined, Infinity} (or parts thereof) if it does not halt within maxSteps."
 
+OneSidedTuringMachineFind::usage = "OneSidedTuringMachineFind[rule, maxInput, maxSteps, {s, k}, rules] finds equivalent Turing Machine functions that run within same or less number of steps for a given rule."
+
 MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, output, maxSteps] attempts to find a sequence of transitions in a non-deterministic Turing machine defined by a list of integer rules that transforms input into output within maxSteps steps (assumes 2 states, 2 symbols).
 MultiwayTuringMachineSearch[rules, numStates, numSymbols, input, output, maxSteps] allows specifying the number of states and symbols."
 
@@ -308,6 +310,53 @@ OneSidedTuringMachineFunction[{rules : {__Integer}, numStates_Integer, numSymbol
 
 OneSidedTuringMachineFunction[rule_, input_, maxSteps_, opts : OptionsPattern[]] := 
     OneSidedTuringMachineFunction[rule, input, maxSteps, "Value", opts]
+
+
+
+OneSidedTuringMachineFind[
+	rule : _Integer | {Repeated[_Integer, {3}]},
+	maxInput_Integer,
+	maxSteps_Integer,
+	args___
+] := OneSidedTuringMachineFind[
+	MapThread[
+		Prepend,
+		{
+			OneSidedTuringMachineFunction[rule, {1, maxInput}, maxSteps, All][[All, ;; 2]],
+			Range[maxInput]
+		}
+	],
+	args
+]
+OneSidedTuringMachineFind[
+	inputStepValues : {{_Integer, _Integer, _Integer} ..},
+	sk : {_Integer, _Integer} : {2, 2},
+	defaultRules : {___Integer} | All : All
+] := Block[{
+	rulesLeft,
+	initRules = Replace[defaultRules, All :> Range[TuringMachineRuleCount @@ sk]],
+	curInput = None
+},
+	Progress`EvaluateWithProgress[
+		FoldWhile[{rules, x} |->
+			MapThread[
+				If[#2 =!= Undefined && #2 == x[[3]], #1, Nothing] &,
+				{rules, OneSidedTuringMachineFunction[{rules, Splice[sk]}, curInput = x[[1]], x[[2]]]}
+			],
+			initRules,
+			inputStepValues,
+			((rulesLeft = Length[#]); # =!= {}) &
+		],
+		<|
+			"Text" :> StringTemplate["Rules left to check: ``"][rulesLeft],
+			"Detail" :> If[curInput === None, None, StringTemplate["Current input: ``"][curInput]],
+			"Progress" -> Automatic,
+			"Percentage" :> 1 - rulesLeft / Length[initRules]
+        |>
+	]
+]
+
+OneSidedTuringMachineFindFaster[___] := {}
 
 
 Options[MultiwayTuringMachineSearch] = {"Parallel" -> False}
