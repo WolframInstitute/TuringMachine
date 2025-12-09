@@ -1,3 +1,4 @@
+(* ::Package:: *)
 
 BeginPackage["TuringMachineSearch`Visualizations`", "TuringMachineSearch`"]
 
@@ -48,17 +49,20 @@ OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integ
 ]
 
 Options[OneSidedTuringMachinePlot] = Join[{
-    "Width" -> "Maximum", 
-    "Input" -> Automatic,
-    "LabelInput" -> False,
-    "LabelOutput" -> True, 
-    "PlotSize" -> "Automatic",
-    "UndefinedLabel" -> Undefined, 
-    "LabelInputStyle" -> {},
-    "LabelOutputStyle" -> {}, 
-    "TerminationColumnColor" -> GrayLevel[.7],
-    ImageSize -> 50
-}, Options[ArrayPlot]]
+"Width"-> "Maximum",
+"Input"->Automatic, 
+"LabelInput"->False, 
+"kValue"-> 2,
+"sValue"-> 2, 
+"LabelOutput"-> True, 
+"LabelRuntime"-> False, 
+"LabelRuntimeStyle"-> {},
+"PlotSize"->"Automatic", 
+"UndefinedLabel"-> Undefined, 
+"LabelInputStyle"->{},
+"LabelOutputStyle"->{}, 
+"TerminationColumnColor"-> GrayLevel[.7], 
+ImageSize->50}, Options[ArrayPlot]]
 
 OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : OptionsPattern[]] := 
     OneSidedTuringMachinePlot[rule, input, {maxsteps, "Maximum"}, opts]
@@ -66,7 +70,7 @@ OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : Options
 OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer}, input_Integer, {maxsteps_Integer, width_}, opts : OptionsPattern[]] :=
     OneSidedTuringMachinePlot[
         OneSidedTuringMachineEvolution[rule, input, maxsteps, Replace[width, "Maximum" -> Automatic]],
-        "Width" -> width, "Input" -> input, opts
+        "Width" -> width, "Input" -> input, "sValue"->rule[[2]], "kValue"-> rule[[3]], opts
     ]
 
 OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
@@ -95,7 +99,7 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
             headpoints = CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="],
             headstates = states[[All, 1, 1]]
         }, {
-            s = Max[headstates], 
+            s = If[OptionValue["sValue"] === Automatic, Max[headstates], OptionValue["sValue"]], 
             origin = headpoints[[13]]
         }, {
             headangles = Most[Subdivide[2 Pi , s]]
