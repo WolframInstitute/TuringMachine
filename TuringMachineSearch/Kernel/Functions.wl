@@ -1,4 +1,4 @@
-BeginPackage["TuringMachineSearch`", "ExtensionCargo`"]
+BeginPackage["TuringMachineSearch`"]
 
 ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
 
@@ -54,33 +54,55 @@ NonTerminatingTuringMachineQ[{rule, numStates, numSymbols}, input, maxSteps] che
 
 Begin["`Private`"];
 
-functions := functions = Association @ KeyValueMap[
-    #1 -> Composition[
-        Replace[LibraryFunctionError[error_, code_] :>
-            Failure["RustError", <|
-                "MessageTemplate" -> "Rust error: `` (``)",
-                "MessageParameters" -> {error, code},
-                "Error" -> error, "ErrorCode" -> code, "Function" -> #1
-            |>]
-        ],
-        #2
-    ] &
-    ,
-    Replace[
-        CargoLoad[
-            PacletObject["TuringMachineSearch"],
-            "Functions"
-        ],
-        _ ? FailureQ :> Replace[
-            CargoBuild[PacletObject["TuringMachineSearch"]], {
-                f_ ? FailureQ :> Function @ Function @ f,
-                files_ :> CargoLoad[
-                    files,
-                    "Functions"
-                ]
-            }
-        ]
-    ]
+
+pacletInstalledQ[paclet_, version_] := AnyTrue[Through[PacletFind[paclet]["Version"]], ResourceFunction["VersionOrder"][#, version] <= 0 &]
+
+functions := functions = (
+	If[ ! pacletInstalledQ["ExternalEvaluate", "38.0.1"],
+		PacletInstall["ExternalEvaluate"]
+	];
+	If[ ! pacletInstalledQ["PacletExtensions", "40.0.0"],
+		PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
+	];
+	Needs["ExtensionCargo`"];
+	Replace[
+		ExtensionCargo`CargoLoad[
+			PacletObject["TuringMachineSearch"],
+			"Functions"
+		],
+		Except[_ ? AssociationQ] :> Replace[
+			ExtensionCargo`CargoBuild[PacletObject["TuringMachineSearch"]], {
+				f : Except[{__ ? FileExistsQ}] :> Function @ Function @ Failure["CargoBuildError", <|
+						"MessageTemplate" -> "Cargo build failed",
+						"Return" -> f
+					|>],
+				files_ :> Replace[
+					ExtensionCargo`CargoLoad[files, "Functions"],
+					f : Except[_ ? AssociationQ] :>
+						Function @ Function @ Failure["CargoLoadError", <|
+							"MessageTemplate" -> "Cargo load failed",
+							"Return" -> f
+						|>]
+				]
+			}
+		]
+	]
+) // Replace[{
+	functions_ ? AssociationQ :>
+		Association @ KeyValueMap[
+			#1 -> Composition[
+				Replace[LibraryFunctionError[error_, code_] :>
+					Failure["RustError", <|
+						"MessageTemplate" -> "Rust error: `` (``)",
+						"MessageParameters" -> {error, code},
+					"Error" -> error, "ErrorCode" -> code, "Function" -> #1
+				|>]
+			],
+			#2
+		] &,
+		functions
+	]
+}
 ]
 
 MultiwayTMFunctionSearchRust := functions["exhaustive_search_wl"]
