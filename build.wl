@@ -8,7 +8,9 @@ PacletDirectoryLoad[name]
 paclet = PacletObject[name]
 
 CargoBuild[paclet]
-pacletFile = BuildPacletArchive[paclet]
+pacletFile = CreatePacletArchive[name]
+
+Echo[StringTemplate["Paclet `` has size ``"][pacletFile, FileSize[pacletFile]]]
 
 PacletDirectoryUnload[name]
 

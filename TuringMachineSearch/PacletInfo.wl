@@ -4,7 +4,7 @@ Paclet[
     Extensions -> {
         {
             "Cargo",
-            "Root" -> "Libs/ndtm_search"
+            "Root" -> ".."
         },
         {
             "Build",
