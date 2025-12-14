@@ -29,7 +29,7 @@ fn test_detect_cycle_true() {
     let initial = BigUint::from(0u32);
     let max_steps = 100;
     
-    assert!(detect_cycle(&tm, &initial, max_steps));
+    assert!(detect_cycle(&tm, &[initial], max_steps));
 }
 
 #[test]
@@ -52,5 +52,5 @@ fn test_detect_cycle_false() {
     let initial = BigUint::from(0u32);
     let max_steps = 100;
     
-    assert!(!detect_cycle(&tm, &initial, max_steps));
+    assert!(!detect_cycle(&tm, &[initial], max_steps));
 }

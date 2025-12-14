@@ -17,12 +17,18 @@ OneSidedTuringMachineFind::usage = "OneSidedTuringMachineFind[rule, maxInput, ma
 MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, output, maxSteps] attempts to find a sequence of transitions in a non-deterministic Turing machine defined by a list of integer rules that transforms input into output within maxSteps steps (assumes 2 states, 2 symbols).
 MultiwayTuringMachineSearch[rules, numStates, numSymbols, input, output, maxSteps] allows specifying the number of states and symbols."
 
+OneSidedMultiwayTuringMachineSearch = MultiwayTuringMachineSearch
+
 MultiwayTuringMachineFunction::usage = "MultiwayTuringMachineFunction[rules, input, maxSteps] traverses a non-deterministic Turing machine defined by a list of integer rules and returns all unique tape values from halted states (assumes 2 states, 2 symbols).
 MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, maxSteps] allows specifying the number of states and symbols.
 MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, target, maxSteps] stops early if the target output is found."
 
+OneSidedMultiwayTuringMachineFunction = MultiwayTuringMachineFunction
+
 MultiwayNonHaltedStatesLeft::usage = "MultiwayNonHaltedStatesLeft[rules, input, maxSteps] returns the number of non-halted states remaining in the traversal queue after exploring up to maxSteps steps (assumes 2 states, 2 symbols).
 MultiwayNonHaltedStatesLeft[rules, numStates, numSymbols, input, maxSteps] allows specifying the number of states and symbols."
+
+OneSidedMultiwayNonHaltedStatesLeft = MultiwayNonHaltedStatesLeft
 
 TuringMachineRuleCases::usage = "TuringMachineRuleCases[{rule, numStates, numSymbols}] returns an association mapping {state, symbol} to the transition triple {nextState, writeSymbol, direction}."
 
@@ -108,13 +114,10 @@ functions := functions = (
 MultiwayTMFunctionSearchRust := functions["exhaustive_search_wl"]
 MultiwayTMFunctionSearchRustParallel := functions["exhaustive_search_parallel_wl"]
 CollectSeenValuesRust := functions["collect_seen_values_wl"]
-CollectSeenValuesWithTargetRust := functions["collect_seen_values_with_target_wl"]
 CollectSeenValuesTuplesRust := functions["collect_seen_values_tuples_wl"]
-CollectSeenValuesWithTargetTuplesRust := functions["collect_seen_values_with_target_tuples_wl"]
 CollectSeenValuesTuplesInferredRust := functions["collect_seen_values_tuples_inferred_wl"]
-CollectSeenValuesWithTargetTuplesInferredRust := functions["collect_seen_values_with_target_tuples_inferred_wl"]
 CollectSeenValuesTriplesRust := functions["collect_seen_values_triples_wl"]
-CollectSeenValuesWithTargetTriplesRust := functions["collect_seen_values_with_target_triples_wl"]
+
 RunDeterministicTMRust := functions["run_dtm_wl"]
 RunDeterministicTMWithHistoryRust := functions["run_dtm_with_history_wl"]
 MultiwayQueueSizeRust := functions["ndtm_traverse_queue_size_wl"]
@@ -428,17 +431,17 @@ MultiwayTuringMachineSearch[
         numStates_Integer,
         numSymbols_Integer
     },
-    input_Integer,
-    output_Integer,
+    input : _Integer | {__Integer},
+    output : _Integer | {__Integer},
     maxSteps_Integer,
     OptionsPattern[]
 ] := Replace[
     List @@ FromDigits /@ If[TrueQ[OptionValue["Parallel"]], MultiwayTMFunctionSearchRustParallel, MultiwayTMFunctionSearchRust][
-        ToString /@ Developer`DataStore @@ rules,
+        Developer`DataStore @@ ToString /@ rules,
         numStates,
         numSymbols,
-        ToString[input],
-        ToString[output],
+        Developer`DataStore @@ ToString /@ Flatten[{input}],
+        Developer`DataStore @@ ToString /@ Flatten[{output}],
         maxSteps
     ],
     {} -> Failure["PathNotFound", <|"MessageTemplate" -> "Failed to find the target."|>]
@@ -454,33 +457,23 @@ MultiwayTuringMachineFunction[
         numStates_Integer,
         numSymbols_Integer
     },
-    input_Integer,
+    inputs : _Integer | {__Integer},
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
-   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ If[MissingQ[target],
-        CollectSeenValuesRust[
-            ToString /@ Developer`DataStore @@ rules,
-            numStates,
-            numSymbols,
-            ToString[input],
-            maxSteps,
-            cycleTerminateQ
-        ],
-        CollectSeenValuesWithTargetRust[
-            ToString /@ Developer`DataStore @@ rules,
-            numStates,
-            numSymbols,
-            ToString[input],
-            ToString[target],
-            maxSteps,
-            cycleTerminateQ
-        ]
+   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesRust[
+        Developer`DataStore @@ ToString /@ rules,
+        numStates,
+        numSymbols,
+        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
+        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        maxSteps,
+        cycleTerminateQ
     ]
 ]
 
 MultiwayTuringMachineFunction[
     rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..},
-    input_Integer,
+    inputs : _Integer | {__Integer},
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False], 
     tupleRules = Apply[Developer`DataStore,
@@ -495,20 +488,12 @@ MultiwayTuringMachineFunction[
         {0, 1}
     ]
 },
-    Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ If[MissingQ[target],
-        CollectSeenValuesTuplesInferredRust[
-            tupleRules,
-            ToString[input],
-            maxSteps,
-            cycleTerminateQ
-        ],
-        CollectSeenValuesWithTargetTuplesInferredRust[
-            tupleRules,
-            ToString[input],
-            ToString[target],
-            maxSteps,
-            cycleTerminateQ
-        ]
+    Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesTuplesInferredRust[
+        tupleRules,
+        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
+        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        maxSteps,
+        cycleTerminateQ
     ]
 ]
 
@@ -518,41 +503,32 @@ MultiwayTuringMachineFunction[
         numStates_Integer,
         numSymbols_Integer
     },
-    input_Integer,
+    inputs : _Integer | {__Integer},
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
-   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ If[MissingQ[target],
-        CollectSeenValuesTriplesRust[
-            rules,
-            numStates,
-            numSymbols,
-            ToString[input],
-            maxSteps,
-            cycleTerminateQ
-        ],
-        CollectSeenValuesWithTargetTriplesRust[
-            rules,
-            numStates,
-            numSymbols,
-            ToString[input],
-            ToString[target],
-            maxSteps,
-            cycleTerminateQ
-        ]
+   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesTriplesRust[
+        rules,
+        numStates,
+        numSymbols,
+        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
+        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        maxSteps,
+        cycleTerminateQ
     ]
 ]
 
-MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[rules, input, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
 
-MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, input_, target_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[rules, input, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
+MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, inputs : _Integer | {__Integer}, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[rules, inputs, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
 
-MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, input, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
+MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, inputs : _Integer | {__Integer}, target : _Integer | {__Integer}, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[rules, inputs, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
 
-MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, input_, target_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, input, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
+MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, inputs : _Integer | {__Integer}, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, inputs, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
+
+MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, inputs : _Integer | {__Integer}, target : _Integer | {__Integer}, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, inputs, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
 
 MultiwayTuringMachineFunction[rules : {__Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
     MultiwayTuringMachineFunction[rules, 2, 2, input, maxSteps, cycleTerminateQ]
@@ -562,44 +538,46 @@ MultiwayNonHaltedStatesLeft[
     rules : {__Integer},
     numStates_Integer,
     numSymbols_Integer,
-    input_Integer,
+    inputs : _Integer | {__Integer},
     maxSteps_Integer
 ] :=
     MultiwayQueueSizeRust[
-        ToString /@ Developer`DataStore @@ rules,
+        Developer`DataStore @@ ToString /@ rules,
         numStates,
         numSymbols,
-        ToString[input],
+        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
         maxSteps
     ]
 
-MultiwayNonHaltedStatesLeft[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
-    MultiwayNonHaltedStatesLeft[rules, 2, 2, input, maxSteps]
+MultiwayNonHaltedStatesLeft[rules : {__Integer}, inputs : _Integer | {__Integer}, maxSteps_Integer] :=
+    MultiwayNonHaltedStatesLeft[rules, 2, 2, inputs, maxSteps]
 
 
 NonTerminatingTuringMachineQ[
     rules : {__Integer},
     numStates_Integer,
     numSymbols_Integer,
-    input_Integer,
+    inputs : _Integer | {__Integer},
     maxSteps_Integer
 ] :=
     DetectCycleRust[
-        ToString /@ Developer`DataStore @@ rules,
+        Developer`DataStore @@ ToString /@ rules,
         numStates,
         numSymbols,
-        ToString[input],
+        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
         maxSteps
     ]
 
-NonTerminatingTuringMachineQ[rules : {__Integer}, input_Integer, maxSteps_Integer] :=
-    NonTerminatingTuringMachineQ[rules, 2, 2, input, maxSteps]
 
-NonTerminatingTuringMachineQ[{rule_Integer, numStates_Integer, numSymbols_Integer}, input_Integer, maxSteps_Integer] :=
-    NonTerminatingTuringMachineQ[{rule}, numStates, numSymbols, input, maxSteps]
+NonTerminatingTuringMachineQ[rules : {__Integer}, inputs : _Integer | {__Integer}, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[rules, 2, 2, inputs, maxSteps]
 
-NonTerminatingTuringMachineQ[rule_Integer, input_Integer, maxSteps_Integer] :=
-    NonTerminatingTuringMachineQ[{rule}, 2, 2, input, maxSteps]
+NonTerminatingTuringMachineQ[{rule_Integer, numStates_Integer, numSymbols_Integer}, inputs : _Integer | {__Integer}, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[{rule}, numStates, numSymbols, inputs, maxSteps]
+
+NonTerminatingTuringMachineQ[rule_Integer, inputs : _Integer | {__Integer}, maxSteps_Integer] :=
+    NonTerminatingTuringMachineQ[{rule}, 2, 2, inputs, maxSteps]
+
 
 TuringMachineRuleCases[
     rule_Integer,

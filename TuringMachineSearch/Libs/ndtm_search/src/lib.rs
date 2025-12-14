@@ -833,29 +833,35 @@ pub fn run_dtm_with_history(
 /// Traverse the non-deterministic TM and collect all unique halted tape values encountered.
 /// No path information is retained; traversal stops after reaching `max_steps` depth.
 /// Returns Vec<(u64, BigUint)> where u64 is the step at which the value was found.
-/// If target is Some, terminates early if target value is found.
+/// If any target in `targets` is found, terminates early.
+/// Seeds the queue with all initial values in `initials`.
 pub fn collect_seen_values(
     tm: &TuringMachine,
-    initial: &BigUint,
+    initials: &[BigUint],
     max_steps: u64,
-    target: Option<&BigUint>,
+    targets: &[BigUint],
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, BigUint)>, Vec<usize>, bool) {
-    let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState {
-        head_state: 1,
-        head_position: 0,
-        tape: initial_tape,
-    };
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    queue.push_back((initial_state.clone(), 0));
+    // Seed queue with all initial states
+    for initial in initials {
+        let initial_tape = Tape::from_integer(initial);
+        let initial_state = TMState {
+            head_state: 1,
+            head_position: 0,
+            tape: initial_tape,
+        };
+        queue.push_back((initial_state, 0));
+    }
+    // Build target set for fast lookup
+    let target_set: HashSet<&BigUint> = targets.iter().collect();
     // Track insertion depth of each expanded state
     let mut expanded: HashMap<TMState, u64> = HashMap::new();
     let mut seen_order: Vec<(u64, BigUint)> = Vec::new();
-    let mut seen_set: HashSet<BigUint> = HashSet::new();
+    let mut seen_set: HashSet<(u64, BigUint)> = HashSet::new();
     let mut found_target = false;
     let mut queue_sizes: Vec<usize> = Vec::new();
-    queue_sizes.push(1); // initial queue size
+    queue_sizes.push(queue.len()); // initial queue size
     let mut cycle_detected = false;
     let mut last_depth = 0u64;
     while let Some((current_state, depth)) = queue.pop_front() {
@@ -878,15 +884,14 @@ pub fn collect_seen_values(
         for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
             if halted {
                 let val = new_state.tape.to_integer();
-                if !seen_set.contains(&val) {
-                    seen_set.insert(val.clone());
-                    seen_order.push((depth + 1, val.clone()));
-                    if let Some(target_val) = target {
-                        if &val == target_val {
-                            found_target = true;
-                            break;
-                        }
-                    }
+                let pair = (depth + 1, val.clone());
+                if !seen_set.contains(&pair) {
+                    seen_set.insert(pair.clone());
+                    seen_order.push(pair);
+                }
+                if target_set.contains(&val) {
+                    found_target = true;
+                    break;
                 }
             } else {
                 queue.push_back((new_state, depth + 1));
@@ -896,23 +901,28 @@ pub fn collect_seen_values(
     }
     queue_sizes.push(queue.len());
     (seen_order, queue_sizes, cycle_detected)
+
 }
 
 /// Detect if the non-deterministic TM enters a cycle within max_steps.
 /// Returns true if a cycle is detected, false otherwise.
+/// Seeds the queue with all initial values in `initials`.
 pub fn detect_cycle(
     tm: &TuringMachine,
-    initial: &BigUint,
+    initials: &[BigUint],
     max_steps: u64,
 ) -> bool {
-    let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState {
-        head_state: 1,
-        head_position: 0,
-        tape: initial_tape,
-    };
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    queue.push_back((initial_state.clone(), 0));
+    // Seed queue with all initial states
+    for initial in initials {
+        let initial_tape = Tape::from_integer(initial);
+        let initial_state = TMState {
+            head_state: 1,
+            head_position: 0,
+            tape: initial_tape,
+        };
+        queue.push_back((initial_state, 0));
+    }
     // Track insertion depth of each expanded state
     let mut expanded: HashMap<TMState, u64> = HashMap::new();
     
@@ -938,16 +948,21 @@ pub fn detect_cycle(
     false
 }
 
+
 /// Simple breadth traversal without collecting halted values; returns remaining queue size (0 => exhaustive termination)
+/// Seeds the queue with all initial values in `initials`.
 pub fn ndtm_traverse_queue_size(
     tm: &TuringMachine,
-    initial: &BigUint,
+    initials: &[BigUint],
     max_steps: u64,
 ) -> usize {
-    let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    queue.push_back((initial_state, 0));
+    // Seed queue with all initial states
+    for initial in initials {
+        let initial_tape = Tape::from_integer(initial);
+        let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+        queue.push_back((initial_state, 0));
+    }
     let mut expanded: HashSet<TMState> = HashSet::new();
     while let Some((current_state, depth)) = queue.pop_front() {
         if aborted_safe() || depth >= max_steps { break; }
@@ -961,6 +976,7 @@ pub fn ndtm_traverse_queue_size(
     }
     queue.len()
 }
+
 
 
 // Wolfram LibraryLink wrappers
@@ -1065,32 +1081,16 @@ pub fn collect_seen_values_wl(
     rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, String)>, Vec<usize>, bool) {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
-}
-
-#[wll::export]
-pub fn collect_seen_values_with_target_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initial: String,
-    target: String,
-    max_steps: u64,
-    terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
-    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
-    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
@@ -1099,13 +1099,13 @@ pub fn detect_cycle_wl(
     rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
+    initials: Vec<String>,
     max_steps: u64,
 ) -> bool {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    detect_cycle(&tm, &initial_biguint, max_steps)
+    let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
+    detect_cycle(&tm, &initial_biguints, max_steps)
 }
 
 #[wll::export]
@@ -1113,13 +1113,13 @@ pub fn ndtm_traverse_queue_size_wl(
     rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
+    initials: Vec<String>,
     max_steps: u64,
 ) -> usize {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    ndtm_traverse_queue_size(&tm, &initial_biguint, max_steps)
+    let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
+    ndtm_traverse_queue_size(&tm, &initial_biguints, max_steps)
 }
 
 /// Export deterministic TM rules without strings or rule numbers.
@@ -1534,7 +1534,8 @@ pub fn collect_seen_values_tuples_wl(
     rules: Vec<(u32, u32, u32, u32, i32)>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, String)>, Vec<usize>, bool) {
@@ -1542,37 +1543,9 @@ pub fn collect_seen_values_tuples_wl(
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
     };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
-}
-
-#[wll::export]
-pub fn collect_seen_values_with_target_tuples_wl(
-    rules: Vec<(u32, u32, u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
-    initial: String,
-    target: String,
-    max_steps: u64,
-    terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
-    let tm = match TuringMachine::from_rule_tuples(&rules, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let target_biguint: BigUint = match target.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
+    let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
@@ -1581,7 +1554,8 @@ pub fn collect_seen_values_triples_wl(
     rules: Vec<(u32, u32, i32)>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, String)>, Vec<usize>, bool) {
@@ -1589,45 +1563,17 @@ pub fn collect_seen_values_triples_wl(
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
     };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
-
-#[wll::export]
-pub fn collect_seen_values_with_target_triples_wl(
-    rules: Vec<(u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
-    initial: String,
-    target: String,
-    max_steps: u64,
-    terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
-    let tm = match TuringMachine::from_rule_triples(&rules, num_states, num_symbols) {
-        Ok(t) => t,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let target_biguint: BigUint = match target.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
-}
-
 
 #[wll::export]
 pub fn collect_seen_values_tuples_inferred_wl(
     rules: Vec<(u32, u32, u32, u32, i32)>,
-    initial: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, String)>, Vec<usize>, bool) {
@@ -1635,34 +1581,9 @@ pub fn collect_seen_values_tuples_inferred_wl(
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
     };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, None, terminate_on_cycle);
+    let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
-#[wll::export]
-pub fn collect_seen_values_with_target_tuples_inferred_wl(
-    rules: Vec<(u32, u32, u32, u32, i32)>,
-    initial: String,
-    target: String,
-    max_steps: u64,
-    terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
-    let tm = match TuringMachine::from_rule_tuples_inferred(&rules) {
-        Ok(t) => t,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let initial_biguint: BigUint = match initial.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let target_biguint: BigUint = match target.parse::<BigUint>() {
-        Ok(v) => v,
-        Err(_) => return (Vec::new(), Vec::new(), false),
-    };
-    let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguint, max_steps, Some(&target_biguint), terminate_on_cycle);
-    (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
-}
