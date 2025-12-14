@@ -3,14 +3,19 @@ BeginPackage["TuringMachineSearch`"]
 
 OneSidedTuringMachineMultiwayGraph
 
+
 Begin["`Private`"]
 
-EncodeInput[n_, k_Integer : 2] := With[{digits = IntegerDigits[n, k]},
+EncodeInput[n_, k_Integer : 2] := With[{digits = IntegerDigits[n, Max[k, 2]]},
     {{1, Length[digits], -1}, {digits, 0}}
 ]
 
-
-Options[OneSidedTuringMachineMultiwayGraph] = Join[{"Width" -> Automatic}, Options[ResourceFunction["NestGraphTagged"]]];
+Options[OneSidedTuringMachineMultiwayGraph] = Join[{
+    "Width" -> Automatic,
+    "ShowIntermediateLabels" -> False
+},
+    Options[ResourceFunction["NestGraphTagged"]]
+]
 
 
 OneSidedTuringMachineMultiwayGraph[
@@ -34,23 +39,39 @@ OneSidedTuringMachineMultiwayGraph[
 
     Graph[
         g,
-        VertexLabels -> state_ :> Placed[If[
+        VertexLabels -> state_ :> Which[
             state[[1, 3]] == 0,
-            Framed[FromDigits[state[[2, 1, ;; -2]], k], Background -> Red],
-            FromDigits[state[[2, 1]], k]
-        ], Below],
+            Placed[Style[FromDigits[state[[2, 1, ;; -2]], k], Bold], Below],
+            MemberQ[inits, state],
+            Placed[FromDigits[state[[2, 1]], k], Above],
+            True,
+            If[ TrueQ[OptionValue["ShowIntermediateLabels"]],
+                Placed[FromDigits[state[[2, 1, ;; -2]], k], {Bottom, Left}],
+                None
+            ]
+        ],
         VertexShapeFunction -> With[{w = Replace[OptionValue["Width"], Automatic :> Max[Length /@ VertexList[g][[All, 2, 1]]] + 1]},
-            Function[Inset[Framed[
+            Function[Inset[
                 OneSidedTuringMachinePlot[
-                    {MapAt[If[#2[[1, 3]] == 0, Identity, Append[0]] @* First, {2}] @ #2},
-                    "LabelOutput" -> False,
-                    ImageSize -> 16 * w, AspectRatio -> Automatic
-                ], Background -> LightBlue, FrameMargins -> 1 / 2],
-                #1, #3
+                    { MapAt[If[#2[[1, 3]] == 0, Identity, Append[0]] @* First, {2}][#2] //
+                        If[ OptionValue["Width"] === Automatic,
+                            Identity,
+                            With[{len = Length[#[[2]]]}, MapAt[# + (w - len) &, MapAt[PadLeft[#, w, 0] &, #, {2}], {1, 2}]] &
+                        ]
+                    },
+                    "Width" -> w, "LabelOutput" -> False,
+                    ImageSize -> {"Scaled", 64 * #3}, AspectRatio -> Automatic
+                ],
+                #1
             ]]
-        ]
+        ],
+        VertexSize -> 1,
+        PerformanceGoal -> "Quality"
     ]
 ]
+
+OneSidedTuringMachineMultiwayGraph[rules : {{__Integer}, _Integer, _Integer}, args___] :=
+    OneSidedTuringMachineMultiwayGraph[TuringMachineRuleCases /@ Thread[rules], args]
 
 OneSidedTuringMachineMultiwayGraph[rules_List, args___] :=
     OneSidedTuringMachineMultiwayGraph[TuringMachineRuleCases /@ rules, args]

@@ -423,9 +423,11 @@ OneSidedTuringMachineFind[___] := {}
 Options[MultiwayTuringMachineSearch] = {"Parallel" -> False}
 
 MultiwayTuringMachineSearch[
-    rules : {__Integer},
-    numStates_Integer,
-    numSymbols_Integer,
+    {
+        rules : {__Integer},
+        numStates_Integer,
+        numSymbols_Integer
+    },
     input_Integer,
     output_Integer,
     maxSteps_Integer,
@@ -447,9 +449,11 @@ MultiwayTuringMachineSearch[rules : {__Integer}, input_Integer, output_Integer, 
 
 
 MultiwayTuringMachineFunction[
-    rules : {__Integer},
-    numStates_Integer,
-    numSymbols_Integer,
+    {
+        rules : {__Integer},
+        numStates_Integer,
+        numSymbols_Integer
+    },
     input_Integer,
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
@@ -509,9 +513,11 @@ MultiwayTuringMachineFunction[
 ]
 
 MultiwayTuringMachineFunction[
-    rules : {{_Integer, _Integer, _Integer} ..},
-    numStates_Integer,
-    numSymbols_Integer,
+    {
+        rules : {{_Integer, _Integer, _Integer} ..},
+        numStates_Integer,
+        numSymbols_Integer
+    },
     input_Integer,
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
@@ -542,11 +548,11 @@ MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Int
 MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, input_, target_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
     MultiwayTuringMachineFunction[rules, input, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
 
-MultiwayTuringMachineFunction[rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
+MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, input, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
 
-MultiwayTuringMachineFunction[rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer, input_, target_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[rules, numStates, numSymbols, input, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
+MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..} | {{_Integer, _Integer, _Integer} ..}, numStates_Integer, numSymbols_Integer}, input_, target_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
+    MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, input, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
 
 MultiwayTuringMachineFunction[rules : {__Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
     MultiwayTuringMachineFunction[rules, 2, 2, input, maxSteps, cycleTerminateQ]
