@@ -24,12 +24,12 @@ OneSidedTuringMachineEvolution
 Begin["`Private`"]
 
 
-EncodeInput[n_, maxsteps_ : 5] := {{1, maxsteps + 1, 0}, Join[IntegerDigits[n , 2, maxsteps + 1], {0}]}
+EncodeInput[n_, k_Integer : 2, maxsteps_ : 5] := {{1, maxsteps + 1, 0}, Join[IntegerDigits[n , k, maxsteps + 1], {0}]}
 
-DecodeInput[{headstate_, tape_}] := FromDigits[Most[tape]]
+DecodeInput[{_, tape_}, k_Integer : 2] := FromDigits[Most[tape], k]
 
-CalculateOutput[{headstate_, tape_}, OptionsPattern[{"UndefinedValue" -> Undefined}]] := 
-    If[headstate[[2]] != Length[tape], OptionValue["UndefinedValue"], FromDigits[ Most[tape], 2]] 
+CalculateOutput[{headstate_, tape_}, k_Integer : 2, OptionsPattern[{"UndefinedValue" -> Undefined}]] := 
+    If[headstate[[2]] != Length[tape], OptionValue["UndefinedValue"], FromDigits[ Most[tape], k]] 
 
 CalculateOutput[s_String, OptionsPattern[{"UndefinedValue" -> Undefined}]] := CalculateOutput[ToExpression[s]] 
 
@@ -92,7 +92,8 @@ OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer}, input_Integer, 
 OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{wval =  If[# === Automatic, Max[ If[OptionValue["Input"] === Automatic, -Infinity, IntegerLength[OptionValue["Input"], OptionValue["kValue"]]], Max[-states[[All, 1, 3]]] + 1] + OptionValue["HorizontalPadding"], # - 1] &[OptionValue["Width"]]},
 {leftcut = Max[Length[states[[1, 2]]] - wval, 1],
     labelInputQ = TrueQ[OptionValue["LabelInput"]],
-    labelOutputQ = TrueQ[OptionValue["LabelOutput"]]
+    labelOutputQ = TrueQ[OptionValue["LabelOutput"]],
+    k = OptionValue["kValue"]
 },
    ArrayPlot[
         MapAt[-1 &, #[[2, leftcut ;;]] & /@ states, {All, -1}], 
@@ -116,8 +117,7 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{wval = 
 headpoints = CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="],
             headstates = states[[All, 1, 1]]
         }, {
-            s = If[OptionValue["sValue"] === Automatic, Max[headstates], OptionValue["sValue"]], 
-            origin = headpoints[[13]]
+            s = If[OptionValue["sValue"] === Automatic, Max[headstates], OptionValue["sValue"]]
         }, {
             headangles = Most[Subdivide[2 Pi , s]]
         },  
@@ -140,11 +140,11 @@ headpoints = CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQ
         Labeled[#,
             {
                 If[ labelInputQ,
-                    Style[Text[If[# === Automatic, DecodeInput[First[states]], #] &[OptionValue["Input"]]], 10, OptionValue["LabelInputStyle"]],
+                    Style[Text[If[# === Automatic, DecodeInput[First[states], k], #] &[OptionValue["Input"]]], 10, OptionValue["LabelInputStyle"]],
                     None
                 ], 
                 If[ labelOutputQ,
-                    Style[Text[CalculateOutput[Last[states], "UndefinedValue" -> OptionValue["UndefinedLabel"]]], 10, OptionValue["LabelOutputStyle"]],
+                    Style[Text[CalculateOutput[Last[states], k, "UndefinedValue" -> OptionValue["UndefinedLabel"]]], 10, OptionValue["LabelOutputStyle"]],
                     None
                 ]
             } // DeleteCases[None]
