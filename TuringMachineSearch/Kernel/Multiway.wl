@@ -3,6 +3,7 @@ BeginPackage["TuringMachineSearch`"]
 
 OneSidedTuringMachineMultiwayGraph
 TagPathToEdgePath
+MultiwayTuringMachineFoldList
 
 
 Begin["`Private`"]
@@ -10,6 +11,16 @@ Begin["`Private`"]
 EncodeInput[n_, k_Integer : 2] := With[{digits = IntegerDigits[n, Max[k, 2]]},
     {{1, Length[digits], -1}, {digits, 0}}
 ]
+
+DecodeState[{{_, _, shift_}, tape : {__Integer}}, k_Integer : 2] := 
+    If[ shift == 0,
+        FromDigits[Most[tape], k],
+        FromDigits[tape, k]
+    ]
+
+DecodeState[{{head_, pos_, shift_}, {tape : {__Integer}, _}}, k_Integer : 2] :=
+    DecodeState[{{head, pos, shift}, tape}, k]
+                
 
 CanonicalState[{{head_, pos_, shift_}, {tape : {__Integer}, _}}] := With[{nZeros = Min[LengthWhile[tape, # == 0 &], pos - 1]},
     {{head, pos - nZeros, shift}, Drop[tape, nZeros]}
@@ -66,12 +77,12 @@ OneSidedTuringMachineMultiwayGraph[
         VertexLabels -> {
             state : Except[_Integer] :> Which[
                 state[[1, 3]] == 0,
-                Placed[Style[FromDigits[state[[2, ;; -2]], k], OptionValue["OutputLabelStyle"]], Below],
+                Placed[Style[DecodeState[state, k], OptionValue["OutputLabelStyle"]], Below],
                 MemberQ[inits, state],
-                Placed[Style[FromDigits[state[[2]], k], OptionValue["InputLabelStyle"]], Above],
+                Placed[Style[DecodeState[state, k], OptionValue["InputLabelStyle"]], Above],
                 True,
                 Replace[OptionValue["IntermediateLabelStyle"],
-                    style : Except[None] :> Placed[Style[FromDigits[state[[2, ;; -2]], k], style], {Bottom, Left}]
+                    style : Except[None] :> Placed[Style[DecodeState[state, k], style], {Bottom, Left}]
                 ]
             ],
             _Integer -> None
@@ -102,7 +113,7 @@ OneSidedTuringMachineMultiwayGraph[
         },
         PlotRangePadding -> Scaled[.12],
         AspectRatio -> 1 / 1.5,
-	    VertexSize -> .2,
+	    VertexSize -> {"Scaled", .01},
         GraphLayout -> "LayeredDigraphEmbedding",
         PerformanceGoal -> "Quality"
     ]
@@ -136,14 +147,23 @@ OneSidedTuringMachineMultiwayGraph[rules_List, args___] :=
     OneSidedTuringMachineMultiwayGraph[TuringMachineRuleCases /@ rules, args]
 
 
-TagPathToEdgePath[g_, rulePath_, init_ : Automatic] :=
+TagPathToEdgePath[g_ ? GraphQ, tagPath_, init_ : Automatic] /; VertexCount[g] > 0 :=
 	FoldPairList[
-		With[{edge = First[EdgeList[g, DirectedEdge[#1, _, #2 | {_, #2}]]]},
+		With[{edge = First[EdgeList[g, DirectedEdge[#1, _, #2 | {_, #2}]], Missing[#2]]},
 			{edge, edge[[2]]}
         ] &,
 		Replace[init, Automatic :> SelectFirst[VertexList[g], VertexInDegree[g, #] == 0 &, First[VertexList[g]]]],
-		rulePath
+		tagPath
 	]
+
+
+MultiwayTuringMachineFoldList[{rules : {___Integer}, _Integer, k_Integer}, input_Integer] :=
+    Prepend[input] @ FoldPairList[
+        {DecodeState[#1, k], If[#1[[1, 3]] == 0, #1, TuringMachine[#2][#1]]} &,
+        EncodeInput[input, k],
+        Thread[rules]
+    ]
+
 
 
 End[]
