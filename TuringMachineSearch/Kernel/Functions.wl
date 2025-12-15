@@ -533,6 +533,9 @@ MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {
 MultiwayTuringMachineFunction[rules : {__Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
     MultiwayTuringMachineFunction[rules, 2, 2, input, maxSteps, cycleTerminateQ]
 
+MultiwayTuringMachineFunction[rules : {{_Integer, _Integer, _Integer} ..}, args___] :=
+    MultiwayTuringMachineFunction[Normal @ GroupBy[Catenate[TuringMachineRuleCases /@ rules], First -> Last], args]
+
 
 MultiwayNonHaltedStatesLeft[
     rules : {__Integer},

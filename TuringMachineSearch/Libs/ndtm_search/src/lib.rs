@@ -558,22 +558,29 @@ fn aborted_safe() -> bool {
 
 /// Sequential exhaustive search for target value using non-deterministic TM.
 /// Returns Some(path) of rule numbers leading to target or None if not found within max_steps.
+/// Seeds the queue with all initial values in `initials`.
+/// Terminates early if any target in `targets` is found.
 pub fn exhaustive_search_seq(
     tm: &TuringMachine,
-    initial: &BigUint,
-    target: &BigUint,
+    initials: &[BigUint],
+    targets: &[BigUint],
     max_steps: u64,
 ) -> Option<Vec<u64>> {
-    let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState {
-        head_state: 1,
-        head_position: 0,
-        tape: initial_tape,
-    };
+    // Seed queue with all initial states
     let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    queue.push_back((initial_state.clone(), 0));
     let mut expanded: HashMap<TMState, (Option<TMState>, Option<u64>)> = HashMap::new();
-    expanded.insert(initial_state, (None, None));
+    for initial in initials {
+        let initial_tape = Tape::from_integer(initial);
+        let initial_state = TMState {
+            head_state: 1,
+            head_position: 0,
+            tape: initial_tape,
+        };
+        queue.push_back((initial_state.clone(), 0));
+        expanded.insert(initial_state, (None, None));
+    }
+    // Build target set for fast lookup
+    let target_set: HashSet<&BigUint> = targets.iter().collect();
     let mut seen_values: HashSet<BigUint> = HashSet::new();
 
     while let Some((current_state, depth)) = queue.pop_front() {
@@ -586,7 +593,7 @@ pub fn exhaustive_search_seq(
             if halted {
                 let new_val = new_state.tape.to_integer();
                 if seen_values.insert(new_val.clone()) {
-                    if new_val == *target {
+                    if target_set.contains(&new_val) {
                         let mut path = reconstruct_path(&expanded, current_state);
                         path.push(rule_num);
                         return Some(path);
@@ -610,10 +617,12 @@ pub fn exhaustive_search_seq(
 }
 
 /// Parallel exhaustive search (breadth-wise) using rayon. Returns first path found.
+/// Seeds the heap with all initial values in `initials`.
+/// Terminates early if any target in `targets` is found.
 pub fn exhaustive_search_parallel(
     tm: &TuringMachine,
-    initial: &BigUint,
-    target: &BigUint,
+    initials: &[BigUint],
+    targets: &[BigUint],
     max_steps: u64,
 ) -> Option<Vec<u64>> {
     use std::sync::{Arc, Mutex, atomic::{AtomicBool, AtomicUsize, Ordering}};
@@ -631,16 +640,30 @@ pub fn exhaustive_search_parallel(
     impl Ord for ScoredState { fn cmp(&self, other: &Self) -> CmpOrdering { // reverse for min-heap behavior via BinaryHeap (max-heap)
             other.score.cmp(&self.score).then_with(|| self.depth.cmp(&other.depth))
         } }
-    // Compute bit difference heuristic between current tape value and target value.
-    fn bit_diff(a: &BigUint, b: &BigUint) -> usize { use num_traits::Zero; if a.is_zero() { return b.bits() as usize; } if b.is_zero() { return a.bits() as usize; } let xor = a ^ b; xor.bits() as usize }
-    let initial_tape = Tape::from_integer(initial);
-    let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
-    let heap: Arc<Mutex<BinaryHeap<ScoredState>>> = Arc::new(Mutex::new(BinaryHeap::new()));
-    {
-        let initial_val = initial_state.tape.to_integer();
-        let score = bit_diff(&initial_val, target);
-        heap.lock().unwrap().push(ScoredState { score, depth: 0, state: initial_state.clone(), path: Vec::new() });
+    // Compute bit difference heuristic between current tape value and closest target.
+    fn min_bit_diff(a: &BigUint, targets: &[BigUint]) -> usize {
+        use num_traits::Zero;
+        targets.iter().map(|b| {
+            if a.is_zero() { return b.bits() as usize; }
+            if b.is_zero() { return a.bits() as usize; }
+            let xor = a ^ b;
+            xor.bits() as usize
+        }).min().unwrap_or(usize::MAX)
     }
+    // Build target set for fast lookup
+    let target_set: HashSet<BigUint> = targets.iter().cloned().collect();
+    let targets_vec: Vec<BigUint> = targets.to_vec();
+    
+    let heap: Arc<Mutex<BinaryHeap<ScoredState>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+    // Seed heap with all initial states
+    for initial in initials {
+        let initial_tape = Tape::from_integer(initial);
+        let initial_state = TMState { head_state: 1, head_position: 0, tape: initial_tape };
+        let initial_val = initial_state.tape.to_integer();
+        let score = min_bit_diff(&initial_val, &targets_vec);
+        heap.lock().unwrap().push(ScoredState { score, depth: 0, state: initial_state, path: Vec::new() });
+    }
+    
     let expanded = Arc::new(Mutex::new(HashSet::new()));
     let found = Arc::new(AtomicBool::new(false));
     let active_workers = Arc::new(AtomicUsize::new(0));
@@ -652,7 +675,8 @@ pub fn exhaustive_search_parallel(
             let found = found.clone();
             let result_path = result_path.clone();
             let tm = tm.clone();
-            let target = target.clone();
+            let target_set = target_set.clone();
+            let targets_vec = targets_vec.clone();
             let active_workers = active_workers.clone();
             s.spawn(move |_| {
                 while !found.load(Ordering::Relaxed) {
@@ -681,7 +705,7 @@ pub fn exhaustive_search_parallel(
                             new_path.push(rule_num);
                             if halted {
                                 let new_val = ns.tape.to_integer();
-                                if new_val == target {
+                                if target_set.contains(&new_val) {
                                     found.store(true, Ordering::SeqCst);
                                     *result_path.lock().unwrap() = Some(new_path);
                                     active_workers.fetch_sub(1, Ordering::SeqCst);
@@ -689,7 +713,7 @@ pub fn exhaustive_search_parallel(
                                 }
                             } else {
                                 let new_val = ns.tape.to_integer();
-                                let score = bit_diff(&new_val, &target);
+                                let score = min_bit_diff(&new_val, &targets_vec);
                                 heap.lock().unwrap().push(ScoredState { score, depth: depth+1, state: ns, path: new_path });
                             }
                         }
@@ -835,6 +859,7 @@ pub fn run_dtm_with_history(
 /// Returns Vec<(u64, BigUint)> where u64 is the step at which the value was found.
 /// If any target in `targets` is found, terminates early.
 /// Seeds the queue with all initial values in `initials`.
+/// Uses parallel processing within each BFS level.
 pub fn collect_seen_values(
     tm: &TuringMachine,
     initials: &[BigUint],
@@ -842,66 +867,91 @@ pub fn collect_seen_values(
     targets: &[BigUint],
     terminate_on_cycle: bool,
 ) -> (Vec<(u64, BigUint)>, Vec<usize>, bool) {
-    let mut queue: VecDeque<(TMState, u64)> = VecDeque::new();
-    // Seed queue with all initial states
-    for initial in initials {
-        let initial_tape = Tape::from_integer(initial);
-        let initial_state = TMState {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use parking_lot::Mutex;
+    
+    // Seed with all initial states
+    let mut current_level: Vec<TMState> = initials.iter().map(|initial| {
+        TMState {
             head_state: 1,
             head_position: 0,
-            tape: initial_tape,
-        };
-        queue.push_back((initial_state, 0));
-    }
+            tape: Tape::from_integer(initial),
+        }
+    }).collect();
+    
     // Build target set for fast lookup
     let target_set: HashSet<&BigUint> = targets.iter().collect();
-    // Track insertion depth of each expanded state
-    let mut expanded: HashMap<TMState, u64> = HashMap::new();
-    let mut seen_order: Vec<(u64, BigUint)> = Vec::new();
-    let mut seen_set: HashSet<(u64, BigUint)> = HashSet::new();
-    let mut found_target = false;
+    
+    // Shared state protected by mutex
+    let expanded: Mutex<HashMap<TMState, u64>> = Mutex::new(HashMap::new());
+    let seen_set: Mutex<HashSet<(u64, BigUint)>> = Mutex::new(HashSet::new());
+    let seen_order: Mutex<Vec<(u64, BigUint)>> = Mutex::new(Vec::new());
+    
+    let found_target = AtomicBool::new(false);
+    let cycle_detected = AtomicBool::new(false);
+    
     let mut queue_sizes: Vec<usize> = Vec::new();
-    queue_sizes.push(queue.len()); // initial queue size
-    let mut cycle_detected = false;
-    let mut last_depth = 0u64;
-    while let Some((current_state, depth)) = queue.pop_front() {
-        if depth > last_depth {
-            // +1 for the current popped state
-            queue_sizes.push(queue.len() + 1);
-            last_depth = depth;
+    queue_sizes.push(current_level.len());
+    
+    let mut depth: u64 = 0;
+    
+    while !current_level.is_empty() && depth < max_steps {
+        if aborted_safe() || found_target.load(Ordering::Relaxed) {
+            break;
         }
-        if aborted_safe() || depth >= max_steps { break; }
-        if let Some(prev_depth) = expanded.get(&current_state) {
-            // Cycle if we encounter same state at a greater depth
-            if depth > *prev_depth {
-                cycle_detected = true;
-                if terminate_on_cycle { break; }
-            }
-            continue; // don't expand again
-        } else {
-            expanded.insert(current_state.clone(), depth);
+        if terminate_on_cycle && cycle_detected.load(Ordering::Relaxed) {
+            break;
         }
-        for (new_state, _rule_num, halted) in tm.ndtm_step(&current_state) {
-            if halted {
-                let val = new_state.tape.to_integer();
-                let pair = (depth + 1, val.clone());
-                if !seen_set.contains(&pair) {
-                    seen_set.insert(pair.clone());
-                    seen_order.push(pair);
+        
+        // Process current level in parallel, collect next level states
+        let next_level: Vec<TMState> = current_level
+            .par_iter()
+            .flat_map(|current_state| {
+                let mut local_next: Vec<TMState> = Vec::new();
+                
+                // Check if already expanded
+                {
+                    let mut exp = expanded.lock();
+                    if let Some(prev_depth) = exp.get(current_state) {
+                        if depth > *prev_depth {
+                            cycle_detected.store(true, Ordering::Relaxed);
+                        }
+                        return local_next; // already expanded
+                    }
+                    exp.insert(current_state.clone(), depth);
                 }
-                if target_set.contains(&val) {
-                    found_target = true;
-                    break;
+                
+                // Expand this state
+                for (new_state, _rule_num, halted) in tm.ndtm_step(current_state) {
+                    if halted {
+                        let val = new_state.tape.to_integer();
+                        let pair = (depth + 1, val.clone());
+                        {
+                            let mut ss = seen_set.lock();
+                            if !ss.contains(&pair) {
+                                ss.insert(pair.clone());
+                                seen_order.lock().push(pair);
+                            }
+                        }
+                        if target_set.contains(&val) {
+                            found_target.store(true, Ordering::Relaxed);
+                        }
+                    } else {
+                        local_next.push(new_state);
+                    }
                 }
-            } else {
-                queue.push_back((new_state, depth + 1));
-            }
-        }
-        if found_target { break; }
+                local_next
+            })
+            .collect();
+        
+        queue_sizes.push(next_level.len());
+        current_level = next_level;
+        depth += 1;
     }
-    queue_sizes.push(queue.len());
-    (seen_order, queue_sizes, cycle_detected)
-
+    
+    let final_seen = seen_order.into_inner();
+    let final_cycle = cycle_detected.load(Ordering::Relaxed);
+    (final_seen, queue_sizes, final_cycle)
 }
 
 /// Detect if the non-deterministic TM enters a cycle within max_steps.
@@ -986,15 +1036,15 @@ pub fn exhaustive_search_wl(
     rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
-    target: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
 ) -> Vec<String> {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    match exhaustive_search_seq(&tm, &initial_biguint, &target_biguint, max_steps) {
+    let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    match exhaustive_search_seq(&tm, &initial_biguints, &target_biguints, max_steps) {
         Some(path) => path
             .into_iter()
             .map(|idx| {
@@ -1016,15 +1066,15 @@ pub fn exhaustive_search_parallel_wl(
     rules: Vec<String>,
     num_states: u32,
     num_symbols: u32,
-    initial: String,
-    target: String,
+    initials: Vec<String>,
+    targets: Vec<String>,
     max_steps: u64,
 ) -> Vec<String> {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
-    let initial_biguint: BigUint = initial.parse::<BigUint>().unwrap();
-    let target_biguint: BigUint = target.parse::<BigUint>().unwrap();
-    match exhaustive_search_parallel(&tm, &initial_biguint, &target_biguint, max_steps) {
+    let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
+    match exhaustive_search_parallel(&tm, &initial_biguints, &target_biguints, max_steps) {
         Some(path) => path
             .into_iter()
             .map(|idx| {
@@ -1038,6 +1088,7 @@ pub fn exhaustive_search_parallel_wl(
         None => Vec::new(),
     }
 }
+
 
 #[wll::export]
 pub fn run_dtm_wl(

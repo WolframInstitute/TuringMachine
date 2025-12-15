@@ -23,6 +23,22 @@ OneSidedTuringMachineEvolution
 
 Begin["`Private`"]
 
+$PvsNPStyles = <|
+    "FunctionValues" -> Darker[StandardBlue, .2], 
+    "TuringMachineColorRules" -> {
+        0 -> GrayLevel[1], 
+        1 -> StandardOrange, 
+        2 -> RGBColor[0.977, 0.952, 0.],
+        -1 -> GrayLevel[.7]
+    }, 
+    "DistributionColor" -> Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], 
+    "FrameStyle" -> GrayLevel[.7], 
+    "MultiwayPathColorRules" -> {
+        1 -> RGBColor[0.34500000000000003`, 0.712, 1], 
+        2 -> RGBColor[0.68, 0.58, 1]
+    }
+|>
+
 
 
 DecodeInput[{_, tape_}, k_Integer : 2] := FromDigits[Most[tape], k]
