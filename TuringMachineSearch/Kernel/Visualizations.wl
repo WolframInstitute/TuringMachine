@@ -84,16 +84,36 @@ Options[OneSidedTuringMachinePlot] = Join[{
     Options[ArrayPlot]
 ]
 
+Options[OneSidedTuringMachinePlot] = 
+Join[
+{"Width" -> Automatic,
+ "HorizontalPadding" -> 1, 
+"Input" -> Automatic, 
+"LabelInput" -> False,
+ "kValue" -> Automatic,
+"sValue" -> Automatic, "LabelOutput"-> True, 
+    "LabelRuntime" -> False, 
+    "LabelRuntimeStyle" -> {},
+    "PlotSize" -> "Automatic", 
+    "UndefinedLabel" -> Undefined, 
+    "LabelInputStyle" -> {},
+    "LabelOutputStyle" -> {},
+ "LabelOutputFunction"-> Automatic,
+    "TerminationColumnColor" -> GrayLevel[.7]},
+    Options[ArrayPlot]
+];
+
 OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : OptionsPattern[]] := 
     OneSidedTuringMachinePlot[rule, input, {maxsteps, Automatic}, opts]
 
 OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer}, input_Integer, {maxsteps_Integer, width_}, opts : OptionsPattern[]] :=
     OneSidedTuringMachinePlot[
-       states =  OneSidedTuringMachineEvolution[rule, input, maxsteps, "Maximum"],
+       OneSidedTuringMachineEvolution[rule, input, maxsteps, "Maximum"],
         "Width" -> width, "Input" -> input, "sValue" -> rule[[2]], "kValue"-> rule[[3]], opts
     ]
 
-OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
+OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := 
+With[{
     wval = Replace[OptionValue["Width"], {
         Automatic :> Max[
             If[ OptionValue["Input"] === Automatic,
@@ -110,6 +130,7 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
     leftcut = Max[Length[states[[1, 2]]] - wval, 1],
     labelInputQ = TrueQ[OptionValue["LabelInput"]],
     labelOutputQ = TrueQ[OptionValue["LabelOutput"]],
+labelOutputFunction = OptionValue["LabelOutputFunction"],
     s = Replace[OptionValue["sValue"], Automatic :> Max[headstates]],
     k = Replace[OptionValue["kValue"], Automatic :> Max[states[[All, 1, 3]]]]
 },
@@ -155,17 +176,19 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
             ]
         ]
     ] //
-    If[ labelInputQ || labelOutputQ, 
+
+If[ labelInputQ || labelOutputQ, 
         Labeled[#,
             {
                 If[ labelInputQ,
                     Style[Text[Replace[OptionValue["Input"], Automatic :> DecodeInput[First[states], k]]], 10, OptionValue["LabelInputStyle"]],
                     None
                 ], 
-                If[ labelOutputQ,
+                If[labelOutputFunction===Automatic, 
+If[ labelOutputQ,
                     Style[Text[CalculateOutput[Last[states], k, OptionValue["UndefinedLabel"]]], 10, OptionValue["LabelOutputStyle"]],
                     None
-                ]
+                ], labelOutputFunction[states]]
             } // DeleteCases[None]
             ,
             If[ labelInputQ, 
@@ -174,8 +197,7 @@ OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := With[{
             , 
             FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}
         ] &,
-        Identity
-    ]
+        Identity]
 ]
 
 
