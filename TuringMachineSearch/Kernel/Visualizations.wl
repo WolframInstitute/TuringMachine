@@ -64,26 +64,6 @@ OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integ
     ]
 ]
 
-Options[OneSidedTuringMachinePlot] = Join[{
-    "Width" -> Automatic,
-    "HorizontalPadding" -> 1,
-    "Input" -> Automatic, 
-    "LabelInput" -> False, 
-    "kValue" -> Automatic,
-    "sValue" -> Automatic, 
-    "LabelOutput"-> True, 
-    "LabelRuntime" -> False, 
-    "LabelRuntimeStyle" -> {},
-    "PlotSize" -> "Automatic", 
-    "UndefinedLabel" -> Undefined, 
-    "LabelInputStyle" -> {},
-    "LabelOutputStyle" -> {}, 
-    "TerminationColumnColor" -> GrayLevel[.7], 
-    ImageSize -> 50
-},
-    Options[ArrayPlot]
-]
-
 Options[OneSidedTuringMachinePlot] = 
 Join[
 {"Width" -> Automatic,
