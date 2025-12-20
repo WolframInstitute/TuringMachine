@@ -119,7 +119,7 @@ labelOutputFunction = OptionValue["LabelOutputFunction"],
         }]],
         Mesh -> True,
         AspectRatio -> Full,
-        ColorRules -> $PvsNPStyles["TuringMachineColorRules],
+        ColorRules -> $PvsNPStyles["TuringMachineColorRules"],
         Epilog -> With[{
             headangles = Most[Subdivide[2 Pi, s]]
         },  
