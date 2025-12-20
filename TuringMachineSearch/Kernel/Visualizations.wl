@@ -23,21 +23,14 @@ OneSidedTuringMachineEvolution
 
 Begin["`Private`"]
 
-$PvsNPStyles = <|
-    "FunctionValues" -> Darker[StandardBlue, .2], 
-    "TuringMachineColorRules" -> {
-        0 -> GrayLevel[1], 
-        1 -> StandardOrange, 
-        2 -> RGBColor[0.977, 0.952, 0.],
-        -1 -> GrayLevel[.7]
-    }, 
-    "DistributionColor" -> Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], 
-    "FrameStyle" -> GrayLevel[.7], 
-    "MultiwayPathColorRules" -> {
-        1 -> RGBColor[0.34500000000000003`, 0.712, 1], 
-        2 -> RGBColor[0.68, 0.58, 1]
-    }
-|>
+$PvsNPStyles = <|"FunctionValueColor" -> Hue[0.6111111111111112, 0.6, 1.], 
+ "FunctionRuntimeColor" -> Hue[0.099, 1, 0.98], "TuringMachineColorRules" -> 
+  {0 -> GrayLevel[1], 1 -> Hue[0.034, 0.704, 0.9500000000000001], 
+   2 -> Hue[0.12, 0.762, 1], -1 -> GrayLevel[0.85]}, 
+ "DistributionStyle" -> Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], 
+ "FrameStyle" -> GrayLevel[0.7], "MultiwayPathColorRules" -> 
+  {1 -> RGBColor[0.34500000000000003, 0.712, 1], 
+   2 -> RGBColor[0.8260000000000001, 0.20500000000000002, 1]}|>
 
 
 
@@ -126,12 +119,7 @@ labelOutputFunction = OptionValue["LabelOutputFunction"],
         }]],
         Mesh -> True,
         AspectRatio -> Full,
-        ColorRules -> {
-            0 -> GrayLevel[1], 
-            1 -> RGBColor[0.965, 0.401, 0.18], 
-            2 -> RGBColor[0.977, 0.952, 0.],
-            -1 -> OptionValue["TerminationColumnColor"]
-        },
+        ColorRules -> $PvsNPStyles["TuringMachineColorRules],
         Epilog -> With[{
             headangles = Most[Subdivide[2 Pi, s]]
         },  
