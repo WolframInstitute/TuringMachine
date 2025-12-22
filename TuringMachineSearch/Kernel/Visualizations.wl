@@ -58,23 +58,15 @@ OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integ
 ]
 
 Options[OneSidedTuringMachinePlot] = 
-Join[
-{"Width" -> Automatic,
- "HorizontalPadding" -> 1, 
-"Input" -> Automatic, 
-"LabelInput" -> False,
- "kValue" -> Automatic,
-"sValue" -> Automatic, "LabelOutput"-> True, 
-    "LabelRuntime" -> False, 
-    "LabelRuntimeStyle" -> {},
-    "PlotSize" -> "Automatic", 
-    "UndefinedLabel" -> Undefined, 
-    "LabelInputStyle" -> {},
-    "LabelOutputStyle" -> {},
- "LabelOutputFunction"-> Automatic,
-    "TerminationColumnColor" -> GrayLevel[.7]},
-    Options[ArrayPlot]
-];
+Join[{"Width" -> Automatic, "HorizontalPadding" -> 1, 
+  "Input" -> Automatic, "LabelInput" -> False, "kValue" -> Automatic, 
+  "sValue" -> Automatic, "LabelOutput" -> True, 
+  "LabelRuntime" -> False, "LabelRuntimeStyle" -> {}, 
+  "PlotSize" -> "Automatic", "UndefinedLabel" -> Undefined, 
+  "LabelInputStyle" -> {}, "LabelOutputStyle" -> {}, 
+  "LabelOutputFunction" -> Automatic, 
+  "TerminationColumnColor" -> GrayLevel[.7], ImageSize -> 90}, 
+ Options[ArrayPlot]];
 
 OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : OptionsPattern[]] := 
     OneSidedTuringMachinePlot[rule, input, {maxsteps, Automatic}, opts]
