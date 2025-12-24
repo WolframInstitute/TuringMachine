@@ -4,8 +4,6 @@ set -e
 # Cross-compilation build script for ndtm_search
 # Builds release binaries for all supported platforms
 
-cd "$(dirname "$0")/TuringMachineSearch/Libs"
-
 # Define targets: WolframSystemID Rust_target
 TARGETS=(
     "MacOSX-x86-64:x86_64-apple-darwin"
@@ -42,7 +40,7 @@ for entry in "${TARGETS[@]}"; do
     target="${entry##*:}"
     case "$target" in
         *-windows-*)
-            ext="dll"
+            ext="dll.a"
             ;;
         *-apple-*)
             ext="dylib"
@@ -51,5 +49,5 @@ for entry in "${TARGETS[@]}"; do
             ext="so"
             ;;
     esac
-    echo "  $system_id: ndtm_search/target/$target/release/libndtm_search.$ext"
+    echo "  $system_id: target/$target/release/libndtm_search.$ext"
 done

@@ -1,0 +1,34 @@
+#!/bin/bash
+# zcc - Zig CC wrapper that filters out unsupported macOS linker flags
+
+args=("$@")
+filtered_args=()
+skip_next=0
+
+for arg in "${args[@]}"; do
+  if [ "$skip_next" -eq 1 ]; then
+    skip_next=0
+    continue
+  fi
+  
+  # Handle -Wl,-exported_symbols_list,/path (single arg)
+  if [[ "$arg" == *"-exported_symbols_list,"* ]]; then
+    continue
+  fi
+  
+  # Handle -Wl,-exported_symbols_list (skip next arg)
+  if [[ "$arg" == "-Wl,-exported_symbols_list" ]]; then
+    skip_next=1
+    continue
+  fi
+  
+  # Handle -exported_symbols_list (skip next arg)
+  if [[ "$arg" == "-exported_symbols_list" ]]; then
+    skip_next=1
+    continue
+  fi
+  
+  filtered_args+=("$arg")
+done
+
+exec zig cc "${filtered_args[@]}"
