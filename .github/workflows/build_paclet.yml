@@ -84,7 +84,7 @@ jobs:
 
       - name: Build All Targets
         run: |
-          source $HOME/.cargo/env
+          . $HOME/.cargo/env
           ./build_all_targets.sh
 
       - name: Build Paclet
