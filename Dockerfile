@@ -44,4 +44,4 @@ WORKDIR /opt/turingmachinesearch
 ARG WOLFRAMSCRIPT_ENTITLEMENTID
 ENV WOLFRAMSCRIPT_ENTITLEMENTID=${WOLFRAMSCRIPT_ENTITLEMENTID}
 
-COPY --chown=wolframengine:wolframengine docker_build.wl ./docker_build.wl
+COPY --chown=wolframengine:wolframengine ci_build.wl ./ci_build.wl

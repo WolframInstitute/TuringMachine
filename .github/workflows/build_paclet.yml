@@ -16,12 +16,22 @@ jobs:
     
     env:
       WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
+      SDKROOT: /nonexistent
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Install System Dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            curl ca-certificates build-essential pkg-config libssl-dev git \
+            uuid-dev lld mingw-w64 gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-x86-64-linux-gnu
+          ln -sf /usr/bin/x86_64-linux-gnu-gcc /usr/bin/x86_64-unknown-linux-gnu-gcc
+          ln -sf /usr/bin/aarch64-linux-gnu-gcc /usr/bin/aarch64-unknown-linux-gnu-gcc
+
       - name: Cache Toolchains
+        if: ${{ !env.ACT }}
         id: cache-toolchains
         uses: actions/cache@v4
         with:
@@ -37,14 +47,6 @@ jobs:
           chmod +x setup_cross_compile.sh
           ./setup_cross_compile.sh
 
-      - name: Install System Dependencies
-        run: |
-          apt-get update && apt-get install -y --no-install-recommends \
-            curl ca-certificates build-essential pkg-config libssl-dev git \
-            uuid-dev lld mingw-w64 gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-x86-64-linux-gnu
-          ln -sf /usr/bin/x86_64-linux-gnu-gcc /usr/bin/x86_64-unknown-linux-gnu-gcc
-          ln -sf /usr/bin/aarch64-linux-gnu-gcc /usr/bin/aarch64-unknown-linux-gnu-gcc
-
       - name: Add Zig to PATH
         run: echo "/opt/zig" >> $GITHUB_PATH
 
@@ -54,6 +56,7 @@ jobs:
           chmod +x /usr/local/bin/zcc
 
       - name: Cache Rust Toolchain
+        if: ${{ !env.ACT }}
         id: cache-rust
         uses: actions/cache@v4
         with:
@@ -72,6 +75,7 @@ jobs:
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Cache Cargo Registry and Build
+        if: ${{ !env.ACT }}
         uses: actions/cache@v4
         with:
           path: |
@@ -88,7 +92,7 @@ jobs:
           ./build_all_targets.sh
 
       - name: Build Paclet
-        run: wolframscript -f docker_build.wl
+        run: wolframscript -f ci_build.wl
 
       - name: Find Paclet File
         id: find_paclet
@@ -98,6 +102,7 @@ jobs:
           echo "Found paclet: $PACLET_FILE"
 
       - name: Upload Paclet Artifact
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: TuringMachineSearch-paclet

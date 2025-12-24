@@ -20,4 +20,4 @@ docker run --platform "$PLATFORM" --rm -it \
   -v "$PWD:/opt/turingmachinesearch" \
   -v "$HOME/.cargo-docker-cache:/home/wolframengine/.cargo/registry" \
   turingmachine-search \
-  /bin/bash -c "./build_all_targets.sh && wolframscript -f docker_build.wl"
+  /bin/bash -c "./build_all_targets.sh && wolframscript -f ci_build.wl"

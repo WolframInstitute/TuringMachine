@@ -1,6 +1,9 @@
 #!/usr/bin/env wolframscript
+
+PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
+PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
+
 << ExtensionCargo`
-<< ExtensionBuild`
 
 name = "TuringMachineSearch"
 

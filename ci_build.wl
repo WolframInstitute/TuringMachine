@@ -4,7 +4,7 @@
 PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"];
 PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"];
 
-PacletDirectoryLoad["/opt/turingmachinesearch/TuringMachineSearch"];
+PacletDirectoryLoad[FileNameJoin[{Directory[], "TuringMachineSearch"}]];
 
 Needs["ExtensionCargo`"];
 
