@@ -1,6 +1,6 @@
 Paclet[
     Name -> "TuringMachineSearch",
-    Version -> "0.3",
+    Version -> "0.4",
     Extensions -> {
         {
             "Cargo",
