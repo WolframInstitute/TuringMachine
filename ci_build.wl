@@ -20,3 +20,8 @@ Print["Creating Paclet Archive..."];
 pacletFile = CreatePacletArchive[name];
 Print["Paclet created: ", pacletFile];
 Print["Size: ", FileSize[pacletFile]];
+
+(* Export version for GitHub Actions *)
+version = paclet["Version"];
+Print["Exporting version: ", version];
+Export["paclet_version.txt", version, "String"];

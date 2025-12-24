@@ -108,3 +108,19 @@ jobs:
           name: TuringMachineSearch-paclet
           path: ${{ steps.find_paclet.outputs.paclet_file }}
           if-no-files-found: error
+
+      - name: Read Paclet Version
+        id: read_version
+        run: |
+          VERSION=$(cat paclet_version.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: ${{ !env.ACT }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Development Build (v${{ steps.read_version.outputs.version }})
+          files: ${{ steps.find_paclet.outputs.paclet_file }}
+          prerelease: true
+          make_latest: true
