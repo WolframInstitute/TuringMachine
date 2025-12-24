@@ -6,10 +6,10 @@ set -e
 
 CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
 
-# Install Rust if not present
+# Install Rust if not present (minimal profile to save space)
 if ! command -v rustup &> /dev/null; then
     curl -fsSL https://sh.rustup.rs -o /tmp/rustup.sh
-    sh /tmp/rustup.sh -y --default-toolchain stable
+    sh /tmp/rustup.sh -y --default-toolchain stable --profile minimal
     rm /tmp/rustup.sh
 fi
 
