@@ -34,10 +34,12 @@ Options[OneSidedTuringMachineMultiwayGraph] = DeleteDuplicatesBy[First] @ Join[{
     "OutputLabelStyle" -> Bold,
     "IntermediateLabelStyle" -> None,
     "UniqueValue" -> True,
+    "AddNonHaltingVertices" -> True,
     "EdgeDeduplication" -> True,
     "ReturnTargetSubgraph" -> False,
     ColorRules -> $PvsNPStyles["MultiwayPathColorRules"],
-    GraphHighlightStyle -> "Thick"
+    GraphHighlightStyle -> "Thick",
+    "GraphHighlightColor" -> Directive[Thick, StandardRed]
 },
     Options[ResourceFunction["NestGraphTagged"]]
 ]
@@ -54,28 +56,36 @@ OneSidedTuringMachineMultiwayGraph[
 },
     inits = EncodeInput[#, k] & /@ Flatten[{input}];
     g = ResourceFunction["NestGraphTagged"][
-        state |-> If[state[[1, 1, 3]] == 0, {}, # -> TuringMachine[#][state[[1]]] -> state[[2]] + 1 & /@ ruleCases],
-        MapIndexed[#1 -> #2[[1]] &, inits],
+        state |-> If[state[[1, 1, 3]] == 0, {}, state[[2]] -> {TuringMachine[#][state[[1]]], state[[2]] + 1} & /@ ruleCases],
+        MapIndexed[{#1, #2[[1]]} &, inits],
         steps
 	];
     layers = VertexList[g][[All, 2]];
-    g = VertexReplace[g, (state_ -> _) :> CanonicalState[state]];
+    g = VertexReplace[g, {state_, _} :> CanonicalState[state]];
     inits = CanonicalState /@ inits;
     If[ TrueQ[OptionValue["UniqueValue"]],
         g = VertexReplace[g, {{_, p_, 0}, t_} :> {{1, p, 0}, t}]
     ];
 
     If[ TrueQ[OptionValue["EdgeDeduplication"]],
-        g = EdgeDelete[g, Keys @ Select[Counts[EdgeList[g]], # > 1 &]]
+        g = EdgeDelete[g, Catenate @ KeyValueMap[ConstantArray[#1, #2 - 1] &, Select[Counts[EdgeList[g]], # > 1 &]]]
     ];
 
-    nonHaltVertices = Cases[Pick[VertexList[g], VertexOutDegree[g], 0], {{_, _, Except[0]}, _}];
-    g = EdgeAdd[g, MapIndexed[#1 -> #2[[1]] &, nonHaltVertices]];
-    coords = GraphEmbedding[FindSpanningTree[g], {
-        "LayeredDigraphEmbedding",
-        "RootVertex" -> First[VertexList[g]],
-        "VertexLayerPosition" -> - Join[layers, ConstantArray[Max[layers] + 1, Length[nonHaltVertices]]]
-    }];
+    If[ TrueQ[OptionValue["AddNonHaltingVertices"]],
+        nonHaltVertices = Cases[Pick[VertexList[g], VertexOutDegree[g], 0], {{_, _, Except[0]}, _}];
+        g = EdgeAdd[g, MapIndexed[#1 -> #2[[1]] &, nonHaltVertices]]
+        ,
+        nonHaltVertices = {}
+    ];
+    coords = If[AcyclicGraphQ[g],
+        Automatic,
+        GraphEmbedding[FindSpanningTree[g],
+        {
+            "LayeredDigraphEmbedding",
+            "RootVertex" -> First[VertexList[g]],
+            "VertexLayerPosition" -> - Join[layers, ConstantArray[Max[layers] + 1, Length[nonHaltVertices]]]
+        }]
+    ];
     g = Graph[
         g,
         FilterRules[{opts}, Options[Graph]],
@@ -116,10 +126,14 @@ OneSidedTuringMachineMultiwayGraph[
             DirectedEdge[_, _Integer]-> StandardGray,
             DirectedEdge[_, _, {_, i_}] :> Lookup[OptionValue[ColorRules], i, None]
         },
-        PlotRangePadding -> Scaled[.12],
+        PlotRangePadding -> {Scaled[.03], Scaled[.15]},
         AspectRatio -> 1 / 1.5,
 	    VertexSize -> {"Scaled", .01},
         VertexCoordinates -> coords,
+        GraphLayout -> {
+            "LayeredDigraphEmbedding",
+            "RootVertex" -> First[VertexList[g]]
+        },
         PerformanceGoal -> "Quality"
     ]
 ]
@@ -140,15 +154,18 @@ OneSidedTuringMachineMultiwayGraph[
     ruleIndex = First /@ PositionIndex[rules],
     paths = OneSidedMultiwayTuringMachineSearch[{rules, s, k}, input, #, steps] & /@
         Flatten[{Replace[targets, None -> {}]}]
-}, {
-    sg = If[MatchQ[targets, _Integer],
-        Subgraph[g, TagPathToEdgePath[g, Lookup[ruleIndex, paths[[1]]]]],
-        Subgraph[g, TagPathToEdgePath[g, Lookup[ruleIndex, #]]] & /@ paths
-    ]
 },
-    If[ TrueQ[OptionValue["ReturnTargetSubgraph"]],
-        sg,
-        HighlightGraph[g, sg,
+    If[ TrueQ[OptionValue["ReturnTargetSubgraph"]]
+        ,
+        With[{edges = Catenate[TagPathToEdgePath[g, Lookup[ruleIndex, #]] & /@ paths]},
+            Subgraph[g,
+                edges,
+                VertexCoordinates -> Table[{0, -10 y}, {y, 0, VertexCount[edges] - 1}]
+            ]
+        ]
+        ,
+        HighlightGraph[g,
+            Style[TagPathToEdgePath[g, Lookup[ruleIndex, #]] & /@ paths, OptionValue["GraphHighlightColor"]],
             FilterRules[{opts}, GraphHighlightStyle]
         ]
     ]

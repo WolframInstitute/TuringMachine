@@ -517,6 +517,11 @@ MultiwayTuringMachineFunction[
     ]
 ]
 
+MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {_Integer, _Integer, _Integer}) ..}, args___] :=
+    MultiwayTuringMachineFunction[Normal @ GroupBy[rules, First -> Last], args]
+
+MultiwayTuringMachineFunction[rules : {{({_Integer, _Integer} -> {_Integer, _Integer, _Integer}) ..} ..}, args___] :=
+    MultiwayTuringMachineFunction[Catenate[rules], args]
 
 MultiwayTuringMachineFunction[rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..}, inputs : _Integer | {__Integer}, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
     MultiwayTuringMachineFunction[rules, inputs, <|"MaxSteps" -> maxSteps, "CycleTerminate" -> cycleTerminateQ|>]
@@ -597,6 +602,8 @@ TuringMachineRuleCases[rules : {__Integer}, numStates_Integer, numSymbols_Intege
 TuringMachineRuleCases[rule_Integer] := TuringMachineRuleCases[rule, 2, 2]
 
 TuringMachineRuleCases[rules : {__Integer}] := TuringMachineRuleCases[rules, 2, 2]
+
+TuringMachineRuleCases[s_Integer, k_Integer] := Catenate @ Outer[Rule, Tuples[{Range[s], Range[0, k - 1]}], Tuples[{Range[s], Range[0, k - 1], {-1, 1}}], 1]
 
 MultiwayTuringMachineRules[
     rules : {__Integer},
