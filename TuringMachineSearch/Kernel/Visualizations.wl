@@ -82,68 +82,58 @@ OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer},
   "kValue" -> rule[[3]], opts]
 
 OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := 
- With[{wval = 
-    Replace[OptionValue[
-      "Width"], {Automatic :> 
-       Max[If[OptionValue["Input"] === Automatic, -Infinity, 
-          IntegerLength[OptionValue["Input"], OptionValue["kValue"]]],
-          Max[-states[[All, 1, 3]]] + 2] + 
-        OptionValue["HorizontalPadding"], w_?NumericQ :> w - 1}], 
-   headstates = states[[All, 1, 1]], 
-   headpoints = 
-    CompressedData[
-     "1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfj\
-gf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4Bm\
-LgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="]}, {leftcut = 
-    Max[Length[states[[1, 2]]] - wval, 1], 
-   labelInputQ = TrueQ[OptionValue["LabelInput"]], 
-   labelOutputQ = TrueQ[OptionValue["LabelOutput"]], 
-   labelOutputFunction = OptionValue["LabelOutputFunction"], 
-   s = Replace[OptionValue["sValue"], Automatic :> Max[headstates]], 
-   k = Replace[OptionValue["kValue"], 
-     Automatic :> Max[states[[All, 1, 3]]]]}, 
-  ArrayPlot[MapAt[-1 &, #[[2, leftcut ;;]] & /@ states, {All, -1}], 
-    FilterRules[FilterRules[{opts}, Options[ArrayPlot]], 
-     Except[ImageSize]], 
-    ImageSize -> 
-     With[{ar = {wval + 1, Length[states]}}, 
-      Replace[OptionValue[ImageSize], {scale_Integer :> scale/10*ar, 
-        "Scaled" :> ((20 (Times @@ ar)^-.25)*ar), {"Scaled", 
-          a_} :> ((a/2.5 (Times @@ ar)^-.25)*ar), {"Scaled", a_, 
-          b_} :> ((a/2.5 (Times @@ ar)^-b)*ar), {w_, 
-          f_Function} :> {w, f[Length[states]]}}]], Mesh -> True, 
-    AspectRatio -> Full, 
-    ColorRules -> $PvsNPStyles["TuringMachineColorRules"], 
-    Epilog -> 
-     With[{headangles = Most[Subdivide[2 Pi, s]]}, Join[{Black},
-       MapThread[
-        If[s == 1, Function[{coord, headstate}, Disk[coord, .14]],
-         
-         Function[{coord, headstate}, 
+ Module[{auto = Max[If[OptionValue["Input"]===Automatic,-Infinity,IntegerLength[OptionValue["Input"],OptionValue["kValue"]]],Max[-states[[All,1,3]]] + 1]+OptionValue["HorizontalPadding"]}, 
+With[{wval=Replace[OptionValue["Width"],{Automatic:>auto,
+UpTo[i_]:> Min[i, auto],
+w_?NumericQ:>w-1}],headstates=states[[All,1,1]],headpoints=CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="]},{leftcut=Max[Length[states[[1,2]]]-wval,1],labelInputQ=TrueQ[OptionValue["LabelInput"]],labelOutputQ=TrueQ[OptionValue["LabelOutput"]],labelOutputFunction=OptionValue["LabelOutputFunction"],s=Replace[OptionValue["sValue"],Automatic:>Max[headstates]],k=Replace[OptionValue["kValue"],Automatic:>Max[states[[All,1,3]]]]},ArrayPlot[MapAt[-1&,#[[2,leftcut;;]]&/@states,{All,-1}],FilterRules[FilterRules[{opts},Options[ArrayPlot]],Except[ImageSize]],ImageSize->With[{ar={wval+1,Length[states]}},Replace[OptionValue[ImageSize],{scale_Integer:>scale/10*ar,"Scaled":>((20 (Times@@ar)^-.25)*ar),{"Scaled",a_}:>((a/2.5 (Times@@ar)^-.25)*ar),{"Scaled",a_,b_}:>((a/2.5 (Times@@ar)^-b)*ar),{w_,f_Function}:>{w,f[Length[states]]}}]],Mesh->True,AspectRatio->Full,ColorRules->$PvsNPStyles["TuringMachineColorRules"],
+        Epilog -> With[{
+            headangles = Most[Subdivide[2 Pi, s]]
+        },  
+            Join[
+                {Black}, 
+                MapThread[
+                    If[s == 1, Function[{coord, headstate}, Disk[coord, .14]],
+        
+       Function[{coord, headstate}, 
           FilledCurve[
            BezierCurve[
             RotationTransform[-headangles[[headstate]], 
               coord] /@ (# + coord & /@ 
-               headpoints)]]]], {Transpose@{states[[All, 1, 2]] - 
-            1/2 - leftcut + 1, 
-           1/2 + Length[states] - Range[Length[states]]}, 
-         headstates}]]]] // 
-   If[labelInputQ || labelOutputQ, 
-    Labeled[#, {If[labelInputQ, 
-         Style[Text[
-           Replace[OptionValue["Input"], 
-            Automatic :> DecodeInput[First[states], k]]], 10, 
-          OptionValue["LabelInputStyle"]], None], 
-        If[labelOutputFunction === Automatic, 
-         If[labelOutputQ, 
-          Style[Text[
-            CalculateOutput[Last[states], k, 
-             OptionValue["UndefinedLabel"]]], 10, 
-           OptionValue["LabelOutputStyle"]], None], 
-         labelOutputFunction[states]]} // DeleteCases[None], 
-      If[labelInputQ, If[labelOutputQ, {Top, Bottom}, {Top}], {Bottom}],
-       FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}] &,
-     Identity]]
+               headpoints)]]]],
+                   {
+                        Transpose @ {
+                            states[[All, 1, 2]] - 1 / 2 - leftcut + 1,
+                            1 / 2 + Length[states] - Range[Length[states]]
+                        }, 
+                        headstates
+                    }
+                ]
+            ]
+        ]
+    ] //
+
+If[labelInputQ || labelOutputQ, 
+        Labeled[#,
+            {
+                If[ labelInputQ,
+                    Style[Text[Replace[OptionValue["Input"], Automatic :> DecodeInput[First[states], k]]], 10, OptionValue["LabelInputStyle"]],
+                    None
+                ], 
+                If[labelOutputFunction===Automatic, 
+If[ labelOutputQ,
+                    Style[Text[CalculateOutput[Last[states], k, OptionValue["UndefinedLabel"]]], 10, OptionValue["LabelOutputStyle"]],
+                    None
+                ], labelOutputFunction[states]]
+            } // DeleteCases[None]
+            ,
+            If[ labelInputQ, 
+                If[labelOutputQ, {Top, Bottom}, {Top}], {Bottom}
+            ]
+            , 
+            FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}
+        ] &,
+        Identity]
+]]
 
 
 End[]
