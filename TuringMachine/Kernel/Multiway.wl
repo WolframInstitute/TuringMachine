@@ -1,5 +1,5 @@
 
-BeginPackage["TuringMachineSearch`"]
+BeginPackage["WolframInstitute`TuringMachine`"]
 
 OneSidedTuringMachineMultiwayGraph
 TagPathToEdgePath

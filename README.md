@@ -1,4 +1,4 @@
-# TuringMachineSearch
+# TuringMachine
 
 A Wolfram Language paclet for searching and analyzing Turing machines, powered by Rust for high performance.
 
@@ -30,7 +30,7 @@ PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
 Load the package:
 
 ```wolfram
-<< TuringMachineSearch`
+<< TuringMachine`
 ```
 
 ### Deterministic Turing Machines

@@ -1,6 +1,6 @@
 (* ::Package:: *)
 
-BeginPackage["TuringMachineSearch`"]
+BeginPackage["WolframInstitute`TuringMachine`"]
 
 OneSidedTuringMachinePlot::usage = 
   "OneSidedTuringMachinePlot[rule, input, maxsteps, opts] generates a visualization of the evolution of a one-sided Turing machine.

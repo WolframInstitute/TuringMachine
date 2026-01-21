@@ -108,7 +108,7 @@ jobs:
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
-          name: TuringMachineSearch-paclet
+          name: TuringMachine-paclet
           path: ${{ steps.find_paclet.outputs.paclet_file }}
           if-no-files-found: error
 

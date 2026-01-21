@@ -4,11 +4,11 @@
 PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"];
 PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"];
 
-PacletDirectoryLoad[FileNameJoin[{Directory[], "TuringMachineSearch"}]];
+PacletDirectoryLoad[FileNameJoin[{Directory[], "TuringMachine"}]];
 
 Needs["ExtensionCargo`"];
 
-name = "TuringMachineSearch";
+name = "TuringMachine";
 paclet = PacletObject[name];
 
 (* CargoCollect - collects binaries built by build_all_targets.sh *)

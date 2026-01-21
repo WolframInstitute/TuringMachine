@@ -25,7 +25,7 @@ act \
 
 # Manually find and copy the artifact since we skipped the upload step
 echo "finding paclet..."
-PACLET=$(find . -name "*.paclet" -type f | grep "TuringMachineSearch" | head -1)
+PACLET=$(find . -name "*.paclet" -type f | grep "TuringMachine" | head -1)
 if [ -n "$PACLET" ]; then
     cp "$PACLET" ./act-artifacts/
     echo "Copied $PACLET to ./act-artifacts/"

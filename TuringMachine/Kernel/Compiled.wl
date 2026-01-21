@@ -1,4 +1,4 @@
-BeginPackage["TuringMachineSearch`Compiled`"]
+BeginPackage["WolframInstitute`TuringMachineSearch`"]
 
 
 Begin["`Private`"];
@@ -14,19 +14,29 @@ types = {
         "read" -> "MachineInteger",
         "outputs" -> "DynamicArray"::["TMOutput"]
     |>],
-    TypeDeclaration["Macro", "TMState", "PackedArray"::["MachineInteger", 1]],
+    TypeDeclaration["Product", "TMState", <|
+        "value" -> "MachineInteger",
+        "pos" -> "MachineInteger",
+        "tape" -> "PackedArray"::["MachineInteger", 1]
+    |>],
+    TypeDeclaration["Product", "TMStateWithStep", <|
+        "step" -> "MachineInteger",
+        "state" -> "TMState"
+    |>],
     TypeDeclaration["Macro", "TMStates", "ListVector"::["TMState"]],
     TypeDeclaration["Macro", "TMRules", "ListVector"::["TMRule"]]
 };
 
 makeTMState[value_, pos_, tape_, maxWidth_] :=
-    Block[{tapeLen = Length[tape], len, vector},
+    Block[{tapeLen = Length[tape], len, newTape},
         len = If[maxWidth > 0, Max[maxWidth, tapeLen], tapeLen];
-		vector = ConstantArray[0, len + 2];
-		vector[[1]] = value;
-		vector[[2]] = If[maxWidth > 0, len - tapeLen + Mod[pos, tapeLen , 1], pos];
-        Do[vector[[len + 3 - i]] = tape[[-i]], {i, tapeLen}];
-        vector
+		newTape = ConstantArray[0, len];
+		Do[newTape[[len + 1 - i]] = tape[[-i]], {i, tapeLen}];
+        CreateTypeInstance["TMState", <|
+            "value" -> value,
+            "pos" -> If[maxWidth > 0, len - tapeLen + Mod[pos, tapeLen , 1], pos],
+            "tape" -> newTape
+        |>]
     ]
 
 makeTMRule[value_, read_, outputs_] :=
@@ -43,19 +53,23 @@ makeTMRule[value_, read_, outputs_] :=
 doTMStep[state_, rules_] :=
     Block[{
         nextStates = CreateDataStructure["DynamicArray"::["TMState"]],
-        value = state[[1]], pos = state[[2]], len, read
+        value = state["value"], pos = state["pos"], tape = state["tape"], len, read
     },
-        len = Length[state] - 2;
+        len = Length[tape];
         pos = Mod[pos, len, 1];
-        read = state[[pos + 2]];
+        read = tape[[pos]];
         Do[
             If[ rule["value"] == value && rule["read"] == read,
                 Do[
-                   Block[{newState = Native`Copy[state]},
-                       newState[[1]] = output["value"];
-                       newState[[2]] = Mod[pos + output["dir"], len, 1];
-                       newState[[pos + 2]] = output["write"];
-                       nextStates["Append", Cast[newState, "TMState"]];
+                   Block[{newState, newTape},
+                       newTape = Native`Copy[tape];
+                       newTape[[pos]] = output["write"];
+                       newState = CreateTypeInstance["TMState", <|
+                           "value" -> output["value"],
+                           "pos" -> Mod[pos + output["dir"], len, 1],
+                           "tape" -> newTape
+                       |>];
+                       nextStates["Append", newState];
                    ];
                    ,
                    {output, rule["outputs"]}
@@ -71,29 +85,42 @@ doTMStep[state_, rules_] :=
 doTMStepInfinite[state_, rules_] :=
     Block[{
         nextStates = CreateDataStructure["DynamicArray"::["TMState"]],
-        value = state[[1]], pos = state[[2]], len, read
+        value = state["value"], pos = state["pos"], tape = state["tape"], len, read
     },
-        len = Length[state] - 2;
-        read = If[0 < pos <= len, state[[pos + 2]], 0];
+        len = Length[tape];
+        read = If[0 < pos <= len, tape[[pos]], 0];
         Do[
             If[ rule["value"] == value && rule["read"] == read,
                 Do[
-                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos},
+                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos, newTape},
                        newPos = pos + dir;
                        Which[
                            pos < 1 && write != 0,
-                               newState = Join[{newValue, output["dir"] + 1, write}, ConstantArray[0, - pos], state[[3 ;;]]]
+                               newTape = Join[{write}, ConstantArray[0, - pos], tape];
+                               newState = CreateTypeInstance["TMState", <|
+                                   "value" -> newValue,
+                                   "pos" -> 1 + dir,
+                                   "tape" -> newTape
+                               |>];
                            ,
                            pos > len && write != 0,
-                               newState = Join[{newValue, newPos}, state[[3 ;;]], ConstantArray[0, pos - len - 1], {write}]
+                               newTape = Join[tape, ConstantArray[0, pos - len - 1], {write}];
+                               newState = CreateTypeInstance["TMState", <|
+                                   "value" -> newValue,
+                                   "pos" -> newPos,
+                                   "tape" -> newTape
+                               |>];
                            ,
                            True,
-                               newState = Native`Copy[state];
-                               newState[[1]] = newValue;
-                               newState[[2]] = newPos;
-                               If[0 < pos <= len, newState[[pos + 2]] = write];
+                               newTape = Native`Copy[tape];
+                               If[0 < pos <= len, newTape[[pos]] = write];
+                               newState = CreateTypeInstance["TMState", <|
+                                   "value" -> newValue,
+                                   "pos" -> newPos,
+                                   "tape" -> newTape
+                               |>];
                        ];
-                       nextStates["Append", Cast[newState, "TMState"]];
+                       nextStates["Append", newState];
                    ]
                    ,
                    {output, rule["outputs"]}
@@ -108,32 +135,40 @@ doTMStepInfinite[state_, rules_] :=
 doTMStepInfiniteHalt[state_, rules_] :=
     Block[{
         nextStates = CreateDataStructure["DynamicArray"::["TMState"]],
-        value = state[[1]], pos = state[[2]], len, read
+        value = state["value"], pos = state["pos"], tape = state["tape"], len, read
     },
-        len = Length[state] - 2;
+        len = Length[tape];
         If[ pos > len,
             Return[nextStates]
         ];
-        read = If[0 < pos <= len, state[[pos + 2]], 0];
+        read = If[0 < pos <= len, tape[[pos]], 0];
         Do[
             If[ rule["value"] == value && rule["read"] == read,
                 Do[
-                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos},
+                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos, newTape},
                        newPos = pos + dir;
                        Which[
                            pos < 1 && write != 0,
-                               newState = Join[{newValue, output["dir"] + 1, write}, ConstantArray[0, - pos], state[[3 ;;]]]
+                               newTape = Join[{write}, ConstantArray[0, - pos], tape];
+                               newState = CreateTypeInstance["TMState", <|
+                                   "value" -> newValue,
+                                   "pos" -> 1 + dir,
+                                   "tape" -> newTape
+                               |>];
                            ,
                            (*pos > len && write != 0,
                                newState = Join[{newValue, newPos}, state[[3 ;;]], ConstantArray[0, pos - len - 1], {write}]
                            ,*)
                            True,
-                               newState = Native`Copy[state];
-                               newState[[1]] = newValue;
-                               newState[[2]] = newPos;
-                               If[0 < pos <= len, newState[[pos + 2]] = write];
+                               newTape = Native`Copy[tape];
+                               If[0 < pos <= len, newTape[[pos]] = write];
+                               newState = CreateTypeInstance["TMState", <|
+                                   "value" -> newValue,
+                                   "pos" -> newPos,
+                                   "tape" -> newTape
+                               |>];
                        ];
-                       nextStates["Append", Cast[newState, "TMState"]];
+                       nextStates["Append", newState];
                    ]
                    ,
                    {output, rule["outputs"]}
@@ -148,23 +183,26 @@ doTMStepInfiniteHalt[state_, rules_] :=
 doTMStepInfiniteHaltWidth[state_, rules_, maxWidth_] :=
     Block[{
         nextStates = CreateDataStructure["DynamicArray"::["TMState"]],
-        value = state[[1]], pos = state[[2]], len, read
+        value = state["value"], pos = state["pos"], tape = state["tape"], len, read
     },
         If[ pos > maxWidth || pos < 1,
             Return[nextStates]
         ];
         (* Assume position is always within bounds *)
-        read = state[[pos + 2]];
+        read = tape[[pos]];
         Do[
             If[ rule["value"] == value && rule["read"] == read,
                 Do[
-                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos},
+                   Block[{newState, newValue = output["value"], write = output["write"], dir = output["dir"], newPos, newTape},
                        newPos = pos + dir;
-                       newState = Native`Copy[state];
-                       newState[[1]] = newValue;
-                       newState[[2]] = newPos;
-                       newState[[pos + 2]] = write;;
-                       nextStates["Append", Cast[newState, "TMState"]]
+                       newTape = Native`Copy[tape];
+                       newTape[[pos]] = write;
+                       newState = CreateTypeInstance["TMState", <|
+                           "value" -> newValue,
+                           "pos" -> newPos,
+                           "tape" -> newTape
+                       |>];
+                       nextStates["Append", newState]
                    ];
                    ,
                    {output, rule["outputs"]}
@@ -179,12 +217,12 @@ doTMStepInfiniteHaltWidth[state_, rules_, maxWidth_] :=
 doMultipleTMSteps[states_, rules_, nSteps_, maxWidth_] :=
     Block[{
         allStates = CreateDataStructure["HashSet"::["TMState"]],
-        timeStates = CreateDataStructure["DynamicArray"::["TMState"]],
+        timeStates = CreateDataStructure["DynamicArray"::["TMStateWithStep"]],
         currentStates, newStates,
         do = Which[maxWidth == 0, doTMStepInfiniteHalt, maxWidth > 0, doTMStepInfiniteHaltWidth[#1, #2, maxWidth] &, True, doTMStep]
     },
         currentStates = CreateDataStructure["HashSet"::["TMState"]];
-        Do[If[allStates["Insert", state], timeStates["Append", Prepend[state, 0]]], {state, states}];
+        Do[If[allStates["Insert", state], timeStates["Append", CreateTypeInstance["TMStateWithStep", <|"step" -> 0, "state" -> state|>]]], {state, states}];
         currentStates = allStates;
         Do[
             newStates = CreateDataStructure["HashSet"::["TMState"]];
@@ -193,7 +231,7 @@ doMultipleTMSteps[states_, rules_, nSteps_, maxWidth_] :=
                 {state, currentStates}
             ];
             If[Length[newStates] == 0, Break[]];
-            Do[If[allStates["Insert", newState], timeStates["Append", Prepend[newState, t]]], {newState, newStates}];
+            Do[If[allStates["Insert", newState], timeStates["Append", CreateTypeInstance["TMStateWithStep", <|"step" -> t, "state" -> newState|>]]], {newState, newStates}];
             currentStates = newStates;
             ,
             {t, nSteps}
@@ -229,7 +267,7 @@ doMultipleTMStepsSingleFinal[state_, rules_, nSteps_, maxWidth_] :=
             ,
             {t, nSteps}
         ];
-        Prepend[currentState, curT]
+        CreateTypeInstance["TMStateWithStep", <|"step" -> curT, "state" -> currentState|>]
     ]
 
 functions = {
@@ -247,31 +285,31 @@ functions = {
     ],
     FunctionDeclaration[
         doTMStep,
-        Typed[{"PackedArray"::["MachineInteger", 1], "TMRules"} -> "DynamicArray"::["TMState"]][
+        Typed[{"TMState", "TMRules"} -> "DynamicArray"::["TMState"]][
             DownValuesFunction[doTMStep]
         ]
     ],
     FunctionDeclaration[
         doTMStepInfinite,
-        Typed[{"PackedArray"::["MachineInteger", 1], "TMRules"} -> "DynamicArray"::["TMState"]][
+        Typed[{"TMState", "TMRules"} -> "DynamicArray"::["TMState"]][
             DownValuesFunction[doTMStepInfinite]
         ]
     ],
     FunctionDeclaration[
         doTMStepInfiniteHalt,
-        Typed[{"PackedArray"::["MachineInteger", 1], "TMRules"} -> "DynamicArray"::["TMState"]][
+        Typed[{"TMState", "TMRules"} -> "DynamicArray"::["TMState"]][
             DownValuesFunction[doTMStepInfiniteHalt]
         ]
     ],
     FunctionDeclaration[
         doTMStepInfiniteHaltWidth,
-        Typed[{"PackedArray"::["MachineInteger", 1], "TMRules", "MachineInteger"} -> "DynamicArray"::["TMState"]][
+        Typed[{"TMState", "TMRules", "MachineInteger"} -> "DynamicArray"::["TMState"]][
             DownValuesFunction[doTMStepInfiniteHaltWidth]
         ]
     ],
 	FunctionDeclaration[
 	    doMultipleTMSteps,
-	    Typed[{"TMStates", "TMRules", "MachineInteger", "MachineInteger"} -> "DynamicArray"::["TMState"]][
+	    Typed[{"TMStates", "TMRules", "MachineInteger", "MachineInteger"} -> "DynamicArray"::["TMStateWithStep"]][
 	        DownValuesFunction[doMultipleTMSteps]
 	    ]
 	],
@@ -283,7 +321,7 @@ functions = {
 	],
     FunctionDeclaration[
 	    doMultipleTMStepsSingleFinal,
-	    Typed[{"TMState", "TMRules", "MachineInteger", "MachineInteger"} -> "TMState"][
+	    Typed[{"TMState", "TMRules", "MachineInteger", "MachineInteger"} -> "TMStateWithStep"][
 	        DownValuesFunction[doMultipleTMStepsSingleFinal]
 	    ]
 	]
@@ -297,21 +335,24 @@ TuringMachineStates = Function[{
         Typed[nSteps, "MachineInteger"],
         Typed[maxWidth, "MachineInteger"]
     },
-		doMultipleTMStepsSingle[
-			makeTMState[
-				Cast[init[[1]][[1]], "MachineInteger"],
-				Cast[init[[1]][[2]], "MachineInteger"],
-				Cast[init[[2]], "PackedArray"::["MachineInteger", 1]],
-				maxWidth
-			],
-			makeTMRule[
-				Cast[#[[1]], "MachineInteger"],
-				Cast[#[[2]], "MachineInteger"],
-				Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
-			] & /@ rules,
-			nSteps,
-			maxWidth
-		]["Elements"]
+		Map[
+            Function[{Typed[state, "TMState"]}, Join[{state["value"], state["pos"]}, state["tape"]]],
+            doMultipleTMStepsSingle[
+                makeTMState[
+                    Cast[init[[1]][[1]], "MachineInteger"],
+                    Cast[init[[1]][[2]], "MachineInteger"],
+                    Cast[init[[2]], "PackedArray"::["MachineInteger", 1]],
+                    maxWidth
+                ],
+                makeTMRule[
+                    Cast[#[[1]], "MachineInteger"],
+                    Cast[#[[2]], "MachineInteger"],
+                    Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
+                ] & /@ rules,
+                nSteps,
+                maxWidth
+            ]["Elements"]
+        ]
 	];
 
 TuringMachineState = Function[{
@@ -320,21 +361,24 @@ TuringMachineState = Function[{
         Typed[nSteps, "MachineInteger"],
         Typed[maxWidth, "MachineInteger"]
     },
-		doMultipleTMStepsSingleFinal[
-			makeTMState[
-				Cast[init[[1]][[1]], "MachineInteger"],
-				Cast[init[[1]][[2]], "MachineInteger"],
-				Cast[init[[2]], "PackedArray"::["MachineInteger", 1]],
-				maxWidth
-			],
-			makeTMRule[
-				Cast[#[[1]], "MachineInteger"],
-				Cast[#[[2]], "MachineInteger"],
-				Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
-			] & /@ rules,
-			nSteps,
-			maxWidth
-		]
+        Block[{res},
+            res = doMultipleTMStepsSingleFinal[
+                makeTMState[
+                    Cast[init[[1]][[1]], "MachineInteger"],
+                    Cast[init[[1]][[2]], "MachineInteger"],
+                    Cast[init[[2]], "PackedArray"::["MachineInteger", 1]],
+                    maxWidth
+                ],
+                makeTMRule[
+                    Cast[#[[1]], "MachineInteger"],
+                    Cast[#[[2]], "MachineInteger"],
+                    Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
+                ] & /@ rules,
+                nSteps,
+                maxWidth
+            ];
+            Join[{res["step"], res["state"]["value"], res["state"]["pos"]}, res["state"]["tape"]]
+        ]
 	]
 
 MultiwayTuringMachineStates = Function[{
@@ -343,28 +387,32 @@ MultiwayTuringMachineStates = Function[{
         Typed[nSteps, "MachineInteger"],
         Typed[maxWidth, "MachineInteger"]
     },
-		doMultipleTMSteps[
-			makeTMState[
-				Cast[#[[1]][[1]], "MachineInteger"],
-				Cast[#[[1]][[2]], "MachineInteger"],
-				Cast[#[[2]], "PackedArray"::["MachineInteger", 1]],
-				maxWidth
-			] & /@ inits,
-			makeTMRule[
-				Cast[#[[1]], "MachineInteger"],
-				Cast[#[[2]], "MachineInteger"],
-				Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
-			] & /@ rules,
-			nSteps,
-			maxWidth
-		]["Elements"]
+		Map[
+            Function[{Typed[res, "TMStateWithStep"]}, Join[{res["step"], res["state"]["value"], res["state"]["pos"]}, res["state"]["tape"]]],
+            doMultipleTMSteps[
+                makeTMState[
+                    Cast[#[[1]][[1]], "MachineInteger"],
+                    Cast[#[[1]][[2]], "MachineInteger"],
+                    Cast[#[[2]], "PackedArray"::["MachineInteger", 1]],
+                    maxWidth
+                ] & /@ inits,
+                makeTMRule[
+                    Cast[#[[1]], "MachineInteger"],
+                    Cast[#[[2]], "MachineInteger"],
+                    Cast[#[[3]], "PackedArray"::["MachineInteger", 2]]
+                ] & /@ rules,
+                nSteps,
+                maxWidth
+            ]["Elements"]
+        ]
 	]
 
-{TuringMachineStatesCompiled, TuringMachineStateCompiled, MultiwayTuringMachineStatesCompiled} =
-	FunctionCompile[declarations,
-		{TuringMachineStates, TuringMachineState, MultiwayTuringMachineStates},
-		TargetSystem -> All
-	]
+{TuringMachineStatesCompiled, TuringMachineStateCompiled, MultiwayTuringMachineStatesCompiled} :=
+	{TuringMachineStatesCompiled, TuringMachineStateCompiled, MultiwayTuringMachineStatesCompiled} =
+		FunctionCompile[declarations,
+			{TuringMachineStates, TuringMachineState, MultiwayTuringMachineStates},
+			TargetSystem -> All
+		]
 
 prepRules[ruleNumbers : {__Integer}] := prepRules[
 	ResourceFunction["TuringMachineFromNumber"] /@ ruleNumbers

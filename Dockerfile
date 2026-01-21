@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /usr/bin/x86_64-linux-gnu-gcc /usr/bin/x86_64-unknown-linux-gnu-gcc \
     && ln -sf /usr/bin/aarch64-linux-gnu-gcc /usr/bin/aarch64-unknown-linux-gnu-gcc
 
-WORKDIR /opt/turingmachinesearch
+WORKDIR /opt/TuringMachine
 
 # Copy and run cross-compilation setup (Zig, libiconv)
 COPY zcc setup_cross_compile.sh ./
@@ -39,7 +39,7 @@ ENV PATH="/home/wolframengine/.cargo/bin:${PATH}"
 # Add CC env var for host build scripts
 ENV CC_x86_64_unknown_linux_gnu=gcc
 
-WORKDIR /opt/turingmachinesearch
+WORKDIR /opt/TuringMachine
 
 ARG WOLFRAMSCRIPT_ENTITLEMENTID
 ENV WOLFRAMSCRIPT_ENTITLEMENTID=${WOLFRAMSCRIPT_ENTITLEMENTID}

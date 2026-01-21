@@ -5,7 +5,7 @@ PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
 
 << ExtensionCargo`
 
-name = "TuringMachineSearch"
+name = "TuringMachine"
 
 PacletDirectoryLoad[name]
 paclet = PacletObject[name]

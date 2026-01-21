@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "TuringMachineSearch/Libs/ndtm_search",
+    "TuringMachine/Libs/ndtm_search",
 ]
 resolver = "2"
 

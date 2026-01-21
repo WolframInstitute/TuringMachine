@@ -1,19 +1,8 @@
 
-Libs/ndtm_search/Binaries/
-
-Libs/ndtm_search/target/
-
-pacletextensions
-
-TuringMachineSearch/build/
-
-TuringMachineSearch/Libs/ndtm_search/target/
-
-*.paclet
-
+TuringMachine/build/
+TuringMachine/Binaries/
 target/
-
-TuringMachineSearch/Binaries/
+*.paclet
 
 *.lock
 .DS_Store

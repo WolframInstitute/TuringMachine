@@ -1,6 +1,6 @@
-BeginPackage["TuringMachineSearch`"]
+BeginPackage["WolframInstitute`TuringMachine`"]
 
-ClearAll["TuringMachineSearch`*", "TuringMachineSearch`**`*"]
+ClearAll["WolframInstitute`TuringMachine`*", "WolframInstitute`TuringMachine`**`*"]
 
 TuringMachineRuleCount::usage = "TuringMachineRuleCount[numStates, numSymbols] returns the total number of distinct Turing machine rules possible with numStates states and numSymbols symbols."
 
@@ -73,11 +73,11 @@ functions := functions = (
 	Needs["ExtensionCargo`"];
 	Replace[
 		ExtensionCargo`CargoLoad[
-			PacletObject["TuringMachineSearch"],
+			PacletObject["WolframInstitute/TuringMachine"],
 			"Functions"
 		],
 		Except[_ ? AssociationQ] :> Replace[
-			ExtensionCargo`CargoBuild[PacletObject["TuringMachineSearch"]], {
+			ExtensionCargo`CargoBuild[PacletObject["WolframInstitute/TuringMachine"]], {
 				f : Except[{__ ? FileExistsQ}] :> Function @ Function @ Failure["CargoBuildError", <|
 						"MessageTemplate" -> "Cargo build failed",
 						"Return" -> f
