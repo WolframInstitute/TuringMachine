@@ -6,7 +6,7 @@ set -e
 # Always use linux/amd64 since wolframengine only provides this architecture
 PLATFORM="linux/amd64"
 
-docker build --platform "$PLATFORM" -t turingmachine-search .
+docker build --platform "$PLATFORM" -t turingmachine .
 
 ENTITLEMENT_ID=$(wolframscript -c 'CreateLicenseEntitlement[]["EntitlementID"]' | tail -n 1)
 echo "Using Entitlement ID: $ENTITLEMENT_ID"
@@ -19,5 +19,5 @@ docker run --platform "$PLATFORM" --rm -it \
   -e SDKROOT=/nonexistent \
   -v "$PWD:/opt/TuringMachine" \
   -v "$HOME/.cargo-docker-cache:/home/wolframengine/.cargo/registry" \
-  turingmachine-search \
+  turingmachine \
   /bin/bash -c "./build_all_targets.sh && wolframscript -f ci_build.wl"

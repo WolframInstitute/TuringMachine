@@ -9,10 +9,10 @@ PacletObject[
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
-      (* {
+      {
         "Cargo",
         "Root" -> ".."
-      }, *)
+      },
       {
         "Build",
         "Actions" -> {"CargoBuild"}
