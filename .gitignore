@@ -1,6 +1,7 @@
 
 TuringMachine/build/
 TuringMachine/Binaries/
+TuringMachineSearch/Binaries
 target/
 *.paclet
 
