@@ -20,6 +20,11 @@ OneSidedTuringMachinePlot::usage =
    - ImageSize: size of the image (default: 50)."
 
 OneSidedTuringMachineEvolution
+$PvsNPStyles
+OneSidedTuringMachineFunctionPlot
+MultiwayTuringMachinePlot
+OneSidedTuringMachineRuntimePlot
+TuringMachineWorstCasePlot
 
 Begin["`Private`"]
 
@@ -259,7 +264,7 @@ MultiwayTuringMachineRuntimePlot[rules_, imax_ : 10, tmax_ : 10,
       Null -> Nothing], {2}]], opts, Frame -> True, 
   AspectRatio -> 1/3, PlotRange -> {{.5, All}, All}]
 
-  
+
 End[]
 
 EndPackage[]
