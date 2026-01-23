@@ -232,7 +232,34 @@ TuringMachineWorstCasePlot[rule_, inputspec_, maxsteps_,
         "FunctionRuntimeColor"]}],
     AspectRatio -> 1/4]]]
 
+MultiwayTuringMachinePlot[rules_, imax_ : 10, tmax_ : 10, opts___] := 
+ ListPlot[
+  Catenate[
+   MapIndexed[
+    If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &, 
+    With[{w = 
+       Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
+      MapThread[
+       Append, {w[[All, 1, All, 2]], 
+        If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}] /. 
+      Null -> Nothing], {2}]], opts, Frame -> True, 
+  AspectRatio -> 1/3]
 
+MultiwayTuringMachineRuntimePlot[rules_, imax_ : 10, tmax_ : 10, 
+  opts___] := 
+ ListPlot[
+  Catenate[
+   MapIndexed[
+    If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &, 
+    With[{w = 
+       Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
+      MapThread[
+       Append, {w[[All, 1, All, 1]], 
+        If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}] /. 
+      Null -> Nothing], {2}]], opts, Frame -> True, 
+  AspectRatio -> 1/3, PlotRange -> {{.5, All}, All}]
+
+  
 End[]
 
 EndPackage[]
