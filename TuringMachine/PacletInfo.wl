@@ -5,10 +5,14 @@ PacletObject[
     "Creator" -> "Nik Murzin and Willem Nielsen",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.0.3",
+    "Version" -> "1.0.4",
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
+      {
+        "Cargo",
+        "Root" -> "Libs"
+      },
       {
         "Build",
         "Actions" -> {"CargoBuild"}
