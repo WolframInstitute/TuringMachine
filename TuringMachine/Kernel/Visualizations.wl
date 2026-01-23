@@ -24,13 +24,20 @@ OneSidedTuringMachineEvolution
 Begin["`Private`"]
 
 $PvsNPStyles = <|"FunctionValueColor" -> Hue[0.6111111111111112, 0.6, 1.], 
- "FunctionRuntimeColor" -> Hue[0.099, 1, 0.98], "TuringMachineColorRules" -> 
-  {0 -> GrayLevel[1], 1 -> Hue[0.034, 0.704, 0.9500000000000001], 
-   2 -> Hue[0.12, 0.762, 1], -1 -> GrayLevel[0.85]}, 
- "DistributionStyle" -> Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], 
- "FrameStyle" -> GrayLevel[0.7], "MultiwayPathColorRules" -> 
-  {1 -> RGBColor[0.34500000000000003, 0.712, 1], 
-   2 -> RGBColor[0.8260000000000001, 0.20500000000000002, 1]}|>
+ "FunctionRuntimeColor" -> Hue[0.099, 1, 0.98], "RuntimeTableColor" -> 
+  RGBColor[0.994, 0.868, 0.751], "ValueTableColor" -> RGBColor[0.87, 0.94, 1], 
+ "TuringMachineColorRules" -> {0 -> GrayLevel[1], 
+   1 -> Hue[0.034, 0.704, 0.9500000000000001], 2 -> Hue[0.12, 0.762, 1], 
+   -1 -> GrayLevel[0.85]}, "DistributionStyle" -> 
+  Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], "FrameStyle" -> GrayLevel[0.7], 
+ "MultiwayPathColorRules" -> {1 -> RGBColor[0.34500000000000003, 0.712, 1], 
+   2 -> RGBColor[0.8260000000000001, 0.20500000000000002, 1]}, 
+ "GridFrame" -> GrayLevel[0.6], "FunctionValuePlotOptions" -> 
+  {Frame -> True, Filling -> Axis, PlotStyle -> RGBColor[0.32, 0.47999999999999987, 
+     0.8], FillingStyle -> Hue[0.6111111111111112, 0.6, 1.], 
+   PlotInteractivity -> False}, "FunctionRuntimePlotOptions" -> 
+  {Frame -> True, Filling -> Axis, PlotStyle -> RGBColor[0.882, 0.523908, 0.], 
+   FillingStyle -> Hue[0.099, 1, 0.98], PlotInteractivity -> False}|>
 
 
 
@@ -134,6 +141,96 @@ If[ labelOutputQ,
         ] &,
         Identity]
 ]]
+
+Clear[OneSidedTuringMachineFunctionPlot]
+Options[OneSidedTuringMachineFunctionPlot] = {};
+OneSidedTuringMachineFunctionPlot[
+  rule : {_Integer, _Integer, _Integer}, 
+  inputspec : {_Integer, _Integer}, maxsteps_Integer,  
+  ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, 
+     ListPlot}]] := 
+ With[{vals = OneSidedTuringMachineFunction[rule, inputspec, maxsteps]},
+   OneSidedTuringMachineFunctionPlot[vals, ops]]
+
+OneSidedTuringMachineFunctionPlot[vals_List, 
+  ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, 
+     ListPlot}]] := 
+ With[{m = Max[DeleteCases[vals, Undefined]]}, 
+  ListPlot[ReplaceAll[vals, Undefined -> Style[0, White]], 
+   FilterRules[{ops}, Options[ListPlot]], 
+   PlotStyle -> Darker[$PvsNPStyles["FunctionValueColor"], .2], 
+   AspectRatio -> 1/3, Frame -> True, Filling -> Axis,
+   FillingStyle -> $PvsNPStyles["FunctionValueColor"],
+   FrameLabel -> {"input", "value"}]]
+
+Clear[OneSidedTuringMachineRuntimePlot]
+Options[OneSidedTuringMachineRuntimePlot] = {"ShowInfinity" -> False, 
+   "VerticalPadding" -> 10};
+OneSidedTuringMachineRuntimePlot[rule : {_Integer, _Integer, _Integer}, 
+  inputspec : {_Integer, _Integer}, maxsteps_Integer, 
+  ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, 
+     ListPlot}]] := 
+ With[{vals = 
+    OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]},
+   OneSidedTuringMachineRuntimePlot[vals, ops]]
+
+OneSidedTuringMachineRuntimePlot[vals_List, 
+  ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, 
+     ListPlot}]] := 
+ With[{m = Max[DeleteCases[vals, Infinity]]}, 
+  ListPlot[ReplaceAll[vals, Infinity -> Style[0, White]], 
+   FilterRules[{ops}, Options[ListPlot]], 
+   PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
+   FillingStyle -> $PvsNPStyles["FunctionRuntimeColor"],
+    AspectRatio -> 1/3,
+   PlotRange -> 
+    If[OptionValue["ShowInfinity"], {-2, 
+      m + OptionValue["VerticalPadding"]}, Automatic],
+   Frame -> True, Filling -> Axis,
+   FrameLabel -> {"input", "runtime"},
+   Epilog -> 
+    If[OptionValue["ShowInfinity"], 
+     Style[Map[
+       Arrow[{{#, m + OptionValue["VerticalPadding"] - 15}, {#, 
+           m + OptionValue["VerticalPadding"]}}] &, 
+       Catenate[
+        Position[
+         OneSidedTuringMachineFunction[{2189, 2, 2}, {1, 255}, 1000, 
+          "Steps"], Infinity]]], Red, Arrowheads[.015]], {}]
+   ]]
+
+Clear[WorstCasesIndexed]
+WorstCasesIndexed[ilist : {{_Integer, _Integer} ..}, 
+  k_ : 2] := {#[[1, 1]], MaximalBy[#, Last][[1, 2]]} & /@ 
+  SplitBy[ilist, IntegerLength[First[#], k] &]
+
+Clear[TuringMachineWorstCasePlot]
+Options[TuringMachineWorstCasePlot] = {"ShowEnvelope" -> True, 
+   "EnvelopeStyle" -> GrayLevel[.7, .08]};
+TuringMachineWorstCasePlot[rule_, inputspec_, maxsteps_,  
+  ops : OptionsPattern[{TuringMachineWorstCasePlot, ListPlot, 
+     ListStepPlot}]] := 
+ With[{u = 
+    Transpose[{Range @@ inputspec, 
+      OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]}]},
+  {v = WorstCasesIndexed[u, rule[[3]]]},
+  If[OptionValue["ShowEnvelope"], Show[ 
+      ListStepPlot[v, 
+       Sequence @@ FilterRules[{ops}, Options[ListStepPlot]],
+       PlotInteractivity -> False, Filling -> Bottom, 
+       PlotStyle -> Opacity[.1, Gray], AspectRatio -> 1/4, 
+       Frame -> True, 
+       FrameTicks -> {{Automatic, 
+          Automatic}, {PowerRange[1, rule[[3]]^Length[v], rule[[3]]], 
+          Automatic}}], #, PlotRangeClipping -> True] &, Identity][
+   ListPlot[u, Sequence @@ FilterRules[{ops}, Options[ListPlot]],
+    PlotInteractivity -> False,
+     Filling -> Axis, 
+    PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
+    FillingStyle -> 
+     Directive[{AbsoluteThickness[1.5], $PvsNPStyles[
+        "FunctionRuntimeColor"]}],
+    AspectRatio -> 1/4]]]
 
 
 End[]
