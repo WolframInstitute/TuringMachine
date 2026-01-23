@@ -11,7 +11,7 @@ name = "TuringMachine"
 PacletDirectoryLoad[name]
 paclet = PacletObject[publisher <> "/" <> name]
 
-CargoCollect[paclet]    
+CargoCollect[ParentDirectory[paclet["Location"]], FileNameJoin[name, "Binaries"]]
 pacletFile = CreatePacletArchive[name]
 
 Echo[StringTemplate["Paclet `` has size ``"][pacletFile, FileSize[pacletFile]]]

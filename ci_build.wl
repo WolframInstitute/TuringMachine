@@ -14,7 +14,7 @@ paclet = PacletObject[publisher <> "/" <> name]
 
 (* CargoCollect - collects binaries built by build_all_targets.sh *)
 Print["Running CargoCollect..."]
-ExtensionCargo`CargoCollect[paclet]
+ExtensionCargo`CargoCollect[ParentDirectory[paclet["Location"]], FileNameJoin[name, "Binaries"]]
 
 (* Create Paclet Archive *)
 Print["Creating Paclet Archive..."]
