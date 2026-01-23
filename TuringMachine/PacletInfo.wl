@@ -10,7 +10,7 @@ PacletObject[
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
       {
-        "Build"3
+        "Build",
         "Actions" -> {"CargoBuild"}
       },
       {
