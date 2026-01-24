@@ -64,7 +64,7 @@ SetOptions[PacletResource`Notebooks`ProcessNotebookForEmbedding, "EmbeddedHTMLIm
 (* Submit with ExitOnFail *)
 print["Submitting paclet..."];
 result = Check[
-    Wolfram`PacletCICD`SubmitPaclet[$defNB, "ExitOnFail" -> False],
+    Wolfram`PacletCICD`SubmitPaclet[ExpandFileName[First[$defNB]], "ExitOnFail" -> False],
     $Failed,
     {Wolfram`PacletCICD`SubmitPaclet::errors, General::error}
 ];
