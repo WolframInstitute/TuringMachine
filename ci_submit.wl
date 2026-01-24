@@ -56,6 +56,11 @@ If[!FileExistsQ[First[$defNB]],
 print["Loading paclet directory..."];
 PacletDirectoryLoad[$pacletDir];
 
+(* Configure notebook processing for CI - from Rick's script *)
+print["Configuring notebook processing for CI..."];
+Needs["PacletResource`" -> None];
+SetOptions[PacletResource`Notebooks`ProcessNotebookForEmbedding, "EmbeddedHTMLImages" -> True];
+
 (* Submit with ExitOnFail *)
 print["Submitting paclet..."];
 result = Check[
