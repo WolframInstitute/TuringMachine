@@ -170,9 +170,11 @@ jobs:
 
     steps:
       - name: Checkout Code
+        if: ${{ !env.ACT }}
         uses: actions/checkout@v4
 
       - name: Download Paclet Directory
+        if: ${{ !env.ACT }}
         uses: actions/download-artifact@v4
         with:
           name: TuringMachine-dir
