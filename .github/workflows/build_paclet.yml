@@ -150,5 +150,3 @@ jobs:
         run: wolframscript -f ci_submit.wl
         env:
           RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
-          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID_2 }}
-          WLPR_PACLET_SITE: https://resources.wolframcloud.com/PacletRepository/pacletsite
