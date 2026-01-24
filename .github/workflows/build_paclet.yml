@@ -153,3 +153,5 @@ jobs:
           resource_system_base: https://www.wolframcloud.com/obj/resourcesystem/api/1.0
         env:
           RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
+          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID_2 }}
+          WLPR_PACLET_SITE: https://resources.wolframcloud.com/PacletRepository/pacletsite
