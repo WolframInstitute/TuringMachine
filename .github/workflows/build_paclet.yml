@@ -165,6 +165,8 @@ jobs:
     env:
       WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
       RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
+      WOLFRAM_SYSTEM_ID: Linux-x86-64
+      WOLFRAMINIT: -lmverbose
 
     steps:
       - name: Checkout Code
