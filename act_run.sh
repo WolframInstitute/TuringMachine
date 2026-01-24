@@ -7,7 +7,9 @@ WORKFLOW="${1:-build}"
 
 # Generate entitlement ID dynamically
 ENTITLEMENT_ID=$(wolframscript -c 'CreateLicenseEntitlement[]["EntitlementID"]' | tail -n 1)
+RESOURCE_PUBLISHER_TOKEN=$(wolframscript -c 'PacletSymbol["Wolfram/PacletCICD", "Wolfram`PacletCICD`CreatePublisherToken"]["act"]["TokenString"]' | tail -n 1)
 echo "Using Entitlement ID: $ENTITLEMENT_ID"
+echo "Using Resource Publisher Token: $RESOURCE_PUBLISHER_TOKEN"
 
 # Create artifacts directory
 mkdir -p ./act-artifacts
@@ -39,7 +41,7 @@ act \
   -W "$WORKFLOW_FILE" \
   -P ubuntu-latest=wolframresearch/wolframengine:latest \
   -s WOLFRAMSCRIPT_ENTITLEMENTID="$ENTITLEMENT_ID" \
-  -s RESOURCE_PUBLISHER_TOKEN="${RESOURCE_PUBLISHER_TOKEN:-dummy}" \
+  -s RESOURCE_PUBLISHER_TOKEN="$RESOURCE_PUBLISHER_TOKEN" \
   --container-architecture linux/amd64 \
   --bind \
   --env ACT=true
