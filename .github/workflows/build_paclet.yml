@@ -5,6 +5,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      submit:
+        description: "Submit to Paclet Repository after build"
+        type: boolean
+        default: false
+    outputs:
+      paclet_file:
+        description: "Path to the built paclet"
+        value: ${{ jobs.build.outputs.paclet_file }}
+      paclet_version:
+        description: "Version of the built paclet"
+        value: ${{ jobs.build.outputs.paclet_version }}
 
 permissions:
   contents: write
@@ -17,6 +30,10 @@ jobs:
       image: wolframresearch/wolframengine:latest
       options: --user root
     
+    outputs:
+      paclet_file: ${{ steps.find_paclet.outputs.paclet_file }}
+      paclet_version: ${{ steps.read_version.outputs.version }}
+
     env:
       WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
       SDKROOT: /nonexistent
@@ -119,7 +136,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: ${{ !env.ACT }}
+        if: ${{ !env.ACT && github.event_name != 'workflow_call' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
@@ -127,3 +144,12 @@ jobs:
           files: ${{ steps.find_paclet.outputs.paclet_file }}
           prerelease: true
           make_latest: true
+
+      - name: Submit to Repository
+        if: ${{ inputs.submit }}
+        uses: WolframResearch/submit-paclet@v1.11.0
+        with:
+          definition_notebook: ./TuringMachine/TuringMachine | Definition Notebook.nb
+          resource_system_base: https://www.wolframcloud.com/obj/resourcesystem/api/1.0
+        env:
+          RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
