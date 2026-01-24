@@ -45,10 +45,7 @@ act \
   --container-architecture linux/amd64 \
   --bind \
   --env ACT=true \
-  -v act-zig-cache:/opt/zig \
-  -v act-cargo-cache:/root/.cargo \
-  -v act-rustup-cache:/root/.rustup \
-  -v act-macos-sysroot:/opt/macos-sysroot
+  --container-options "-v act-zig-cache:/opt/zig -v act-cargo-cache:/root/.cargo -v act-rustup-cache:/root/.rustup -v act-macos-sysroot:/opt/macos-sysroot"
 
 # For build workflow, copy artifacts
 if [ "$WORKFLOW" = "build" ]; then
