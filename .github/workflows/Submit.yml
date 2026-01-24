@@ -1,0 +1,16 @@
+name: Submit
+on: 
+  workflow_dispatch:
+  push: 
+    branches: ['release/*']
+
+permissions:
+  contents: write
+
+jobs:
+  submit:
+    name: Build and Submit
+    uses: ./.github/workflows/build_paclet.yml
+    with:
+      submit: true
+    secrets: inherit
