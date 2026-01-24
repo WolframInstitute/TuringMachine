@@ -44,7 +44,7 @@ $PublisherID = PacletObject[File[$pacletDir]]["PublisherID"];
 print["PublisherID: ", $PublisherID];
 
 (* Definition notebook *)
-$defNB = File["./TuringMachine/TuringMachine | Definition Notebook.nb"];
+$defNB = File["./TuringMachine/ResourceDefinition.nb"];
 print["Definition Notebook: ", $defNB];
 
 If[!FileExistsQ[First[$defNB]],
