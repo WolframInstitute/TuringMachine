@@ -58,9 +58,14 @@ PacletDirectoryLoad[$pacletDir];
 
 (* Submit with ExitOnFail *)
 print["Submitting paclet..."];
-result = Wolfram`PacletCICD`SubmitPaclet[$defNB, "ExitOnFail" -> True];
+result = Check[
+    Wolfram`PacletCICD`SubmitPaclet[$defNB, "ExitOnFail" -> False],
+    $Failed,
+    {Wolfram`PacletCICD`SubmitPaclet::errors, General::error}
+];
 
 print["Submit result: ", result];
+print["Result FullForm: ", FullForm[result]];
 
 (* Check if SubmitPaclet failed to evaluate *)
 If[MatchQ[result, _Wolfram`PacletCICD`SubmitPaclet],
@@ -68,8 +73,13 @@ If[MatchQ[result, _Wolfram`PacletCICD`SubmitPaclet],
     Exit[1]
 ];
 
-If[FailureQ[result],
+If[FailureQ[result] || result === $Failed,
     print["::error::Submission failed"];
+    If[MatchQ[result, _Failure],
+        print["Failure type: ", result["Type"]];
+        print["Failure message: ", result["Message"]];
+        print["Failure info: ", result["Information"]];
+    ];
     Exit[1],
     print["=== Submission successful! ==="]
 ];
