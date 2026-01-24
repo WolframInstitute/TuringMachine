@@ -62,8 +62,17 @@ jobs:
             /usr/local/bin/zcc
           key: toolchains-zig-0.13.0-libiconv-1.17-${{ hashFiles('setup_cross_compile.sh', 'zcc') }}
 
+      - name: Check Zig Cache
+        id: check-zig
+        run: |
+          if [ -f /opt/zig/zig ]; then
+            echo "hit=true" >> $GITHUB_OUTPUT
+          else
+            echo "hit=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Cross-Compilation Toolchains
-        if: steps.cache-toolchains.outputs.cache-hit != 'true'
+        if: steps.cache-toolchains.outputs.cache-hit != 'true' && steps.check-zig.outputs.hit != 'true'
         run: |
           chmod +x setup_cross_compile.sh
           ./setup_cross_compile.sh
@@ -86,8 +95,17 @@ jobs:
             ~/.rustup
           key: rust-${{ hashFiles('setup_rust.sh') }}
 
+      - name: Check Rust Cache
+        id: check-rust
+        run: |
+          if [ -f "$HOME/.cargo/bin/rustc" ]; then
+            echo "hit=true" >> $GITHUB_OUTPUT
+          else
+            echo "hit=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Rust
-        if: steps.cache-rust.outputs.cache-hit != 'true'
+        if: steps.cache-rust.outputs.cache-hit != 'true' && steps.check-rust.outputs.hit != 'true'
         run: |
           chmod +x setup_rust.sh
           ./setup_rust.sh
