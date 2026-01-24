@@ -147,10 +147,7 @@ jobs:
 
       - name: Submit to Repository
         if: ${{ inputs.submit }}
-        uses: WolframResearch/submit-paclet@v1.11.0
-        with:
-          definition_notebook: ./TuringMachine/TuringMachine | Definition Notebook.nb
-          resource_system_base: https://www.wolframcloud.com/obj/resourcesystem/api/1.0
+        run: wolframscript -f ci_submit.wl
         env:
           RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID_2 }}
