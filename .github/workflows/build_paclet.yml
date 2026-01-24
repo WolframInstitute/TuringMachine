@@ -129,6 +129,14 @@ jobs:
           path: ${{ steps.find_paclet.outputs.paclet_file }}
           if-no-files-found: error
 
+      - name: Upload Paclet Directory
+        if: ${{ !env.ACT && inputs.submit }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: TuringMachine-dir
+          path: ./TuringMachine
+          if-no-files-found: error
+
       - name: Read Paclet Version
         id: read_version
         run: |
@@ -145,8 +153,31 @@ jobs:
           prerelease: true
           make_latest: true
 
-      - name: Submit to Repository
-        if: ${{ inputs.submit }}
+  submit:
+    name: Submit to Repository
+    needs: build
+    if: ${{ inputs.submit }}
+    runs-on: ubuntu-latest
+    container:
+      image: wolframresearch/wolframengine:latest
+      options: --user root
+    
+    env:
+      WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAMSCRIPT_ENTITLEMENTID }}
+      RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Paclet Directory
+        uses: actions/download-artifact@v4
+        with:
+          name: TuringMachine-dir
+          path: ./TuringMachine
+
+      - name: List Contents
+        run: ls -la ./TuringMachine/
+
+      - name: Submit Paclet
         run: wolframscript -f ci_submit.wl
-        env:
-          RESOURCE_PUBLISHER_TOKEN: ${{ secrets.RESOURCE_PUBLISHER_TOKEN }}
