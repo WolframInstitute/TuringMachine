@@ -38,23 +38,27 @@ $ResourceSystemBase = With[{rsBase = Environment["RESOURCE_SYSTEM_BASE"]},
 ];
 print["ResourceSystemBase: ", $ResourceSystemBase];
 
-(* Set PublisherID from paclet *)
-$pacletDir = "./TuringMachine";
-$PublisherID = PacletObject[File[$pacletDir]]["PublisherID"];
-print["PublisherID: ", $PublisherID];
+(* Definition notebook - use FileNameJoin with absolute path *)
+$pacletDir = FileNameJoin[{Directory[], "TuringMachine"}];
+print["Paclet directory (absolute): ", $pacletDir];
 
-(* Definition notebook *)
-$defNB = File["./TuringMachine/ResourceDefinition.nb"];
+$defNB = File @ FileNameJoin[{$pacletDir, "ResourceDefinition.nb"}];
 print["Definition Notebook: ", $defNB];
+print["Definition Notebook exists: ", FileExistsQ[First[$defNB]]];
 
 If[!FileExistsQ[First[$defNB]],
     print["::error::Definition notebook not found: ", $defNB];
+    print["Directory contents: ", FileNames["*", $pacletDir]];
     Exit[1]
 ];
 
 (* Load paclet directory *)
 print["Loading paclet directory..."];
 PacletDirectoryLoad[$pacletDir];
+
+(* Set PublisherID from paclet *)
+$PublisherID = PacletObject[File[$pacletDir]]["PublisherID"];
+print["PublisherID: ", $PublisherID];
 
 (* Configure notebook processing for CI - from Rick's script *)
 print["Configuring notebook processing for CI..."];
@@ -64,7 +68,7 @@ SetOptions[PacletResource`Notebooks`ProcessNotebookForEmbedding, "EmbeddedHTMLIm
 (* Submit with ExitOnFail *)
 print["Submitting paclet..."];
 result = Check[
-    Wolfram`PacletCICD`SubmitPaclet[ExpandFileName[First[$defNB]], "ExitOnFail" -> False],
+    Wolfram`PacletCICD`SubmitPaclet[$defNB, "ExitOnFail" -> False],
     $Failed,
     {Wolfram`PacletCICD`SubmitPaclet::errors, General::error}
 ];
