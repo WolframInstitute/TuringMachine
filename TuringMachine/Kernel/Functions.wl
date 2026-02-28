@@ -12,7 +12,12 @@ OneSidedTuringMachineFunction[rule, input, maxSteps, prop] returns the specified
 - All: Returns {steps, value, width}.
 Returns {Infinity, Undefined, Infinity} (or parts thereof) if it does not halt within maxSteps."
 
-OneSidedTuringMachineFind::usage = "OneSidedTuringMachineFind[rule, maxInput, maxSteps, {s, k}, rules] finds equivalent Turing Machine functions that run within same or less number of steps for a given rule."
+OneSidedTuringMachineFind::usage = "OneSidedTuringMachineFind[rule, maxInput, maxSteps, {s, k}] finds all {s, k} Turing machine rules that produce the same outputs as rule for inputs 1 to maxInput, each within maxSteps steps.
+OneSidedTuringMachineFind[rule, {minInput, maxInput}, maxSteps, {s, k}] specifies an explicit input range.
+OneSidedTuringMachineFind[{{input, steps, value}, ...}, {s, k}] finds rules matching the given input\[Rule]value pairs, each within the specified step bound.
+OneSidedTuringMachineFind[{{steps, value}, ...}, {s, k}] uses sequential indices 1, 2, ... as inputs.
+OneSidedTuringMachineFind[{values}, maxSteps, {s, k}] finds rules producing the given output values for inputs 1, 2, ..., each within maxSteps steps. values must be wrapped in an extra list to disambiguate from rule triples, e.g. OneSidedTuringMachineFind[{Range[100]+1}, 200].
+{s, k} defaults to {2, 2}. An optional final argument restricts the search to a specific list of rule numbers."
 
 MultiwayTuringMachineSearch::usage = "MultiwayTuringMachineSearch[rules, input, output, maxSteps] attempts to find a sequence of transitions in a non-deterministic Turing machine defined by a list of integer rules that transforms input into output within maxSteps steps (assumes 2 states, 2 symbols).
 MultiwayTuringMachineSearch[rules, numStates, numSymbols, input, output, maxSteps] allows specifying the number of states and symbols."
@@ -133,6 +138,8 @@ DTMOutputTableFloatTripleRust := functions["dtm_output_table_triple_parallel_f64
 DTMOutputTableTripleWithHistoryRust := functions["dtm_output_table_triple_with_history_wl"]
 DTMOutputTableTripleWithHistoryParallelRust := functions["dtm_output_table_triple_with_history_parallel_wl"]
 DetectCycleRust := functions["detect_cycle_wl"]
+FindMatchingRulesRangeRust := functions["find_matching_rules_range_wl"]
+FindMatchingRulesVecRust := functions["find_matching_rules_vec_wl"]
 
 (* Vec-based function bindings *)
 DTMOutputTableValueVecRust := functions["dtm_output_table_parallel_vec_wl"]
@@ -393,29 +400,31 @@ OneSidedTuringMachineFind[
 OneSidedTuringMachineFind[
 	inputStepValues : {{_Integer, _Integer, _Integer} ..},
 	sk : {_Integer, _Integer} : {2, 2},
-	defaultRules : {___Integer} | All : All
-] := Block[{
-	rulesLeft,
-	initRules = Replace[defaultRules, All :> Range[TuringMachineRuleCount @@ sk]],
-	curInput = None
-},
-	Progress`EvaluateWithProgress[
-		FoldWhile[{rules, x} |->
-			MapThread[
-				If[#2 =!= Undefined && #2 == x[[3]], #1, Nothing] &,
-				{rules, OneSidedTuringMachineFunction[{rules, Splice[sk]}, curInput = x[[1]], x[[2]]]}
-			],
-			initRules,
-			inputStepValues,
-			((rulesLeft = Length[#]); # =!= {}) &
-		],
-		<|
-			"Text" :> StringTemplate["Rules left to check: ``"][rulesLeft],
-			"Detail" :> If[curInput === None, None, StringTemplate["Current input: ``"][curInput]],
-			"Progress" -> Automatic,
-			"Percentage" :> 1 - rulesLeft / Length[initRules]
-        |>
-	]
+	defaultRules : _Integer ;; _Integer
+] := FromDigits /@ List @@ FindMatchingRulesRangeRust[
+	sk[[1]], sk[[2]],
+	defaultRules[[1]] - 1, defaultRules[[2]] - 1,
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]]
+]
+
+OneSidedTuringMachineFind[
+	inputStepValues : {{_Integer, _Integer, _Integer} ..},
+	sk : {_Integer, _Integer} : {2, 2},
+	defaultRules : All : All
+] := OneSidedTuringMachineFind[inputStepValues, sk, 1 ;; TuringMachineRuleCount @@ sk]
+
+OneSidedTuringMachineFind[
+	inputStepValues : {{_Integer, _Integer, _Integer} ..},
+	sk : {_Integer, _Integer} : {2, 2},
+	defaultRules : {__Integer}
+] := FromDigits /@ List @@ FindMatchingRulesVecRust[
+	sk[[1]], sk[[2]],
+	Developer`DataStore @@ ToString /@ defaultRules,
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]]
 ]
 
 

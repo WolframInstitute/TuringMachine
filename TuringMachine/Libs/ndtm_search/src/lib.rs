@@ -1028,6 +1028,86 @@ pub fn ndtm_traverse_queue_size(
 }
 
 
+/// Shared sieve: filter a Vec of candidate rule numbers against the remaining targets.
+fn sieve_candidates(
+    num_states: u32,
+    num_symbols: u32,
+    mut candidates: Vec<u64>,
+    targets: &[(BigUint, u64, BigUint)],
+) -> Vec<u64> {
+    for (input, max_steps, expected_value) in targets {
+        if candidates.is_empty() || aborted_safe() {
+            break;
+        }
+        candidates = candidates
+            .par_iter()
+            .filter(|&&rule_num| {
+                if aborted_safe() { return false; }
+                let rule_bigint = BigInt::from(rule_num);
+                let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+                    Ok(t) => t,
+                    Err(_) => return false,
+                };
+                match run_dtm(&tm, input, *max_steps) {
+                    Some((_, val, _)) => val == *expected_value,
+                    None => false,
+                }
+            })
+            .copied()
+            .collect();
+    }
+    candidates
+}
+
+/// Find all rule numbers in [min_rule, max_rule] that produce the expected output
+/// for each (input, max_steps, expected_value) target triple.
+/// First iteration uses rayon's parallel range iteration (no Vec allocation).
+pub fn find_matching_rules_range(
+    num_states: u32,
+    num_symbols: u32,
+    min_rule: u64,
+    max_rule: u64,
+    targets: &[(BigUint, u64, BigUint)],
+) -> Vec<u64> {
+    if targets.is_empty() || min_rule > max_rule {
+        return Vec::new();
+    }
+
+    // First iteration: parallel filter directly on the range (no allocation)
+    let (input, max_steps, expected_value) = &targets[0];
+    let candidates: Vec<u64> = (min_rule..=max_rule)
+        .into_par_iter()
+        .filter(|&rule_num| {
+            if aborted_safe() { return false; }
+            let rule_bigint = BigInt::from(rule_num);
+            let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+                Ok(t) => t,
+                Err(_) => return false,
+            };
+            match run_dtm(&tm, input, *max_steps) {
+                Some((_, val, _)) => val == *expected_value,
+                None => false,
+            }
+        })
+        .collect();
+
+    sieve_candidates(num_states, num_symbols, candidates, &targets[1..])
+}
+
+/// Find all rule numbers from an explicit list that produce the expected output
+/// for each (input, max_steps, expected_value) target triple.
+pub fn find_matching_rules_vec(
+    num_states: u32,
+    num_symbols: u32,
+    rules: &[u64],
+    targets: &[(BigUint, u64, BigUint)],
+) -> Vec<u64> {
+    if targets.is_empty() || rules.is_empty() {
+        return Vec::new();
+    }
+    sieve_candidates(num_states, num_symbols, rules.to_vec(), targets)
+}
+
 
 // Wolfram LibraryLink wrappers
 
@@ -1638,3 +1718,64 @@ pub fn collect_seen_values_tuples_inferred_wl(
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
 }
 
+/// WL wrapper for find_matching_rules_range.
+/// Takes three parallel arrays: inputs, max_steps, expected_values (all as strings).
+/// Returns matching rule numbers as strings.
+#[wll::export]
+pub fn find_matching_rules_range_wl(
+    num_states: u32,
+    num_symbols: u32,
+    min_rule: u64,
+    max_rule: u64,
+    inputs: Vec<String>,
+    max_steps_vec: Vec<String>,
+    expected_values: Vec<String>,
+) -> Vec<String> {
+    let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
+        .zip(max_steps_vec.iter())
+        .zip(expected_values.iter())
+        .map(|((inp, steps), exp)| {
+            (
+                inp.parse::<BigUint>().unwrap(),
+                steps.parse::<u64>().unwrap(),
+                exp.parse::<BigUint>().unwrap(),
+            )
+        })
+        .collect();
+
+    find_matching_rules_range(num_states, num_symbols, min_rule, max_rule, &targets)
+        .into_iter()
+        .map(|r| r.to_string())
+        .collect()
+}
+
+/// WL wrapper for find_matching_rules_vec.
+/// Takes rule numbers and target arrays as strings.
+/// Returns matching rule numbers as strings.
+#[wll::export]
+pub fn find_matching_rules_vec_wl(
+    num_states: u32,
+    num_symbols: u32,
+    rules: Vec<String>,
+    inputs: Vec<String>,
+    max_steps_vec: Vec<String>,
+    expected_values: Vec<String>,
+) -> Vec<String> {
+    let rule_nums: Vec<u64> = rules.iter().map(|s| s.parse::<u64>().unwrap()).collect();
+    let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
+        .zip(max_steps_vec.iter())
+        .zip(expected_values.iter())
+        .map(|((inp, steps), exp)| {
+            (
+                inp.parse::<BigUint>().unwrap(),
+                steps.parse::<u64>().unwrap(),
+                exp.parse::<BigUint>().unwrap(),
+            )
+        })
+        .collect();
+
+    find_matching_rules_vec(num_states, num_symbols, &rule_nums, &targets)
+        .into_iter()
+        .map(|r| r.to_string())
+        .collect()
+}
