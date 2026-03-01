@@ -400,32 +400,43 @@ OneSidedTuringMachineFind[
 OneSidedTuringMachineFind[
 	inputStepValues : {{_Integer, _Integer, _Integer} ..},
 	sk : {_Integer, _Integer} : {2, 2},
-	defaultRules : _Integer ;; _Integer
+	defaultRules : _Integer ;; _Integer,
+	maxErrors : _Integer ;; _Integer : 0 ;; 0
 ] := FromDigits /@ List @@ FindMatchingRulesRangeRust[
 	sk[[1]], sk[[2]],
 	defaultRules[[1]] - 1, defaultRules[[2]] - 1,
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]]
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
+	maxErrors[[1]], maxErrors[[2]]
 ]
 
 OneSidedTuringMachineFind[
 	inputStepValues : {{_Integer, _Integer, _Integer} ..},
 	sk : {_Integer, _Integer} : {2, 2},
-	defaultRules : All : All
-] := OneSidedTuringMachineFind[inputStepValues, sk, 1 ;; TuringMachineRuleCount @@ sk]
+	defaultRules : All : All,
+	maxErrors_ : 0
+] := OneSidedTuringMachineFind[inputStepValues, sk, 1 ;; (TuringMachineRuleCount @@ sk), maxErrors]
 
 OneSidedTuringMachineFind[
 	inputStepValues : {{_Integer, _Integer, _Integer} ..},
 	sk : {_Integer, _Integer} : {2, 2},
-	defaultRules : {__Integer}
+	defaultRules : {__Integer},
+	maxErrors : _Integer ;; _Integer : 0 ;; 0
 ] := FromDigits /@ List @@ FindMatchingRulesVecRust[
 	sk[[1]], sk[[2]],
-	Developer`DataStore @@ ToString /@ defaultRules,
+	Developer`DataStore @@ ToString /@ (defaultRules - 1),
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]]
+	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
+	maxErrors[[1]], maxErrors[[2]]
 ]
+
+(* Normalize maxErrors: n -> 0;;n, {n} -> n;;n *)
+OneSidedTuringMachineFind[isv_, sk_, rules_, n_Integer] :=
+	OneSidedTuringMachineFind[isv, sk, rules, 0 ;; n]
+OneSidedTuringMachineFind[isv_, sk_, rules_, {n_Integer}] :=
+	OneSidedTuringMachineFind[isv, sk, rules, n ;; n]
 
 
 

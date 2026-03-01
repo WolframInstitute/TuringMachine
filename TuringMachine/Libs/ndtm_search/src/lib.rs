@@ -1028,18 +1028,63 @@ pub fn ndtm_traverse_queue_size(
 }
 
 
-/// Shared sieve: filter a Vec of candidate rule numbers against the remaining targets.
+/// Check if a single rule matches a target
+fn rule_matches(tm: &TuringMachine, input: &BigUint, max_steps: u64, expected: &BigUint) -> bool {
+    match run_dtm(tm, input, max_steps) {
+        Some((_, val, _)) => val == *expected,
+        None => false,
+    }
+}
+
+/// Count how many targets a rule fails on. Returns early if errors exceed max_errors.
+fn count_errors(tm: &TuringMachine, targets: &[(BigUint, u64, BigUint)], max_errors: u32) -> u32 {
+    let mut errors = 0u32;
+    for (input, max_steps, expected) in targets {
+        if !rule_matches(tm, input, *max_steps, expected) {
+            errors += 1;
+            if errors > max_errors {
+                return errors;
+            }
+        }
+    }
+    errors
+}
+
+/// Shared sieve: filter a Vec of candidate rule numbers against targets.
+/// When min_errors == 0 && max_errors == 0, uses fast sequential pruning.
+/// Otherwise, evaluates all targets per rule and checks min_errors <= errors <= max_errors.
 fn sieve_candidates(
     num_states: u32,
     num_symbols: u32,
     mut candidates: Vec<u64>,
     targets: &[(BigUint, u64, BigUint)],
+    min_errors: u32,
+    max_errors: u32,
 ) -> Vec<u64> {
-    for (input, max_steps, expected_value) in targets {
-        if candidates.is_empty() || aborted_safe() {
-            break;
+    if min_errors == 0 && max_errors == 0 {
+        // Fast path: sequential sieve, prune after each target
+        for (input, max_steps, expected_value) in targets {
+            if candidates.is_empty() || aborted_safe() {
+                break;
+            }
+            candidates = candidates
+                .par_iter()
+                .filter(|&&rule_num| {
+                    if aborted_safe() { return false; }
+                    let rule_bigint = BigInt::from(rule_num);
+                    let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+                        Ok(t) => t,
+                        Err(_) => return false,
+                    };
+                    rule_matches(&tm, input, *max_steps, expected_value)
+                })
+                .copied()
+                .collect();
         }
-        candidates = candidates
+        candidates
+    } else {
+        // Approximate path: evaluate all targets per rule, count mismatches
+        candidates
             .par_iter()
             .filter(|&&rule_num| {
                 if aborted_safe() { return false; }
@@ -1048,64 +1093,77 @@ fn sieve_candidates(
                     Ok(t) => t,
                     Err(_) => return false,
                 };
-                match run_dtm(&tm, input, *max_steps) {
-                    Some((_, val, _)) => val == *expected_value,
-                    None => false,
-                }
+                let e = count_errors(&tm, targets, max_errors);
+                e >= min_errors && e <= max_errors
             })
             .copied()
-            .collect();
+            .collect()
     }
-    candidates
 }
 
-/// Find all rule numbers in [min_rule, max_rule] that produce the expected output
-/// for each (input, max_steps, expected_value) target triple.
-/// First iteration uses rayon's parallel range iteration (no Vec allocation).
+/// Find all rule numbers in [min_rule, max_rule] matching targets
+/// with min_errors <= mismatches <= max_errors.
 pub fn find_matching_rules_range(
     num_states: u32,
     num_symbols: u32,
     min_rule: u64,
     max_rule: u64,
     targets: &[(BigUint, u64, BigUint)],
+    min_errors: u32,
+    max_errors: u32,
 ) -> Vec<u64> {
     if targets.is_empty() || min_rule > max_rule {
         return Vec::new();
     }
 
-    // First iteration: parallel filter directly on the range (no allocation)
-    let (input, max_steps, expected_value) = &targets[0];
-    let candidates: Vec<u64> = (min_rule..=max_rule)
-        .into_par_iter()
-        .filter(|&rule_num| {
-            if aborted_safe() { return false; }
-            let rule_bigint = BigInt::from(rule_num);
-            let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
-                Ok(t) => t,
-                Err(_) => return false,
-            };
-            match run_dtm(&tm, input, *max_steps) {
-                Some((_, val, _)) => val == *expected_value,
-                None => false,
-            }
-        })
-        .collect();
-
-    sieve_candidates(num_states, num_symbols, candidates, &targets[1..])
+    if min_errors == 0 && max_errors == 0 {
+        // Fast path: first iteration on range, then sieve
+        let (input, max_steps, expected_value) = &targets[0];
+        let candidates: Vec<u64> = (min_rule..=max_rule)
+            .into_par_iter()
+            .filter(|&rule_num| {
+                if aborted_safe() { return false; }
+                let rule_bigint = BigInt::from(rule_num);
+                let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+                    Ok(t) => t,
+                    Err(_) => return false,
+                };
+                rule_matches(&tm, input, *max_steps, expected_value)
+            })
+            .collect();
+        sieve_candidates(num_states, num_symbols, candidates, &targets[1..], 0, 0)
+    } else {
+        // Approximate path: evaluate all targets per rule
+        (min_rule..=max_rule)
+            .into_par_iter()
+            .filter(|&rule_num| {
+                if aborted_safe() { return false; }
+                let rule_bigint = BigInt::from(rule_num);
+                let tm = match TuringMachine::from_number(&rule_bigint, num_states, num_symbols) {
+                    Ok(t) => t,
+                    Err(_) => return false,
+                };
+                let e = count_errors(&tm, targets, max_errors);
+                e >= min_errors && e <= max_errors
+            })
+            .collect()
+    }
 }
 
-/// Find all rule numbers from an explicit list that produce the expected output
-/// for each (input, max_steps, expected_value) target triple.
+/// Find all rule numbers from an explicit list matching targets
+/// with min_errors <= mismatches <= max_errors.
 pub fn find_matching_rules_vec(
     num_states: u32,
     num_symbols: u32,
     rules: &[u64],
     targets: &[(BigUint, u64, BigUint)],
+    min_errors: u32,
+    max_errors: u32,
 ) -> Vec<u64> {
     if targets.is_empty() || rules.is_empty() {
         return Vec::new();
     }
-    sieve_candidates(num_states, num_symbols, rules.to_vec(), targets)
+    sieve_candidates(num_states, num_symbols, rules.to_vec(), targets, min_errors, max_errors)
 }
 
 
@@ -1730,6 +1788,8 @@ pub fn find_matching_rules_range_wl(
     inputs: Vec<String>,
     max_steps_vec: Vec<String>,
     expected_values: Vec<String>,
+    min_errors: u32,
+    max_errors: u32,
 ) -> Vec<String> {
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
         .zip(max_steps_vec.iter())
@@ -1743,7 +1803,7 @@ pub fn find_matching_rules_range_wl(
         })
         .collect();
 
-    find_matching_rules_range(num_states, num_symbols, min_rule, max_rule, &targets)
+    find_matching_rules_range(num_states, num_symbols, min_rule, max_rule, &targets, min_errors, max_errors)
         .into_iter()
         .map(|r| r.to_string())
         .collect()
@@ -1760,6 +1820,8 @@ pub fn find_matching_rules_vec_wl(
     inputs: Vec<String>,
     max_steps_vec: Vec<String>,
     expected_values: Vec<String>,
+    min_errors: u32,
+    max_errors: u32,
 ) -> Vec<String> {
     let rule_nums: Vec<u64> = rules.iter().map(|s| s.parse::<u64>().unwrap()).collect();
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
@@ -1774,7 +1836,7 @@ pub fn find_matching_rules_vec_wl(
         })
         .collect();
 
-    find_matching_rules_vec(num_states, num_symbols, &rule_nums, &targets)
+    find_matching_rules_vec(num_states, num_symbols, &rule_nums, &targets, min_errors, max_errors)
         .into_iter()
         .map(|r| r.to_string())
         .collect()
