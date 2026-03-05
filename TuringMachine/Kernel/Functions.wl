@@ -404,9 +404,9 @@ OneSidedTuringMachineFind[
 	maxErrors : _Integer ;; _Integer : 0 ;; 0
 ] := FromDigits /@ List @@ FindMatchingRulesRangeRust[
 	sk[[1]], sk[[2]],
-	defaultRules[[1]] - 1, defaultRules[[2]] - 1,
+	defaultRules[[1]], defaultRules[[2]],
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
+	Developer`DataStore @@ inputStepValues[[All, 2]],
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
 	maxErrors[[1]], maxErrors[[2]]
 ]
@@ -425,9 +425,9 @@ OneSidedTuringMachineFind[
 	maxErrors : _Integer ;; _Integer : 0 ;; 0
 ] := FromDigits /@ List @@ FindMatchingRulesVecRust[
 	sk[[1]], sk[[2]],
-	Developer`DataStore @@ ToString /@ (defaultRules - 1),
+	Developer`DataStore @@ ToString /@ defaultRules,
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 2]],
+	Developer`DataStore @@ inputStepValues[[All, 2]],
 	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
 	maxErrors[[1]], maxErrors[[2]]
 ]

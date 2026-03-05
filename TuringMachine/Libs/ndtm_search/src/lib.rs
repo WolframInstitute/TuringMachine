@@ -1786,7 +1786,7 @@ pub fn find_matching_rules_range_wl(
     min_rule: u64,
     max_rule: u64,
     inputs: Vec<String>,
-    max_steps_vec: Vec<String>,
+    max_steps_vec: Vec<u64>,
     expected_values: Vec<String>,
     min_errors: u32,
     max_errors: u32,
@@ -1794,10 +1794,10 @@ pub fn find_matching_rules_range_wl(
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
         .zip(max_steps_vec.iter())
         .zip(expected_values.iter())
-        .map(|((inp, steps), exp)| {
+        .map(|((inp, &steps), exp)| {
             (
                 inp.parse::<BigUint>().unwrap(),
-                steps.parse::<u64>().unwrap(),
+                steps,
                 exp.parse::<BigUint>().unwrap(),
             )
         })
@@ -1818,7 +1818,7 @@ pub fn find_matching_rules_vec_wl(
     num_symbols: u32,
     rules: Vec<String>,
     inputs: Vec<String>,
-    max_steps_vec: Vec<String>,
+    max_steps_vec: Vec<u64>,
     expected_values: Vec<String>,
     min_errors: u32,
     max_errors: u32,
@@ -1827,10 +1827,10 @@ pub fn find_matching_rules_vec_wl(
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
         .zip(max_steps_vec.iter())
         .zip(expected_values.iter())
-        .map(|((inp, steps), exp)| {
+        .map(|((inp, &steps), exp)| {
             (
                 inp.parse::<BigUint>().unwrap(),
-                steps.parse::<u64>().unwrap(),
+                steps,
                 exp.parse::<BigUint>().unwrap(),
             )
         })

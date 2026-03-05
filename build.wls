@@ -1,7 +1,7 @@
 #!/usr/bin/env wolframscript
 
-PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
-PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
+(* PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
+PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"] *)
 
 << ExtensionCargo`
 
@@ -11,6 +11,8 @@ name = "TuringMachine"
 PacletDirectoryLoad[name]
 paclet = PacletObject[publisher <> "/" <> name]
 
+DeleteDirectory[FileNameJoin[{name, "Binaries"}], DeleteContents -> True]
+DeleteDirectory[FileNameJoin[{name, "Libs", "target"}], DeleteContents -> True]
 CargoCollect[ParentDirectory[paclet["Location"]], FileNameJoin[name, "Binaries"]]
 pacletFile = CreatePacletArchive[name]
 
@@ -20,4 +22,4 @@ PacletDirectoryUnload[name]
 
 PacletInstall[pacletFile, ForceVersionInstall -> True]
 
-CopyFile[pacletFile, Echo @ CloudObject[name <> ".paclet", Permissions -> "Public"], OverwriteTarget -> True]
+(* CopyFile[pacletFile, Echo @ CloudObject[name <> ".paclet", Permissions -> "Public"], OverwriteTarget -> True] *)
