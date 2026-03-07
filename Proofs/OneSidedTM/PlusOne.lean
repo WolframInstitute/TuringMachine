@@ -32,9 +32,10 @@ def rule445 : TM where
     | _, _ => { nextState := 2, write := 0, dir := Dir.R }
 
 -- ============================================================================
--- Machine-checked proofs for specific inputs (19 theorems)
+-- Machine-checked proofs for specific inputs
 -- ============================================================================
 
+-- Individual spot checks
 theorem rule445_succ_1 : run rule445 1 10 = some 2 := by native_decide
 theorem rule445_succ_2 : run rule445 2 10 = some 3 := by native_decide
 theorem rule445_succ_3 : run rule445 3 10 = some 4 := by native_decide
@@ -54,6 +55,10 @@ theorem rule445_succ_256 : run rule445 256 200 = some 257 := by native_decide
 theorem rule445_succ_511 : run rule445 511 200 = some 512 := by native_decide
 theorem rule445_succ_1000 : run rule445 1000 200 = some 1001 := by native_decide
 theorem rule445_succ_1023 : run rule445 1023 200 = some 1024 := by native_decide
+
+-- Bulk verification: all inputs 1..65535
+theorem rule445_succ_bulk : ∀ n ∈ List.range 65536,
+    n = 0 ∨ run rule445 n 200 = some (n + 1) := by native_decide
 
 -- ============================================================================
 -- Binary digit list operations
@@ -126,7 +131,7 @@ theorem toBinary_succ (n : Nat) :
   | n' + 2 => simp only [toBinary]; exact toBinaryPos_succ (n' + 2) (by omega)
 
 -- ============================================================================
--- eval composition lemma
+-- eval composition lemmas
 -- ============================================================================
 
 theorem eval_step_continue (tm : TM) (cfg cfg' : Config) (fuel : Nat)
@@ -140,7 +145,7 @@ theorem eval_step_halt (tm : TM) (cfg cfg' : Config) (fuel : Nat)
   simp [eval, h]
 
 -- ============================================================================
--- TM phase simulation lemmas
+-- TM phase simulation lemmas (all fully proved)
 -- ============================================================================
 
 theorem carry_step (tape : List Nat) (pos : Nat)
@@ -200,6 +205,161 @@ theorem halt_step_1 (tape : List Nat) (h : readTape tape 0 = 1) :
   simp [writeTape]; split <;> simp [List.set]
 
 -- ============================================================================
+-- Tape identity: writeTape preserves tape when writing same value
+-- ============================================================================
+
+theorem writeTape_read_id (tape : List Nat) (pos : Nat) (h : pos < tape.length) :
+    writeTape tape pos (readTape tape pos) = tape := by
+  induction tape generalizing pos with
+  | nil => simp at h
+  | cons d rest ih =>
+    cases pos with
+    | zero => simp [writeTape, readTape, List.getD, List.set]
+    | succ p =>
+      have hp : p < rest.length := by simp at h; omega
+      simp only [readTape_cons_succ, writeTape_cons_succ]; congr 1; exact ih p hp
+
+theorem writeTape_val_eq_id (tape : List Nat) (pos v : Nat)
+    (hlen : pos < tape.length) (hval : readTape tape pos = v) :
+    writeTape tape pos v = tape := by
+  rw [← hval]; exact writeTape_read_id tape pos hlen
+
+-- ============================================================================
+-- Scan-back phase: state 2 preserves tape (writes back what it reads)
+-- ============================================================================
+
+theorem halt_step_id (tape : List Nat) (hlen : 0 < tape.length)
+    (hbin : readTape tape 0 = 0 ∨ readTape tape 0 = 1) :
+    step rule445 ⟨2, 0, tape⟩ = StepResult.halted ⟨2, 0, tape⟩ := by
+  cases hbin with
+  | inl h0 =>
+    rw [halt_step_0 tape h0,
+        show writeTape tape 0 0 = tape from writeTape_val_eq_id tape 0 0 hlen h0]
+  | inr h1 =>
+    rw [halt_step_1 tape h1,
+        show writeTape tape 0 1 = tape from writeTape_val_eq_id tape 0 1 hlen h1]
+
+theorem scanback_step_id (tape : List Nat) (pos : Nat)
+    (hpos : pos > 0) (hlen : pos < tape.length)
+    (hbin : readTape tape pos = 0 ∨ readTape tape pos = 1) :
+    step rule445 ⟨2, pos, tape⟩ = StepResult.continue ⟨2, pos - 1, tape⟩ := by
+  cases hbin with
+  | inl h0 =>
+    rw [scanback_step_0 tape pos hpos h0,
+        show writeTape tape pos 0 = tape from writeTape_val_eq_id tape pos 0 hlen h0]
+  | inr h1 =>
+    rw [scanback_step_1 tape pos hpos h1,
+        show writeTape tape pos 1 = tape from writeTape_val_eq_id tape pos 1 hlen h1]
+
+theorem scanback_eval (tape : List Nat) (p : Nat) (hlen : p < tape.length)
+    (hbin : ∀ i, i ≤ p → i < tape.length → readTape tape i = 0 ∨ readTape tape i = 1) :
+    eval rule445 ⟨2, p, tape⟩ (p + 1) = some ⟨2, 0, tape⟩ := by
+  induction p with
+  | zero =>
+    exact eval_step_halt rule445 _ _ 0 (halt_step_id tape hlen (hbin 0 (by omega) hlen))
+  | succ p ih =>
+    rw [show (p + 1 + 1 : Nat) = (p + 1) + 1 from by omega,
+        eval_step_continue rule445 _ _ (p + 1)
+          (scanback_step_id tape (p + 1) (by omega) hlen (hbin (p+1) (by omega) hlen))]
+    simp; exact ih (by omega) (fun i hi hil => hbin i (by omega) hil)
+
+-- ============================================================================
+-- fromBinary is invariant under trailing zeros
+-- ============================================================================
+
+theorem fromBinary_append_zero (l : List Nat) :
+    fromBinary (l ++ [0]) = fromBinary l := by
+  induction l with
+  | nil => simp [fromBinary]
+  | cons d rest ih => simp [fromBinary, ih]
+
+theorem fromBinary_append_all_zero (l suffix : List Nat) (h : ∀ x ∈ suffix, x = 0) :
+    fromBinary (l ++ suffix) = fromBinary l := by
+  induction suffix generalizing l with
+  | nil => simp
+  | cons d rest ih =>
+    have hd : d = 0 := h d (List.mem_cons_self _ _)
+    rw [show l ++ d :: rest = (l ++ [d]) ++ rest from by simp]
+    rw [ih (l ++ [d]) (fun x hx => h x (List.mem_cons_of_mem _ hx))]
+    rw [hd, fromBinary_append_zero]
+
+private theorem List.pred_of_mem_takeWhile' {α : Type} {p : α → Bool} {l : List α} {x : α}
+    (hx : x ∈ l.takeWhile p) : p x = true := by
+  induction l with
+  | nil => simp [List.takeWhile] at hx
+  | cons a rest ih =>
+    simp only [List.takeWhile] at hx; split at hx
+    · rename_i hp; simp at hx; cases hx with
+      | inl heq => subst heq; exact hp
+      | inr hmem => exact ih hmem
+    · simp at hx
+
+/-- trimTrailingZeros preserves fromBinary value.
+    Removing high-order zeros doesn't change a binary number's value. -/
+theorem fromBinary_trim (l : List Nat) :
+    fromBinary (trimTrailingZeros l) = fromBinary l := by
+  cases l with
+  | nil => simp [trimTrailingZeros, fromBinary]
+  | cons a rest =>
+    show fromBinary (let r := (a :: rest).reverse.dropWhile (· == 0)
+      if r.isEmpty then [0] else r.reverse) = fromBinary (a :: rest)
+    generalize hdw : (a :: rest).reverse.dropWhile (· == 0) = dw
+    generalize htw : (a :: rest).reverse.takeWhile (· == 0) = tw
+    have hl_eq : (a :: rest) = dw.reverse ++ tw.reverse := by
+      have h1 := (List.takeWhile_append_dropWhile (· == 0) (a :: rest).reverse).symm
+      rw [htw, hdw] at h1
+      have h2 := congrArg List.reverse h1
+      simp only [List.reverse_append, List.reverse_reverse] at h2
+      exact h2
+    have htw_zero : ∀ x ∈ tw.reverse, x = 0 := by
+      intro x hx; rw [List.mem_reverse] at hx; rw [← htw] at hx
+      have hp := List.pred_of_mem_takeWhile' hx; simp at hp; exact hp
+    have hfb : fromBinary (a :: rest) = fromBinary dw.reverse := by
+      rw [hl_eq]; exact fromBinary_append_all_zero dw.reverse tw.reverse htw_zero
+    simp only
+    split
+    · rename_i hempty
+      simp only [fromBinary]
+      have : fromBinary (a :: rest) = 0 := by
+        rw [hfb, List.isEmpty_eq_true.mp hempty]; simp [fromBinary]
+      simp [fromBinary] at this; omega
+    · exact hfb.symm
+
+-- ============================================================================
+-- Step count
+-- ============================================================================
+-- eval fuel monotonicity
+-- ============================================================================
+
+theorem eval_mono (tm : TM) (cfg r : Config) :
+    ∀ fuel : Nat, eval tm cfg fuel = some r → ∀ fuel', fuel ≤ fuel' →
+    eval tm cfg fuel' = some r := by
+  intro fuel; induction fuel generalizing cfg with
+  | zero => intro h; simp [eval] at h
+  | succ f ih =>
+    intro h fuel' hle; cases fuel' with | zero => omega | succ f' =>
+    unfold eval at h ⊢
+    match hs : step tm cfg with
+    | StepResult.halted cfg' => simp [hs] at h ⊢; exact h
+    | StepResult.continue cfg' => simp [hs] at h ⊢; exact ih cfg' h f' (by omega)
+
+-- ============================================================================
+-- readTape / writeTape at prefix boundary
+-- ============================================================================
+
+theorem readTape_append (l1 l2 : List Nat) :
+    readTape (l1 ++ l2) l1.length = readTape l2 0 := by
+  induction l1 with
+  | nil => simp
+  | cons d rest ih => simp [readTape_cons_succ, ih]
+
+theorem writeTape_append (l1 : List Nat) (d : Nat) (l2 : List Nat) (v : Nat) :
+    writeTape (l1 ++ d :: l2) l1.length v = l1 ++ v :: l2 := by
+  induction l1 with
+  | nil => simp [writeTape_cons_zero]
+  | cons a rest ih => simp [writeTape_cons_succ, ih]
+
+-- ============================================================================
 -- Step count
 -- ============================================================================
 
@@ -210,25 +370,26 @@ def leadingOnes : List Nat → Nat
 def rule445Fuel (n : Nat) : Nat :=
   2 * leadingOnes (toBinary n) + 3
 
-#eval (List.range 20).map fun i =>
-  let n := i + 1
-  (n, rule445Fuel n, checkRun rule445 n (rule445Fuel n) (n + 1))
-
 -- ============================================================================
 -- Main theorem
 -- ============================================================================
 
 /-- Rule 445 computes successor for all n ≥ 1.
 
-    Proved components:
+    All supporting lemmas are fully proved:
     1. toBinary_succ: toBinary (n+1) = binarySucc (toBinary n) ✓
     2. fromBinary_binarySucc: fromBinary (binarySucc t) = fromBinary t + 1 ✓
     3. fromBinary_toBinary: fromBinary (toBinary n) = n ✓
-    4. TM phase lemmas: carry_step, absorb_step, scanback, halt ✓
+    4. fromBinary_trim: trimTrailingZeros preserves fromBinary ✓
+    5. TM phase lemmas: carry, absorb, scanback_eval, halt_step_id ✓
+    6. eval_mono: fuel monotonicity ✓
+    7. readTape/writeTape lemmas ✓
 
-    Remaining: assembling Phase 4 into a simulation that shows
-    eval rule445 (initConfig n) fuel produces a tape whose
-    trimmed output equals n+1. -/
+    The remaining sorry is purely the assembly of these lemmas into a
+    complete eval chain (composing carry→absorb→scanback→halt by induction
+    on the tape structure with a generalized prefix).
+
+    Machine-checked evidence: rule445_succ_bulk verifies all n ∈ [1..65535]. -/
 theorem rule445_computesSucc : ComputesSucc rule445 := by
   intro n hn
   exact ⟨rule445Fuel n + 5, sorry⟩
