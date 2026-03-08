@@ -360,38 +360,178 @@ theorem writeTape_append (l1 : List Nat) (d : Nat) (l2 : List Nat) (v : Nat) :
   | cons a rest ih => simp [writeTape_cons_succ, ih]
 
 -- ============================================================================
--- Step count
+-- Simulation assembly helpers
 -- ============================================================================
 
-def leadingOnes : List Nat → Nat
-  | 1 :: rest => 1 + leadingOnes rest
-  | _ => 0
+-- readTape at end of list returns 0
+private theorem readTape_at_length (tape : List Nat) : readTape tape tape.length = 0 := by
+  induction tape with
+  | nil => simp [readTape, List.getD]
+  | cons d rest ih => simp [readTape_cons_succ, ih]
 
-def rule445Fuel (n : Nat) : Nat :=
-  2 * leadingOnes (toBinary n) + 3
+-- readTape at |prefix| in prefix ++ d :: suffix = d
+private theorem readTape_at_split (pre : List Nat) (d : Nat) (suf : List Nat) :
+    readTape (pre ++ d :: suf) pre.length = d := by
+  induction pre with
+  | nil => simp [readTape, List.getD]
+  | cons a rest ih => simp [readTape_cons_succ, ih]
+
+-- readTape returns 0 or 1 on binary tape
+private theorem readTape_binary (tape : List Nat) (pos : Nat)
+    (hbin : ∀ d ∈ tape, d = 0 ∨ d = 1) :
+    readTape tape pos = 0 ∨ readTape tape pos = 1 := by
+  induction tape generalizing pos with
+  | nil => left; simp [readTape, List.getD]
+  | cons d rest ih =>
+    cases pos with
+    | zero => simp; exact hbin d (List.mem_cons_self _ _)
+    | succ p =>
+      simp [readTape_cons_succ]
+      exact ih p (fun x hx => hbin x (List.mem_cons_of_mem _ hx))
+
+-- Step wrappers: absorb at end of tape (out of bounds)
+private theorem absorb_end_step (pre : List Nat) :
+    step rule445 ⟨1, pre.length, pre⟩ =
+    StepResult.continue ⟨2, pre.length + 1, pre ++ [1]⟩ := by
+  rw [absorb_step _ _ (readTape_at_length pre)]; simp [writeTape]
+
+-- Step wrappers: absorb at position within tape (suffix starts with 0)
+private theorem absorb_pos_step (pre suf : List Nat) :
+    step rule445 ⟨1, pre.length, pre ++ 0 :: suf⟩ =
+    StepResult.continue ⟨2, pre.length + 1, pre ++ 1 :: suf⟩ := by
+  rw [absorb_step _ _ (readTape_at_split pre 0 suf)]
+  simp [writeTape_append pre 0 suf 1]
+
+-- Step wrappers: carry at position (suffix starts with 1)
+private theorem carry_pos_step (pre suf : List Nat) :
+    step rule445 ⟨1, pre.length, pre ++ 1 :: suf⟩ =
+    StepResult.continue ⟨1, pre.length + 1, pre ++ 0 :: suf⟩ := by
+  rw [carry_step _ _ (readTape_at_split pre 1 suf)]
+  simp [writeTape_append pre 1 suf 0]
+
+-- Step wrappers: scanback extension (head beyond tape, extends tape)
+private theorem scanback_ext_step (pre : List Nat) :
+    step rule445 ⟨2, pre.length + 1, pre ++ [1]⟩ =
+    StepResult.continue ⟨2, pre.length, pre ++ [1, 0]⟩ := by
+  have hr : readTape (pre ++ [1]) (pre.length + 1) = 0 := by
+    rw [show pre.length + 1 = (pre ++ [1]).length from by simp]
+    exact readTape_at_length _
+  simp only [scanback_step_0 _ _ (by omega) hr, Nat.add_sub_cancel]
+  simp [writeTape]
+
+-- Binary tape membership: pre ++ [1, 0] is binary if pre is
+private theorem bin_tape_10 (pre : List Nat) (h : ∀ d ∈ pre, d = 0 ∨ d = 1) :
+    ∀ d ∈ (pre ++ [1, 0] : List Nat), d = 0 ∨ d = 1 := by
+  intro d hd; simp at hd
+  cases hd with
+  | inl h' => exact h d h'
+  | inr h' => cases h' with
+    | inl h' => right; exact h'
+    | inr h' => left; exact h'
+
+-- Binary tape membership: pre ++ 1 :: rest is binary if pre and rest are
+private theorem bin_tape_1r (pre rest : List Nat) (hp : ∀ d ∈ pre, d = 0 ∨ d = 1)
+    (hr : ∀ d ∈ rest, d = 0 ∨ d = 1) :
+    ∀ d ∈ (pre ++ 1 :: rest : List Nat), d = 0 ∨ d = 1 := by
+  intro d hd; simp at hd
+  cases hd with
+  | inl h => exact hp d h
+  | inr h => cases h with
+    | inl h => right; exact h
+    | inr h => exact hr d h
+
+-- fromBinary (pre ++ [1, 0]) = fromBinary (pre ++ [1])
+private theorem fromBinary_ext_zero (pre : List Nat) :
+    fromBinary (pre ++ [1, 0]) = fromBinary (pre ++ [1]) := by
+  rw [show pre ++ [1, 0] = (pre ++ [1]) ++ [0] from by simp]
+  exact fromBinary_append_zero _
+
+-- ============================================================================
+-- Core simulation lemma
+-- ============================================================================
+
+/-- For binary prefix `pre` and suffix `suf`, evaluating rule445 from state 1
+    at position |pre| on tape `pre ++ suf` produces a config whose fromBinary
+    equals `fromBinary (pre ++ binarySucc suf)`.
+    This is the key inductive lemma that decomposes the TM execution into
+    carry, absorb, and scanback phases. -/
+theorem sim_eval (pre suf : List Nat)
+    (hbp : ∀ d ∈ pre, d = 0 ∨ d = 1) (hbs : ∀ d ∈ suf, d = 0 ∨ d = 1) :
+    ∃ fuel cfg, eval rule445 ⟨1, pre.length, pre ++ suf⟩ fuel = some cfg ∧
+    fromBinary cfg.tape = fromBinary (pre ++ binarySucc suf) := by
+  induction suf generalizing pre with
+  | nil =>
+    -- suffix = []: absorb at end → extension → scanback
+    have heval : eval rule445 ⟨1, pre.length, pre⟩ (pre.length + 3) =
+        some ⟨2, 0, pre ++ [1, 0]⟩ := by
+      rw [show pre.length + 3 = ((pre.length + 1) + 1) + 1 from by omega,
+          eval_step_continue rule445 _ _ _ (absorb_end_step pre),
+          eval_step_continue rule445 _ _ _ (scanback_ext_step pre)]
+      exact scanback_eval _ pre.length (by simp)
+        (fun i _ _ => readTape_binary _ _ (bin_tape_10 pre hbp))
+    simp only [List.append_nil]
+    exact ⟨_, _, heval, fromBinary_ext_zero pre⟩
+
+  | cons d rest ih =>
+    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 :=
+      fun x hx => hbs x (List.mem_cons_of_mem _ hx)
+    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+    · -- d = 0, suffix = 0 :: rest
+      by_cases hrest : rest = []
+      · -- suffix = [0]: absorb + extension + scanback
+        subst hrest
+        have heval : eval rule445 ⟨1, pre.length, pre ++ [0]⟩ (pre.length + 3) =
+            some ⟨2, 0, pre ++ [1, 0]⟩ := by
+          rw [show pre.length + 3 = ((pre.length + 1) + 1) + 1 from by omega,
+              eval_step_continue rule445 _ _ _ (absorb_pos_step pre []),
+              eval_step_continue rule445 _ _ _ (scanback_ext_step pre)]
+          exact scanback_eval _ pre.length (by simp)
+            (fun i _ _ => readTape_binary _ _ (bin_tape_10 pre hbp))
+        exact ⟨_, _, heval, fromBinary_ext_zero pre⟩
+      · -- suffix = 0 :: rest with rest ≠ []: absorb + direct scanback
+        have hlen : pre.length + 1 < (pre ++ 1 :: rest).length := by
+          simp; exact Nat.pos_of_ne_zero
+            (by intro h; exact hrest (List.length_eq_zero.mp h))
+        have heval : eval rule445 ⟨1, pre.length, pre ++ 0 :: rest⟩ (pre.length + 3) =
+            some ⟨2, 0, pre ++ 1 :: rest⟩ := by
+          rw [show pre.length + 3 = (pre.length + 2) + 1 from by omega,
+              eval_step_continue rule445 _ _ _ (absorb_pos_step pre rest)]
+          exact scanback_eval _ _ hlen
+            (fun i _ _ => readTape_binary _ _ (bin_tape_1r pre rest hbp hbr))
+        exact ⟨_, _, heval, rfl⟩
+
+    · -- d = 1, suffix = 1 :: rest: carry + inductive hypothesis
+      have hbp' : ∀ x ∈ pre ++ [0], x = 0 ∨ x = 1 := by
+        intro x hx; simp at hx
+        cases hx with
+        | inl h => exact hbp x h
+        | inr h => left; exact h
+      obtain ⟨f, c, he, hf⟩ := ih (pre ++ [0]) hbp' hbr
+      have heval : eval rule445 ⟨1, pre.length, pre ++ 1 :: rest⟩ (f + 1) = some c := by
+        rw [eval_step_continue rule445 _ _ f (carry_pos_step pre rest),
+            show pre.length + 1 = (pre ++ [0]).length from by simp,
+            show pre ++ 0 :: rest = (pre ++ [0]) ++ rest from by simp]
+        exact he
+      have hfb : fromBinary c.tape = fromBinary (pre ++ binarySucc (1 :: rest)) := by
+        show fromBinary c.tape = fromBinary (pre ++ (0 :: binarySucc rest))
+        rw [show pre ++ 0 :: binarySucc rest = (pre ++ [0]) ++ binarySucc rest from by simp]
+        exact hf
+      exact ⟨_, _, heval, hfb⟩
 
 -- ============================================================================
 -- Main theorem
 -- ============================================================================
 
-/-- Rule 445 computes successor for all n ≥ 1.
-
-    All supporting lemmas are fully proved:
-    1. toBinary_succ: toBinary (n+1) = binarySucc (toBinary n) ✓
-    2. fromBinary_binarySucc: fromBinary (binarySucc t) = fromBinary t + 1 ✓
-    3. fromBinary_toBinary: fromBinary (toBinary n) = n ✓
-    4. fromBinary_trim: trimTrailingZeros preserves fromBinary ✓
-    5. TM phase lemmas: carry, absorb, scanback_eval, halt_step_id ✓
-    6. eval_mono: fuel monotonicity ✓
-    7. readTape/writeTape lemmas ✓
-
-    The remaining sorry is purely the assembly of these lemmas into a
-    complete eval chain (composing carry→absorb→scanback→halt by induction
-    on the tape structure with a generalized prefix).
-
-    Machine-checked evidence: rule445_succ_bulk verifies all n ∈ [1..65535]. -/
+/-- Rule 445 computes successor for all n ≥ 1. Formally proved by decomposing
+    the TM execution into carry, absorb, and scanback phases via `sim_eval`. -/
 theorem rule445_computesSucc : ComputesSucc rule445 := by
-  intro n hn
-  exact ⟨rule445Fuel n + 5, sorry⟩
+  intro n _hn
+  obtain ⟨fuel, cfg, heval, hfb⟩ :=
+    sim_eval [] (toBinary n) (fun _ h => absurd h (List.not_mem_nil _)) (toBinary_binary n)
+  refine ⟨fuel, ?_⟩
+  simp at heval hfb
+  simp only [run, initConfig, heval, Option.map]
+  simp only [outputValue, fromBinary_trim, hfb]
+  rw [fromBinary_binarySucc _ (toBinary_binary n), fromBinary_toBinary]
 
 end OneSidedTM
