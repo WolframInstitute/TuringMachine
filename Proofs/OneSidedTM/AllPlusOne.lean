@@ -3,15 +3,16 @@
 
   Formal proof that ALL 17 candidate {2,2} one-sided TM rules compute successor.
 
-  Three structural proofs:
+  Three structural classes:
   1. Rule 445 (carry + LEFT absorb): PlusOne.lean  ✓
-  2. Class B (carry + RIGHT absorb): 8 rules — generalized here (dead (2,1))  ✓
-  3. Class C (skip + RIGHT absorb): 8 rules — defined here (dead (2,0))  [sorry]
+  2. Class B (carry + RIGHT absorb): 8 rules, dead (2,1) — proved here  ✓
+  3. Class C (skip + RIGHT absorb): 8 rules, dead (2,0) — proved in ClassC.lean  ✓
   4. Bulk computational: all 17 rules verified for n=1..65535  ✓
 -/
 
 import OneSidedTM.Basic
 import OneSidedTM.PlusOne
+import OneSidedTM.ClassC
 import OneSidedTM.Decide
 
 namespace OneSidedTM
@@ -101,8 +102,7 @@ theorem sim_eval_B (tm : TM) (hc : IsClassB tm) (pre suf : List Nat)
   | cons d rest ih =>
     have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons_of_mem _ hx)
     rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
-    · -- d = 0: absorb
-      by_cases hp : pre.length = 0
+    · by_cases hp : pre.length = 0
       · have hpnil := List.length_eq_zero.mp hp; subst hpnil; simp
         have hab : step tm ⟨1, 0, 0 :: rest⟩ = StepResult.halted ⟨2, 0, 1 :: rest⟩ := by
           simp only [step, show readTape (0 :: rest) 0 = 0 from by simp [readTape, List.getD],
@@ -147,27 +147,7 @@ theorem classB_computesSucc (tm : TM) (hc : IsClassB tm) : ComputesSucc tm := by
   rw [fromBinary_binarySucc _ (toBinary_binary n), fromBinary_toBinary]
 
 -- ============================================================================
--- Part 2: Class C — skip + right-absorb + clear-on-return (dead (2,0))
--- ============================================================================
-
-/-- A TM is Class C: skip 1s (identity write), absorb 0→1 going R,
-    clear 1s on return. The (2,0) transition is dead. -/
-structure IsClassC (tm : TM) : Prop where
-  skip : tm.transition 1 1 = { nextState := 1, write := 1, dir := Dir.L }
-  absorb : tm.transition 1 0 = { nextState := 2, write := 1, dir := Dir.R }
-  clear1 : tm.transition 2 1 = { nextState := 2, write := 0, dir := Dir.R }
-
--- Class C proof: skip + absorb + clear-on-return
--- The algorithm: skip through 1s, absorb at first 0, clear 1s on return.
--- Net effect identical to Class B (positions below absorb become 0, absorb becomes 1).
--- Key lemma needed: return_clear_ones (induction on k using List.replicate_add)
--- Proof structure: sim_eval_C with all-ones prefix invariant
--- TODO: close this proof
-theorem classC_computesSucc (tm : TM) (hc : IsClassC tm) : ComputesSucc tm := by
-  sorry
-
--- ============================================================================
--- Part 3: Instances + bulk verification
+-- Part 2: Instances + bulk verification
 -- ============================================================================
 
 def rule509 : TM where
@@ -186,7 +166,7 @@ theorem rule509_computesSucc : ComputesSucc rule509 := classB_computesSucc rule5
 theorem all_candidates_bulk : ∀ r ∈ candidateRules, ∀ n ∈ List.range 65536,
     n = 0 ∨ run (fromRuleNumber r) n 200 = some (n + 1) := by native_decide
 
--- Class B instances (rules 453-509): all share (1,0)→(2,1,R) (1,1)→(1,0,L) (2,0)→(2,0,R)
+-- Class B instances (rules 453-509): carry + right-absorb, dead (2,1)
 theorem r453_isClassB : IsClassB (fromRuleNumber 453) := ⟨by native_decide, by native_decide, by native_decide⟩
 theorem r461_isClassB : IsClassB (fromRuleNumber 461) := ⟨by native_decide, by native_decide, by native_decide⟩
 theorem r469_isClassB : IsClassB (fromRuleNumber 469) := ⟨by native_decide, by native_decide, by native_decide⟩
@@ -205,7 +185,7 @@ theorem r493_succ : ComputesSucc (fromRuleNumber 493) := classB_computesSucc _ r
 theorem r501_succ : ComputesSucc (fromRuleNumber 501) := classB_computesSucc _ r501_isClassB
 theorem r509_succ : ComputesSucc (fromRuleNumber 509) := classB_computesSucc _ r509_isClassB'
 
--- Class C instances (rules 1512-1519): all share (1,0)→(2,1,R) (1,1)→(1,1,L) (2,1)→(2,0,R)
+-- Class C instances (rules 1512-1519): skip + right-absorb, dead (2,0)
 theorem r1512_isClassC : IsClassC (fromRuleNumber 1512) := ⟨by native_decide, by native_decide, by native_decide⟩
 theorem r1513_isClassC : IsClassC (fromRuleNumber 1513) := ⟨by native_decide, by native_decide, by native_decide⟩
 theorem r1514_isClassC : IsClassC (fromRuleNumber 1514) := ⟨by native_decide, by native_decide, by native_decide⟩

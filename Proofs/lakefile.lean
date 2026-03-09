@@ -9,4 +9,4 @@ package «OneSidedTM» where
 @[default_target]
 lean_lib «OneSidedTM» where
   srcDir := "."
-  roots := #[`OneSidedTM.Basic, `OneSidedTM.PlusOne, `OneSidedTM.Decide, `OneSidedTM.Equiv, `OneSidedTM.AllPlusOne]
+  roots := #[`OneSidedTM.Basic, `OneSidedTM.PlusOne, `OneSidedTM.ClassC, `OneSidedTM.Decide, `OneSidedTM.Equiv, `OneSidedTM.AllPlusOne]
