@@ -327,21 +327,15 @@ theorem fromBinary_trim (l : List Nat) :
 
 -- ============================================================================
 -- Step count
--- ============================================================================
--- eval fuel monotonicity
--- ============================================================================
+-- eval_mono is now defined in Basic.lean
 
-theorem eval_mono (tm : TM) (cfg r : Config) :
-    ∀ fuel : Nat, eval tm cfg fuel = some r → ∀ fuel', fuel ≤ fuel' →
-    eval tm cfg fuel' = some r := by
-  intro fuel; induction fuel generalizing cfg with
-  | zero => intro h; simp [eval] at h
-  | succ f ih =>
-    intro h fuel' hle; cases fuel' with | zero => omega | succ f' =>
-    unfold eval at h ⊢
-    match hs : step tm cfg with
-    | StepResult.halted cfg' => simp [hs] at h ⊢; exact h
-    | StepResult.continue cfg' => simp [hs] at h ⊢; exact ih cfg' h f' (by omega)
+-- Helper to convert from the Basic.lean form to the ≤ form used here
+private theorem eval_mono' (tm : TM) (cfg r : Config) (fuel fuel' : Nat) :
+    eval tm cfg fuel = some r → fuel ≤ fuel' → eval tm cfg fuel' = some r := by
+  intro h hle
+  have : fuel' = fuel + (fuel' - fuel) := by omega
+  rw [this]
+  exact eval_mono tm cfg fuel (fuel' - fuel) r h
 
 -- ============================================================================
 -- readTape / writeTape at prefix boundary

@@ -163,6 +163,41 @@ theorem fromBinary_toBinary (n : Nat) : fromBinary (toBinary n) = n := by
   · exact fromBinary_toBinaryPos _ (by omega)
 
 -- ============================================================================
+-- Eval determinism: the halted configuration is unique
+-- ============================================================================
+
+/-- If eval halts with fuel, it halts with the same result with more fuel -/
+theorem eval_mono (tm : TM) (cfg : Config) (fuel k : Nat) (cfg' : Config) :
+    eval tm cfg fuel = some cfg' → eval tm cfg (fuel + k) = some cfg' := by
+  induction fuel generalizing cfg with
+  | zero => simp [eval]
+  | succ n ih =>
+    intro h
+    cases hstep : step tm cfg with
+    | halted c =>
+      simp [eval, hstep] at h
+      subst h
+      show eval tm cfg (n + 1 + k) = some c
+      rw [show n + 1 + k = (n + k) + 1 from by omega]
+      simp [eval, hstep]
+    | «continue» c =>
+      simp [eval, hstep] at h
+      show eval tm cfg (n + 1 + k) = some cfg'
+      rw [show n + 1 + k = (n + k) + 1 from by omega]
+      simp [eval, hstep]
+      exact ih c h
+
+/-- Eval is deterministic: if it halts at two different fuel values,
+    the result is the same -/
+theorem eval_det (tm : TM) (cfg : Config) (fuel1 fuel2 : Nat) (cfg1 cfg2 : Config) :
+    eval tm cfg fuel1 = some cfg1 → eval tm cfg fuel2 = some cfg2 → cfg1 = cfg2 := by
+  intro h1 h2
+  have hm1 := eval_mono tm cfg fuel1 fuel2 cfg1 h1
+  have hm2 := eval_mono tm cfg fuel2 fuel1 cfg2 h2
+  rw [Nat.add_comm] at hm2
+  simp [hm1] at hm2
+  exact hm2
+-- ============================================================================
 -- Decidable evaluation (for computational verification)
 -- ============================================================================
 
