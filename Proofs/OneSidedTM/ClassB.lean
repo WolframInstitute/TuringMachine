@@ -187,4 +187,19 @@ theorem rule248514_isClassB : IsClassB rule248514 3 2 := {
 theorem rule248514_computesSucc : ComputesSucc rule248514 :=
   classB_computes rule248514 3 2 rule248514_isClassB
 
+-- Rule 155321: IsClassB with as=2, bs=3
+def rule155321 : TM := fromRuleNumber32 155321
+
+theorem rule155321_isClassB : IsClassB rule155321 2 3 := {
+  carry    := rfl
+  absorb   := rfl
+  walk_L   := rfl
+  walk_R_0 := rfl
+  walk_R_1 := rfl
+  walk_clr := rfl
+}
+
+theorem rule155321_computesSucc : ComputesSucc rule155321 :=
+  classB_computes rule155321 2 3 rule155321_isClassB
+
 end OneSidedTM
