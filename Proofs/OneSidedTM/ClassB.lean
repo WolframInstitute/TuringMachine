@@ -7,11 +7,10 @@
   Algorithm:
   1. Carry phase: state 1 reads 1, writes 0, moves L.
   2. Absorb: state 1 reads 0, writes 1, moves R, enters walk state `as`.
-  3. Bouncing Walkback:
+  3. Bouncing Walkback: 3-step cycle at each position moves right by 1.
      (as, 0) → (bs, 1, L)  -- Bounces left, writes 1
-     (bs, 0) → (as, 0, R)  -- Bounces right, restores 0
-     (bs, 1) → (as, 1, R)  -- Bounces right, preserves 1
-     (as, 1) → (as, 0, R)  -- Clears the 1 it just wrote, moves right
+     (bs, ?) → (as, ?, R)  -- Bounces right, preserves the read value
+     (as, 1) → (as, 0, R)  -- Clears the 1 written in step 1
 -/
 
 import OneSidedTM.Basic
@@ -29,18 +28,19 @@ structure IsClassB (tm : TM) (as bs : Nat) : Prop where
   walk_clr : tm.transition as 1 = { nextState := as, write := 0, dir := Dir.R }
 
 -- ============================================================================
--- Walkback abstraction
+-- Walkback: sorry for now.
+-- The bouncing 3-step cycle (write 1, bounce, clear 1) is a net identity on
+-- the tape and advances pos by -1. The proof requires suf to be nonempty
+-- (which sim_eval_universal always ensures) but ValidWalkback doesn't encode
+-- this constraint. Fixing this requires refactoring ValidWalkback.
 -- ============================================================================
 
-/-- The bouncing walkback preserves the tape and returns to position 0.
-    Each step: (as,0) writes 1 and bounces L; (bs,?) bounces R restoring the cell;
-    (as,1) clears the written 1 and moves R. Net effect: advance right by 1, tape unchanged. -/
 theorem walkback_bouncing (tm : TM) (as bs : Nat) (hc : IsClassB tm as bs) :
     ValidWalkback tm as := by
   sorry
 
 -- ============================================================================
--- The structural proof of ComputesSucc for Class B
+-- ComputesSucc for Class B
 -- ============================================================================
 
 theorem classB_computes (tm : TM) (as bs : Nat) (hc : IsClassB tm as bs) :
