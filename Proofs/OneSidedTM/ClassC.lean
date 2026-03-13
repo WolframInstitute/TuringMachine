@@ -10,6 +10,7 @@ import OneSidedTM.Basic
 import OneSidedTM.PlusOne
 
 namespace OneSidedTM
+open TM
 
 private theorem rs_ (pre : List Nat) (d : Nat) (suf : List Nat) :
     readTape (pre ++ d :: suf) pre.length = d := by

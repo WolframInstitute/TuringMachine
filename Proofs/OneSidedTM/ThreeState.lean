@@ -16,6 +16,7 @@
 import OneSidedTM.PlusOne
 
 namespace OneSidedTM
+open TM
 
 -- ============================================================================
 -- Rule definition

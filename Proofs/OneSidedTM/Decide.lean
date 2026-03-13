@@ -8,6 +8,7 @@
 import OneSidedTM.Basic
 
 namespace OneSidedTM
+open TM
 
 -- ============================================================================
 -- Encoding TM rules from Wolfram {2,2} rule numbers

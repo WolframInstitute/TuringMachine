@@ -15,6 +15,7 @@
 import OneSidedTM.Basic
 
 namespace OneSidedTM
+open TM
 
 -- ============================================================================
 -- Rule 445 definition

@@ -13,9 +13,13 @@
 import OneSidedTM.Basic
 import OneSidedTM.PlusOne
 import OneSidedTM.ClassC
+import OneSidedTM.ClassW
+import OneSidedTM.ClassSX
+import OneSidedTM.ClassWL
 import OneSidedTM.Decide
 
 namespace OneSidedTM
+open TM
 
 -- ============================================================================
 -- Part 1: Class B — carry + right-absorb (dead (2,1))

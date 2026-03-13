@@ -16,6 +16,7 @@ import OneSidedTM.PlusOne
 import OneSidedTM.Decide
 
 namespace OneSidedTM
+open TM
 
 -- ============================================================================
 -- Active transition agreement

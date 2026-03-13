@@ -11,30 +11,19 @@
   - Direction: Left = toward MSB (position + 1), Right = toward LSB (position - 1)
   - Halting: machine halts when head at position 0 tries to move Right
   - Output: tape contents read as a base-k integer after halting
+
+  Shared definitions (Dir, Rule, Machine) are imported from TM.Defs.
 -/
+
+import TM.Defs
 
 namespace OneSidedTM
 
-/-- Direction of head movement -/
-inductive Dir where
-  | L  -- Left: toward MSB (position + 1)
-  | R  -- Right: toward LSB (position - 1)
-  deriving Repr, DecidableEq, BEq
+-- Open TM namespace to use shared Dir, Rule, Machine types directly
+open TM
 
-/-- A transition rule: (nextState, writeSymbol, direction) -/
-structure Rule where
-  nextState : Nat
-  write     : Nat
-  dir       : Dir
-  deriving Repr, DecidableEq, BEq
-
-/-- A deterministic TM.
-    The transition function maps (state, readSymbol) → Rule.
-    States are 1..s, symbols are 0..k-1. -/
-structure TM where
-  numStates  : Nat
-  numSymbols : Nat
-  transition : Nat → Nat → Rule
+/-- A deterministic TM (alias for TM.Machine for backward compatibility) -/
+abbrev TM := Machine
 
 /-- Configuration of a running TM -/
 structure Config where
@@ -66,10 +55,10 @@ inductive StepResult where
     the machine halts (would move to position -1, which is off the tape). -/
 def step (tm : TM) (cfg : Config) : StepResult :=
   let sym := readTape cfg.tape cfg.head
-  let rule := tm.transition cfg.state sym
-  let newTape := writeTape cfg.tape cfg.head rule.write
-  let newState := rule.nextState
-  match rule.dir with
+  let tr := tm.transition cfg.state sym
+  let newTape := writeTape cfg.tape cfg.head tr.write
+  let newState := tr.nextState
+  match tr.dir with
   | Dir.R =>
     -- Moving right (toward LSB). If head is at 0, halt.
     if cfg.head == 0 then

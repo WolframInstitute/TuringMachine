@@ -11,6 +11,7 @@
 import OneSidedTM.Basic
 
 namespace OneSidedTM
+open TM
 
 /-- Rule 156830: the near-miss 3-state TM -/
 def nearMiss : TM := {
