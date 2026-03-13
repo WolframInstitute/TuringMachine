@@ -188,42 +188,8 @@ theorem halt_step_1 (tape : List Nat) (h : readTape tape 0 = 1) :
 -- ============================================================================
 -- readTape / writeTape simplification lemmas
 -- ============================================================================
-
-@[simp] theorem readTape_cons_zero (d : Nat) (rest : List Nat) :
-    readTape (d :: rest) 0 = d := by simp [readTape, List.getD]
-
-@[simp] theorem readTape_cons_succ (d : Nat) (rest : List Nat) (n : Nat) :
-    readTape (d :: rest) (n + 1) = readTape rest n := by simp [readTape, List.getD]
-
-@[simp] theorem readTape_nil (pos : Nat) : readTape [] pos = 0 := by
-  simp [readTape, List.getD]
-
-@[simp] theorem writeTape_cons_zero (d : Nat) (rest : List Nat) (v : Nat) :
-    writeTape (d :: rest) 0 v = v :: rest := by simp [writeTape, List.set]
-
-@[simp] theorem writeTape_cons_succ (d : Nat) (rest : List Nat) (n : Nat) (v : Nat) :
-    writeTape (d :: rest) (n + 1) v = d :: writeTape rest n v := by
-  simp [writeTape]; split <;> simp [List.set]
-
+-- Scan-back phase: state 2 preserves tape (writes back what it reads)
 -- ============================================================================
--- Tape identity: writeTape preserves tape when writing same value
--- ============================================================================
-
-theorem writeTape_read_id (tape : List Nat) (pos : Nat) (h : pos < tape.length) :
-    writeTape tape pos (readTape tape pos) = tape := by
-  induction tape generalizing pos with
-  | nil => simp at h
-  | cons d rest ih =>
-    cases pos with
-    | zero => simp [writeTape, readTape, List.getD, List.set]
-    | succ p =>
-      have hp : p < rest.length := by simp at h; omega
-      simp only [readTape_cons_succ, writeTape_cons_succ]; congr 1; exact ih p hp
-
-theorem writeTape_val_eq_id (tape : List Nat) (pos v : Nat)
-    (hlen : pos < tape.length) (hval : readTape tape pos = v) :
-    writeTape tape pos v = tape := by
-  rw [← hval]; exact writeTape_read_id tape pos hlen
 
 -- ============================================================================
 -- Scan-back phase: state 2 preserves tape (writes back what it reads)
@@ -379,9 +345,11 @@ private theorem readTape_binary (tape : List Nat) (pos : Nat)
   | nil => left; simp [readTape, List.getD]
   | cons d rest ih =>
     cases pos with
-    | zero => simp; exact hbin d (List.mem_cons_self _ _)
+    | zero => 
+      rw [readTape_cons_zero]
+      exact hbin d (List.mem_cons_self _ _)
     | succ p =>
-      simp [readTape_cons_succ]
+      rw [readTape_cons_succ]
       exact ih p (fun x hx => hbin x (List.mem_cons_of_mem _ hx))
 
 -- Step wrappers: absorb at end of tape (out of bounds)
@@ -516,6 +484,79 @@ theorem sim_eval (pre suf : List Nat)
 -- ============================================================================
 -- Main theorem
 -- ============================================================================
+
+-- ============================================================================
+-- The Universal Successor Simulation (Carry + Absorb + Walkback)
+-- ============================================================================
+
+/-- A walkback predicate: starting from state `startState` at position `pos`
+    over an all-zero prefix `List.replicate n 0`, it eventually halts at
+    position 0 with the same tape and some state. -/
+def ValidWalkback (tm : TM) (startState : Nat) : Prop :=
+  ∀ (n : Nat) (suf : List Nat) (pos : Nat), pos < n →
+  (∀ d ∈ suf, d = 0 ∨ d = 1) →
+  ∃ fuel endState, eval tm ⟨startState, pos, List.replicate n 0 ++ suf⟩ fuel =
+    some ⟨endState, 0, List.replicate n 0 ++ suf⟩
+
+/-- Main theorem: ANY Turing Machine matching the carry+absorb profile and having
+    a valid walkback will compute the binary successor. -/
+theorem sim_eval_universal (tm : TM) (as : Nat)
+    (hcarry : tm.transition 1 1 = { nextState := 1, write := 0, dir := Dir.L })
+    (habsorb : tm.transition 1 0 = { nextState := as, write := 1, dir := Dir.R })
+    (hwalkback : ValidWalkback tm as)
+    (n : Nat) (suf : List Nat)
+    (hbs : ∀ d ∈ suf, d = 0 ∨ d = 1) :
+    ∃ fuel cfg, eval tm ⟨1, n, List.replicate n 0 ++ suf⟩ fuel = some cfg ∧
+    fromBinary cfg.tape = fromBinary (List.replicate n 0 ++ binarySucc suf) := by
+  induction suf generalizing n with
+  | nil =>
+    simp only [List.append_nil, binarySucc]
+    cases n with
+    | zero =>
+      have hs : step tm ⟨1, 0, []⟩ = StepResult.halted ⟨as, 0, [1]⟩ := by
+        simp [step, readTape, List.getD, habsorb, writeTape, List.set]
+      exact ⟨1, ⟨as, 0, [1]⟩, eval_step_halt _ _ _ 0 hs, by simp [fromBinary]⟩
+    | succ m =>
+      have hr : readTape (List.replicate (m + 1) 0) (m + 1) = 0 := rt_beyond _ _ (by simp)
+      have hwt := wt_rep_extend (m + 1) 1
+      have h_m0 : (m + 1 == 0) = false := by simp
+      have ha : step tm ⟨1, m + 1, List.replicate (m + 1) 0⟩ =
+          StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ [1]⟩ := by
+        unfold step; simp [hr, habsorb, h_m0, hwt]
+      obtain ⟨fw, es, he⟩ := hwalkback (m + 1) [1] m (by omega) (by simp)
+      exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ [1]⟩,
+        by rw [eval_step_continue _ _ _ _ ha]; exact he,
+        rfl⟩
+  | cons d rest ih =>
+    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons_of_mem _ hx)
+    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+    · -- d = 0: absorb → walk back
+      simp only [binarySucc]
+      cases n with
+      | zero =>
+        have hs : step tm ⟨1, 0, 0 :: rest⟩ = StepResult.halted ⟨as, 0, 1 :: rest⟩ := by
+          simp [step, readTape, List.getD, habsorb, writeTape, List.set]
+        exact ⟨1, ⟨as, 0, 1 :: rest⟩, eval_step_halt _ _ _ 0 hs, by simp [fromBinary]⟩
+      | succ m =>
+        have hr : readTape (List.replicate (m + 1) 0 ++ 0 :: rest) (m + 1) = 0 := rt_split (m + 1) 0 rest
+        have h_m0 : (m + 1 == 0) = false := by simp
+        have ha : step tm ⟨1, m + 1, List.replicate (m + 1) 0 ++ 0 :: rest⟩ =
+            StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ 1 :: rest⟩ := by
+          unfold step; simp [hr, habsorb, h_m0, wt_split]
+        obtain ⟨fw, es, he⟩ := hwalkback (m + 1) (1 :: rest) m (by omega) (by 
+          intro x hx; simp at hx; cases hx with | inl h => exact Or.inr h | inr h => exact hbr x h)
+        exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ 1 :: rest⟩,
+          by rw [eval_step_continue _ _ _ _ ha]; exact he, rfl⟩
+    · -- d = 1: carry → recurse with prefix extended
+      have hrd : readTape (List.replicate n 0 ++ 1 :: rest) n = 1 := rt_split n 1 rest
+      have ha : step tm ⟨1, n, List.replicate n 0 ++ 1 :: rest⟩ =
+          StepResult.continue ⟨1, n + 1, List.replicate (n + 1) 0 ++ rest⟩ := by
+        simp [step, hrd, hcarry, wt_split, ← rep_snoc, List.append_assoc]
+      obtain ⟨f, c, he, hf⟩ := ih (n + 1) hbr
+      exact ⟨f + 1, c,
+        by rw [eval_step_continue _ _ _ _ ha]; exact he,
+        by rw [hf, show binarySucc (1 :: rest) = 0 :: binarySucc rest from rfl,
+               ← rep_snoc n 0, List.append_assoc]; rfl⟩
 
 /-- Rule 445 computes successor for all n ≥ 1. Formally proved by decomposing
     the TM execution into carry, absorb, and scanback phases via `sim_eval`. -/

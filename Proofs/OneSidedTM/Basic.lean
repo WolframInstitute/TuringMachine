@@ -123,6 +123,39 @@ def ComputesSucc (tm : TM) : Prop :=
   ∀ n : Nat, n ≥ 1 → ∃ fuel : Nat, run tm n fuel = some (n + 1)
 
 -- ============================================================================
+-- Tape manipulation lemmas
+-- ============================================================================
+
+@[simp] theorem readTape_nil (pos : Nat) : readTape [] pos = 0 := rfl
+
+@[simp] theorem readTape_cons_zero (d : Nat) (rest : List Nat) :
+    readTape (d :: rest) 0 = d := rfl
+
+@[simp] theorem readTape_cons_succ (d : Nat) (rest : List Nat) (i : Nat) :
+    readTape (d :: rest) (i + 1) = readTape rest i := rfl
+
+@[simp] theorem writeTape_cons_zero (d : Nat) (rest : List Nat) (v : Nat) :
+    writeTape (d :: rest) 0 v = v :: rest := by
+  simp [writeTape, List.set]
+
+@[simp] theorem writeTape_cons_succ (d : Nat) (rest : List Nat) (i : Nat) (v : Nat) :
+    writeTape (d :: rest) (i + 1) v = d :: writeTape rest i v := by
+  unfold writeTape
+  simp only [List.length_cons, Nat.add_lt_add_iff_right]
+  split <;> simp [List.set] <;> (try (congr; omega))
+
+theorem rt_beyond (tape : List Nat) (pos : Nat) (h : pos ≥ tape.length) :
+    readTape tape pos = 0 := by
+  unfold readTape
+  unfold List.getD
+  cases h' : tape.get? pos with
+  | none => rfl
+  | some x => 
+    have := List.get?_eq_some.1 h'
+    obtain ⟨h_lt, _⟩ := this
+    omega
+
+-- ============================================================================
 -- Basic lemmas about fromBinary / toBinary
 -- ============================================================================
 
@@ -154,6 +187,179 @@ theorem fromBinary_toBinary (n : Nat) : fromBinary (toBinary n) = n := by
 -- ============================================================================
 -- Eval determinism: the halted configuration is unique
 -- ============================================================================
+
+/-- Decode a {2,2} TM rule number into its transition function. -/
+def fromRuleNumber (ruleNum : Nat) : TM :=
+  let d0 := (ruleNum / 512) % 8  -- (state 1, sym 1)
+  let d1 := (ruleNum / 64) % 8   -- (state 1, sym 0)
+  let d2 := (ruleNum / 8) % 8    -- (state 2, sym 1)
+  let d3 := ruleNum % 8           -- (state 2, sym 0)
+  let decode (d : Nat) : Rule :=
+    { nextState := d / 4 % 2 + 1
+    , write := (d / 2) % 2
+    , dir := if d % 2 == 1 then Dir.R else Dir.L }
+  { numStates := 2
+  , numSymbols := 2
+  , transition := fun state sym =>
+      match state, sym with
+      | 1, 0 => decode d1
+      | 1, 1 => decode d0
+      | 2, 0 => decode d3
+      | 2, 1 => decode d2
+      | _, _ => { nextState := 1, write := 0, dir := Dir.R }
+  }
+
+/-- Decode a {3,2} TM rule number into its transition function. -/
+def fromRuleNumber32 (ruleNum : Nat) : TM :=
+  let d0 := (ruleNum / 248832) % 12 -- (state 1, sym 1)
+  let d1 := (ruleNum / 20736) % 12  -- (state 1, sym 0)
+  let d2 := (ruleNum / 1728) % 12   -- (state 2, sym 1)
+  let d3 := (ruleNum / 144) % 12    -- (state 2, sym 0)
+  let d4 := (ruleNum / 12) % 12     -- (state 3, sym 1)
+  let d5 := ruleNum % 12            -- (state 3, sym 0)
+  let decode (d : Nat) : Rule :=
+    { nextState := d / 4 + 1
+    , write := (d / 2) % 2
+    , dir := if d % 2 == 1 then Dir.R else Dir.L }
+  { numStates := 3
+  , numSymbols := 2
+  , transition := fun state sym =>
+      match state, sym with
+      | 1, 1 => decode d0
+      | 1, 0 => decode d1
+      | 2, 1 => decode d2
+      | 2, 0 => decode d3
+      | 3, 1 => decode d4
+      | 3, 0 => decode d5
+      | _, _ => { nextState := 1, write := 0, dir := Dir.L }
+  }
+
+theorem rep_snoc (n : Nat) (v : Nat) :
+    List.replicate n v ++ [v] = List.replicate (n + 1) v := by
+  induction n with
+  | zero => simp
+  | succ m ih => simp [List.replicate_succ, List.cons_append, ih]
+
+theorem wt_split (n : Nat) (d : Nat) (suf : List Nat) (v : Nat) :
+    writeTape (List.replicate n 0 ++ d :: suf) n v = List.replicate n 0 ++ v :: suf := by
+  induction n with
+  | zero => simp [writeTape, List.set]
+  | succ m ih =>
+    rw [List.replicate_succ]
+    simp only [show (0 :: List.replicate m 0) ++ d :: suf =
+      0 :: (List.replicate m 0 ++ d :: suf) from by simp, writeTape_cons_succ]
+    rw [ih]; simp [List.replicate_succ]
+
+theorem rt_split (n : Nat) (d : Nat) (suf : List Nat) :
+    readTape (List.replicate n 0 ++ d :: suf) n = d := by
+  induction n with
+  | zero => simp [readTape, List.getD]
+  | succ m ih =>
+    rw [List.replicate_succ]
+    simp only [show (0 :: List.replicate m 0) ++ d :: suf =
+      0 :: (List.replicate m 0 ++ d :: suf) from by simp, readTape_cons_succ]
+    exact ih
+
+theorem wt_rep_extend (n : Nat) (v : Nat) :
+    writeTape (List.replicate n 0) n v = List.replicate n 0 ++ [v] := by
+  induction n with
+  | zero => rfl
+  | succ m ih =>
+    rw [List.replicate_succ]
+    rw [writeTape_cons_succ, ih]
+    rfl
+
+theorem rt_zeros (n : Nat) (suf : List Nat) (i : Nat) (hi : i < n) :
+    readTape (List.replicate n 0 ++ suf) i = 0 := by
+  induction n generalizing i with
+  | zero => contradiction
+  | succ m ih =>
+    cases i with
+    | zero => rfl
+    | succ j =>
+      rw [List.replicate_succ]
+      simp only [show (0 :: List.replicate m 0) ++ suf = 0 :: (List.replicate m 0 ++ suf) by rfl, readTape_cons_succ]
+      apply ih j; omega
+
+-- ============================================================================
+-- Tape identities and utility lemmas
+-- ============================================================================
+
+theorem read_write_self (tape : List Nat) (i v : Nat) :
+    readTape (writeTape tape i v) i = v := by
+  induction tape generalizing i with
+  | nil =>
+    unfold writeTape; simp; induction i with
+    | zero => simp [readTape, List.getD]
+    | succ j ih => simp [List.replicate_succ, readTape_cons_succ, ih]
+  | cons d rest ih =>
+    cases i with
+    | zero => simp [writeTape_cons_zero, readTape_cons_zero]
+    | succ i' => simp [writeTape_cons_succ, readTape_cons_succ, ih]
+
+theorem read_write_other (tape : List Nat) (i j v : Nat) (h : i ≠ j) :
+    readTape (writeTape tape i v) j = readTape tape j := by
+  induction tape generalizing i j with
+  | nil =>
+    unfold writeTape; simp
+    induction i generalizing j with
+    | zero => 
+      cases j with
+      | zero => contradiction
+      | succ j' => simp [readTape, List.getD]
+    | succ i' ih =>
+      cases j with
+      | zero => simp [List.replicate_succ, readTape_cons_zero, readTape_nil]
+      | succ j' => 
+        simp [List.replicate_succ, readTape_cons_succ]
+        by_cases he : i' = j'
+        · subst he; exact absurd rfl h
+        · exact ih j' he
+  | cons d rest ih =>
+    cases i with
+    | zero =>
+      cases j with
+      | zero => contradiction
+      | succ j' => simp [writeTape_cons_zero, readTape_cons_succ]
+    | succ i' =>
+      cases j with
+      | zero => simp [writeTape_cons_succ, readTape_cons_zero]
+      | succ j' => 
+        simp [writeTape_cons_succ, readTape_cons_succ]
+        exact ih i' j' (by omega)
+
+theorem write_write_eq (tape : List Nat) (i v1 v2 : Nat) :
+    writeTape (writeTape tape i v1) i v2 = writeTape tape i v2 := by
+  induction tape generalizing i with
+  | nil =>
+    simp [writeTape, List.set]
+    repeat (split <;> try simp [List.set])
+  | cons d rest ih =>
+    cases i with
+    | zero => simp [writeTape_cons_zero]
+    | succ i' => simp [writeTape_cons_succ, ih]
+
+theorem writeTape_length (tape : List Nat) (i v : Nat) :
+    (writeTape tape i v).length = max tape.length (i + 1) := by
+  unfold writeTape; split
+  · simp; omega
+  · simp; omega
+
+theorem writeTape_read_id (tape : List Nat) (pos : Nat) (h : pos < tape.length) :
+    writeTape tape pos (readTape tape pos) = tape := by
+  induction tape generalizing pos with
+  | nil => simp at h
+  | cons d rest ih =>
+    cases pos with
+    | zero => simp [writeTape_cons_zero, readTape_cons_zero, List.set]
+    | succ p => 
+      simp [writeTape_cons_succ, readTape_cons_succ]
+      congr 1; exact ih p (by simp at h; omega)
+
+theorem writeTape_val_eq_id (tape : List Nat) (pos v : Nat)
+    (hlen : pos < tape.length) (hval : readTape tape pos = v) :
+    writeTape tape pos v = tape := by
+  rw [← hval]; exact writeTape_read_id tape pos hlen
 
 /-- If eval halts with fuel, it halts with the same result with more fuel -/
 theorem eval_mono (tm : TM) (cfg : Config) (fuel k : Nat) (cfg' : Config) :

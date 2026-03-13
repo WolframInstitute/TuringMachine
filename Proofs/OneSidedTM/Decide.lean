@@ -26,7 +26,7 @@ open TM
         3 → (state 2, sym 0)
     - Each digit d encodes: nextState = d/4 % 2 + 1, write = d/2 % 2, dir = d % 2
       where dir 1 = Right (toward LSB), dir 0 = Left (toward MSB) -/
-def fromRuleNumber (ruleNum : Nat) : TM :=
+def fromRuleNumber22 (ruleNum : Nat) : TM :=
   let d0 := (ruleNum / 512) % 8  -- (state 1, sym 1)
   let d1 := (ruleNum / 64) % 8   -- (state 1, sym 0)
   let d2 := (ruleNum / 8) % 8    -- (state 2, sym 1)
@@ -52,8 +52,8 @@ def fromRuleNumber (ruleNum : Nat) : TM :=
 -- d1=6 → (1,0): ns=2, w=1, L ↔ {1,0}→{2,1,-1} ✓
 -- d2=7 → (2,1): ns=2, w=1, R ↔ {2,1}→{2,1,1}  ✓
 -- d3=5 → (2,0): ns=2, w=0, R ↔ {2,0}→{2,0,1}  ✓
-#eval checkRun (fromRuleNumber 445) 3 20 (4)  -- should be true
-#eval checkRun (fromRuleNumber 445) 7 30 (8)  -- should be true
+#eval checkRun (fromRuleNumber22 445) 3 20 (4)  -- should be true
+#eval checkRun (fromRuleNumber22 445) 7 30 (8)  -- should be true
 
 -- ============================================================================
 -- Batch verification
@@ -80,7 +80,7 @@ def candidateRules : List Nat :=
 
 -- Check all candidates for failures up to input 200
 #eval! candidateRules.map fun r =>
-  (r, findFirstFailure (fromRuleNumber r) 200 1000)
+  (r, findFirstFailure (fromRuleNumber22 r) 200 1000)
 
 -- ============================================================================
 -- Structural analysis: which rules share the "active" transitions?
@@ -88,7 +88,7 @@ def candidateRules : List Nat :=
 
 /-- Describe a rule's transitions compactly -/
 def describeRule (ruleNum : Nat) : String :=
-  let tm := fromRuleNumber ruleNum
+  let tm := fromRuleNumber22 ruleNum
   let show_one (s sy : Nat) :=
     let r := tm.transition s sy
     s!"({r.nextState},{r.write},{match r.dir with | Dir.L => "L" | Dir.R => "R"})"
@@ -102,7 +102,7 @@ def describeRule (ruleNum : Nat) : String :=
 
 /-- Proof that a specific rule does NOT compute n ↦ n+1 for a given input -/
 def notSuccAt (ruleNum n fuel : Nat) : Prop :=
-  run (fromRuleNumber ruleNum) n fuel ≠ some (n + 1)
+  run (fromRuleNumber22 ruleNum) n fuel ≠ some (n + 1)
 
 -- Once we find failures in the #eval above, we can formalize them:
 -- theorem rule_XXX_fails_at_N : notSuccAt XXX N 1000 := by native_decide
