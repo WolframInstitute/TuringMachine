@@ -1,0 +1,3 @@
+[submodule "Proofs/LeanLink"]
+	path = Proofs/LeanLink
+	url = git@github.com:WolframInstitute/LeanLink.git
