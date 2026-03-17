@@ -82,10 +82,10 @@ theorem fromBinary_binarySucc (l : List Nat)
     | 1 =>
       simp [binarySucc, fromBinary]
       have h_rest : ∀ d ∈ rest, d = 0 ∨ d = 1 := by
-        intro d hd; exact h_bin d (List.mem_cons_of_mem _ hd)
+        intro d hd; exact h_bin d (List.mem_cons.mpr (.inr hd))
       have := ih h_rest; omega
     | d + 2 =>
-      exfalso; have := h_bin (d + 2) (List.mem_cons_self _ _); omega
+      exfalso; have := h_bin (d + 2) (List.mem_cons.mpr (.inl rfl)); omega
 
 theorem toBinary_binary (n : Nat) : ∀ d ∈ toBinary n, d = 0 ∨ d = 1 := by
   unfold toBinary
@@ -245,9 +245,9 @@ theorem fromBinary_append_all_zero (l suffix : List Nat) (h : ∀ x ∈ suffix, 
   induction suffix generalizing l with
   | nil => simp
   | cons d rest ih =>
-    have hd : d = 0 := h d (List.mem_cons_self _ _)
+    have hd : d = 0 := h d (List.mem_cons.mpr (.inl rfl))
     rw [show l ++ d :: rest = (l ++ [d]) ++ rest from by simp]
-    rw [ih (l ++ [d]) (fun x hx => h x (List.mem_cons_of_mem _ hx))]
+    rw [ih (l ++ [d]) (fun x hx => h x (List.mem_cons.mpr (.inr hx)))]
     rw [hd, fromBinary_append_zero]
 
 private theorem List.pred_of_mem_takeWhile' {α : Type} {p : α → Bool} {l : List α} {x : α}
@@ -273,7 +273,7 @@ theorem fromBinary_trim (l : List Nat) :
     generalize hdw : (a :: rest).reverse.dropWhile (· == 0) = dw
     generalize htw : (a :: rest).reverse.takeWhile (· == 0) = tw
     have hl_eq : (a :: rest) = dw.reverse ++ tw.reverse := by
-      have h1 := (List.takeWhile_append_dropWhile (· == 0) (a :: rest).reverse).symm
+      have h1 := (@List.takeWhile_append_dropWhile _ (· == 0) (a :: rest).reverse).symm
       rw [htw, hdw] at h1
       have h2 := congrArg List.reverse h1
       simp only [List.reverse_append, List.reverse_reverse] at h2
@@ -288,7 +288,7 @@ theorem fromBinary_trim (l : List Nat) :
     · rename_i hempty
       simp only [fromBinary]
       have : fromBinary (a :: rest) = 0 := by
-        rw [hfb, List.isEmpty_eq_true.mp hempty]; simp [fromBinary]
+        rw [hfb, List.isEmpty_iff.mp hempty]; simp [fromBinary]
       simp [fromBinary] at this; omega
     · exact hfb.symm
 
@@ -347,10 +347,10 @@ private theorem readTape_binary (tape : List Nat) (pos : Nat)
     cases pos with
     | zero => 
       rw [readTape_cons_zero]
-      exact hbin d (List.mem_cons_self _ _)
+      exact hbin d (List.mem_cons.mpr (.inl rfl))
     | succ p =>
       rw [readTape_cons_succ]
-      exact ih p (fun x hx => hbin x (List.mem_cons_of_mem _ hx))
+      exact ih p (fun x hx => hbin x (List.mem_cons.mpr (.inr hx)))
 
 -- Step wrappers: absorb at end of tape (out of bounds)
 private theorem absorb_end_step (pre : List Nat) :
@@ -437,8 +437,8 @@ theorem sim_eval (pre suf : List Nat)
 
   | cons d rest ih =>
     have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 :=
-      fun x hx => hbs x (List.mem_cons_of_mem _ hx)
-    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+      fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
     · -- d = 0, suffix = 0 :: rest
       by_cases hrest : rest = []
       · -- suffix = [0]: absorb + extension + scanback
@@ -454,7 +454,7 @@ theorem sim_eval (pre suf : List Nat)
       · -- suffix = 0 :: rest with rest ≠ []: absorb + direct scanback
         have hlen : pre.length + 1 < (pre ++ 1 :: rest).length := by
           simp; exact Nat.pos_of_ne_zero
-            (by intro h; exact hrest (List.length_eq_zero.mp h))
+            (by intro h; exact hrest (List.length_eq_zero_iff.mp h))
         have heval : eval rule445 ⟨1, pre.length, pre ++ 0 :: rest⟩ (pre.length + 3) =
             some ⟨2, 0, pre ++ 1 :: rest⟩ := by
           rw [show pre.length + 3 = (pre.length + 2) + 1 from by omega,
@@ -491,10 +491,12 @@ theorem sim_eval (pre suf : List Nat)
 
 /-- A walkback predicate: starting from state `startState` at position `pos`
     over an all-zero prefix `List.replicate n 0`, it eventually halts at
-    position 0 with the same tape and some state. -/
+    position 0 with the same tape and some state.
+    Requires suf to be nonempty (ensures the tape doesn't need extension
+    during the bouncing walkback at the boundary). -/
 def ValidWalkback (tm : TM) (startState : Nat) : Prop :=
   ∀ (n : Nat) (suf : List Nat) (pos : Nat), pos < n →
-  (∀ d ∈ suf, d = 0 ∨ d = 1) →
+  (∀ d ∈ suf, d = 0 ∨ d = 1) → suf.length > 0 →
   ∃ fuel endState, eval tm ⟨startState, pos, List.replicate n 0 ++ suf⟩ fuel =
     some ⟨endState, 0, List.replicate n 0 ++ suf⟩
 
@@ -523,13 +525,13 @@ theorem sim_eval_universal (tm : TM) (as : Nat)
       have ha : step tm ⟨1, m + 1, List.replicate (m + 1) 0⟩ =
           StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ [1]⟩ := by
         unfold step; simp [hr, habsorb, h_m0, hwt]
-      obtain ⟨fw, es, he⟩ := hwalkback (m + 1) [1] m (by omega) (by simp)
+      obtain ⟨fw, es, he⟩ := hwalkback (m + 1) [1] m (by omega) (by simp) (by simp)
       exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ [1]⟩,
         by rw [eval_step_continue _ _ _ _ ha]; exact he,
         rfl⟩
   | cons d rest ih =>
-    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons_of_mem _ hx)
-    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
     · -- d = 0: absorb → walk back
       simp only [binarySucc]
       cases n with
@@ -544,7 +546,7 @@ theorem sim_eval_universal (tm : TM) (as : Nat)
             StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ 1 :: rest⟩ := by
           unfold step; simp [hr, habsorb, h_m0, wt_split]
         obtain ⟨fw, es, he⟩ := hwalkback (m + 1) (1 :: rest) m (by omega) (by 
-          intro x hx; simp at hx; cases hx with | inl h => exact Or.inr h | inr h => exact hbr x h)
+          intro x hx; simp at hx; cases hx with | inl h => exact Or.inr h | inr h => exact hbr x h) (by simp)
         exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ 1 :: rest⟩,
           by rw [eval_step_continue _ _ _ _ ha]; exact he, rfl⟩
     · -- d = 1: carry → recurse with prefix extended
@@ -558,12 +560,69 @@ theorem sim_eval_universal (tm : TM) (as : Nat)
         by rw [hf, show binarySucc (1 :: rest) = 0 :: binarySucc rest from rfl,
                ← rep_snoc n 0, List.append_assoc]; rfl⟩
 
+/-- Generalized carry eval with parametric carry state cs (instead of hardcoded 1).
+    Enables multi-state delegation proofs where state 1 delegates to state cs. -/
+theorem sim_eval_carry (tm : TM) (cs as : Nat)
+    (hcarry : tm.transition cs 1 = { nextState := cs, write := 0, dir := Dir.L })
+    (habsorb : tm.transition cs 0 = { nextState := as, write := 1, dir := Dir.R })
+    (hwalkback : ValidWalkback tm as)
+    (n : Nat) (suf : List Nat)
+    (hbs : ∀ d ∈ suf, d = 0 ∨ d = 1) :
+    ∃ fuel cfg, eval tm ⟨cs, n, List.replicate n 0 ++ suf⟩ fuel = some cfg ∧
+    fromBinary cfg.tape = fromBinary (List.replicate n 0 ++ binarySucc suf) := by
+  induction suf generalizing n with
+  | nil =>
+    simp only [List.append_nil, binarySucc]
+    cases n with
+    | zero =>
+      have hs : step tm ⟨cs, 0, []⟩ = StepResult.halted ⟨as, 0, [1]⟩ := by
+        simp [step, readTape, List.getD, habsorb, writeTape, List.set]
+      exact ⟨1, ⟨as, 0, [1]⟩, eval_step_halt _ _ _ 0 hs, by simp [fromBinary]⟩
+    | succ m =>
+      have hr : readTape (List.replicate (m + 1) 0) (m + 1) = 0 := rt_beyond _ _ (by simp)
+      have hwt := wt_rep_extend (m + 1) 1
+      have h_m0 : (m + 1 == 0) = false := by simp
+      have ha : step tm ⟨cs, m + 1, List.replicate (m + 1) 0⟩ =
+          StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ [1]⟩ := by
+        unfold step; simp [hr, habsorb, h_m0, hwt]
+      obtain ⟨fw, es, he⟩ := hwalkback (m + 1) [1] m (by omega) (by simp) (by simp)
+      exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ [1]⟩,
+        by rw [eval_step_continue _ _ _ _ ha]; exact he, rfl⟩
+  | cons d rest ih =>
+    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
+    · simp only [binarySucc]
+      cases n with
+      | zero =>
+        have hs : step tm ⟨cs, 0, 0 :: rest⟩ = StepResult.halted ⟨as, 0, 1 :: rest⟩ := by
+          simp [step, readTape, List.getD, habsorb, writeTape, List.set]
+        exact ⟨1, ⟨as, 0, 1 :: rest⟩, eval_step_halt _ _ _ 0 hs, by simp [fromBinary]⟩
+      | succ m =>
+        have hr := rt_split (m + 1) 0 rest
+        have h_m0 : (m + 1 == 0) = false := by simp
+        have ha : step tm ⟨cs, m + 1, List.replicate (m + 1) 0 ++ 0 :: rest⟩ =
+            StepResult.continue ⟨as, m, List.replicate (m + 1) 0 ++ 1 :: rest⟩ := by
+          unfold step; simp [hr, habsorb, h_m0, wt_split]
+        obtain ⟨fw, es, he⟩ := hwalkback (m + 1) (1 :: rest) m (by omega) (by
+          intro x hx; simp at hx; cases hx with | inl h => exact Or.inr h | inr h => exact hbr x h) (by simp)
+        exact ⟨fw + 1, ⟨es, 0, List.replicate (m + 1) 0 ++ 1 :: rest⟩,
+          by rw [eval_step_continue _ _ _ _ ha]; exact he, rfl⟩
+    · have hrd := rt_split n 1 rest
+      have ha : step tm ⟨cs, n, List.replicate n 0 ++ 1 :: rest⟩ =
+          StepResult.continue ⟨cs, n + 1, List.replicate (n + 1) 0 ++ rest⟩ := by
+        simp [step, hrd, hcarry, wt_split, ← rep_snoc, List.append_assoc]
+      obtain ⟨f, c, he, hf⟩ := ih (n + 1) hbr
+      exact ⟨f + 1, c,
+        by rw [eval_step_continue _ _ _ _ ha]; exact he,
+        by rw [hf, show binarySucc (1 :: rest) = 0 :: binarySucc rest from rfl,
+               ← rep_snoc n 0, List.append_assoc]; rfl⟩
+
 /-- Rule 445 computes successor for all n ≥ 1. Formally proved by decomposing
     the TM execution into carry, absorb, and scanback phases via `sim_eval`. -/
 theorem rule445_computesSucc : ComputesSucc rule445 := by
   intro n _hn
   obtain ⟨fuel, cfg, heval, hfb⟩ :=
-    sim_eval [] (toBinary n) (fun _ h => absurd h (List.not_mem_nil _)) (toBinary_binary n)
+    sim_eval [] (toBinary n) (fun _ h => nomatch h) (toBinary_binary n)
   refine ⟨fuel, ?_⟩
   simp at heval hfb
   simp only [run, initConfig, heval, Option.map]

@@ -146,14 +146,12 @@ def ComputesSucc (tm : TM) : Prop :=
 
 theorem rt_beyond (tape : List Nat) (pos : Nat) (h : pos ≥ tape.length) :
     readTape tape pos = 0 := by
-  unfold readTape
-  unfold List.getD
-  cases h' : tape.get? pos with
-  | none => rfl
-  | some x => 
-    have := List.get?_eq_some.1 h'
-    obtain ⟨h_lt, _⟩ := this
-    omega
+  induction tape generalizing pos with
+  | nil => simp [readTape, List.getD]
+  | cons d rest ih =>
+    cases pos with
+    | zero => simp at h
+    | succ p => simp [readTape_cons_succ]; exact ih p (by simp at h; omega)
 
 -- ============================================================================
 -- Basic lemmas about fromBinary / toBinary
