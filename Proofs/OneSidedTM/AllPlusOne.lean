@@ -69,10 +69,10 @@ private theorem rz_app (pre suf : List Nat) (hp : ∀ d ∈ pre, d = 0)
   | nil => simp at hi
   | cons d rest ih =>
     cases i with
-    | zero => simp [readTape, List.getD]; exact hp d (List.mem_cons_self _ _)
+    | zero => simp [readTape, List.getD]; exact hp d (List.mem_cons.mpr (.inl rfl))
     | succ j =>
       simp [readTape_cons_succ]
-      exact ih (fun x hx => hp x (List.mem_cons_of_mem _ hx)) j (by simp at hi; omega)
+      exact ih (fun x hx => hp x (List.mem_cons.mpr (.inr hx))) j (by simp at hi; omega)
 
 -- Core simulation for Class B with all-zeros prefix invariant
 theorem sim_eval_B (tm : TM) (hc : IsClassB tm) (pre suf : List Nat)
@@ -83,7 +83,7 @@ theorem sim_eval_B (tm : TM) (hc : IsClassB tm) (pre suf : List Nat)
   induction suf generalizing pre with
   | nil =>
     by_cases hp : pre.length = 0
-    · have hpnil := List.length_eq_zero.mp hp; subst hpnil
+    · have hpnil := List.eq_nil_of_length_eq_zero hp; subst hpnil
       simp only [List.append_nil, List.nil_append, binarySucc]
       have hab : step tm ⟨1, 0, []⟩ = StepResult.halted ⟨2, 0, [1]⟩ := by
         simp only [step, show readTape [] 0 = 0 from by simp [readTape, List.getD], hc.absorb]
@@ -104,10 +104,10 @@ theorem sim_eval_B (tm : TM) (hc : IsClassB tm) (pre suf : List Nat)
           (fun i hi => rz_app pre [1] hbp i (by omega)), rfl⟩
 
   | cons d rest ih =>
-    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons_of_mem _ hx)
-    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+    have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 := fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
     · by_cases hp : pre.length = 0
-      · have hpnil := List.length_eq_zero.mp hp; subst hpnil; simp
+      · have hpnil := List.eq_nil_of_length_eq_zero hp; subst hpnil; simp
         have hab : step tm ⟨1, 0, 0 :: rest⟩ = StepResult.halted ⟨2, 0, 1 :: rest⟩ := by
           simp only [step, show readTape (0 :: rest) 0 = 0 from by simp [readTape, List.getD],
                       hc.absorb]; simp [writeTape]
@@ -145,7 +145,7 @@ theorem sim_eval_B (tm : TM) (hc : IsClassB tm) (pre suf : List Nat)
 theorem classB_computesSucc (tm : TM) (hc : IsClassB tm) : ComputesSucc tm := by
   intro n _hn
   obtain ⟨fuel, cfg, heval, hfb⟩ :=
-    sim_eval_B tm hc [] (toBinary n) (fun _ h => absurd h (List.not_mem_nil _)) (toBinary_binary n)
+    sim_eval_B tm hc [] (toBinary n) (fun _ h => nomatch h) (toBinary_binary n)
   refine ⟨fuel, ?_⟩; simp at heval hfb
   simp only [run, initConfig, heval, Option.map, outputValue, fromBinary_trim, hfb]
   rw [fromBinary_binarySucc _ (toBinary_binary n), fromBinary_toBinary]

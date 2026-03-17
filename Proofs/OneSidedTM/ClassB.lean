@@ -40,14 +40,15 @@ private theorem all_binary_rep_suf (n : Nat) (suf : List Nat)
   · exact Or.inl rfl
   · exact hbs d hd
 
-/-- readTape returns 0 or 1 on a tape whose elements are all 0 or 1 -/
 private theorem readTape_binary_tape (tape : List Nat) (pos : Nat)
     (hall : ∀ d ∈ tape, d = 0 ∨ d = 1) :
     readTape tape pos = 0 ∨ readTape tape pos = 1 := by
-  unfold readTape; unfold List.getD
-  cases h : tape.get? pos with
-  | none => left; rfl
-  | some x => exact hall x (List.mem_of_get? h)
+  induction tape generalizing pos with
+  | nil => left; simp [readTape, List.getD]
+  | cons d rest ih =>
+    cases pos with
+    | zero => rw [readTape_cons_zero]; exact hall d (List.mem_cons.mpr (.inl rfl))
+    | succ p => rw [readTape_cons_succ]; exact ih p (fun x hx => hall x (List.mem_cons.mpr (.inr hx)))
 
 /-- Corollary for the zero-prefix ++ binary-suffix tapes used in walkback -/
 private theorem readTape_rep_suf_binary (n : Nat) (suf : List Nat) (pos : Nat)

@@ -48,7 +48,7 @@ private theorem writeTape_replicate_succ (k : Nat) (rest : List Nat) :
     writeTape (List.replicate (k + 2) 1 ++ rest) (k + 1) 0 =
     List.replicate (k + 1) 1 ++ (0 :: rest) := by
   induction k generalizing rest with
-  | zero => simp [writeTape, List.set, List.replicate]
+  | zero => simp [writeTape, List.replicate]
   | succ k ih =>
     -- List.replicate (k+3) 1 ++ rest = 1 :: List.replicate (k+2) 1 ++ rest
     -- writeTape (1 :: ...) (k+2) 0 = 1 :: writeTape (...) (k+1) 0  via writeTape_cons_succ
@@ -84,16 +84,19 @@ private theorem ones_eq_rep (l : List Nat) (h : ∀ (d : Nat), d ∈ l → d = 1
   induction l with
   | nil => rfl
   | cons d rest ih =>
-    have hd := h d (List.mem_cons_self _ _)
+    have hd := h d (List.mem_cons.mpr (.inl rfl))
     subst hd
-    exact congrArg (1 :: ·) (ih (fun (x : Nat) (hx : x ∈ rest) => h x (List.mem_cons_of_mem _ hx)))
+    exact congrArg (1 :: ·) (ih (fun (x : Nat) (hx : x ∈ rest) => h x (List.mem_cons.mpr (.inr hx))))
 
 private theorem binarySucc_ones_fb (k : Nat) :
     fromBinary (List.replicate k 0 ++ [1]) = fromBinary (binarySucc (List.replicate k 1)) := by
   induction k with
   | zero => rfl
   | succ k ih =>
-    simp only [List.replicate_succ, binarySucc, fromBinary, List.append_cons]; simp [ih]
+    unfold List.replicate binarySucc fromBinary
+    show 0 + 2 * fromBinary (List.replicate k 0 ++ [1]) =
+         0 + 2 * fromBinary (binarySucc (List.replicate k 1))
+    rw [ih]
 
 private theorem binarySucc_ones_zero_fb (k : Nat) (rest : List Nat) :
     fromBinary (List.replicate k 0 ++ 1 :: rest) =
@@ -101,7 +104,10 @@ private theorem binarySucc_ones_zero_fb (k : Nat) (rest : List Nat) :
   induction k with
   | zero => rfl
   | succ k ih =>
-    simp only [List.replicate_succ, List.cons_append, binarySucc, fromBinary]; simp [ih]
+    unfold List.replicate binarySucc fromBinary
+    show 0 + 2 * fromBinary (List.replicate k 0 ++ 1 :: rest) =
+         0 + 2 * fromBinary (binarySucc (List.replicate k 1 ++ 0 :: rest))
+    rw [ih]
 
 theorem sim_eval_C (tm : TM) (hc : IsClassC tm) (pre suf : List Nat)
     (hbp : ∀ (d : Nat), d ∈ pre → d = 1)
@@ -111,7 +117,7 @@ theorem sim_eval_C (tm : TM) (hc : IsClassC tm) (pre suf : List Nat)
   induction suf generalizing pre with
   | nil =>
     by_cases hp : pre.length = 0
-    · have hpnil := List.length_eq_zero.mp hp; subst hpnil
+    · have hpnil := List.eq_nil_of_length_eq_zero hp; subst hpnil
       simp only [List.append_nil, binarySucc]
       have hab : step tm ⟨1, 0, []⟩ = StepResult.halted ⟨2, 0, [1]⟩ := by
         unfold step readTape; simp [List.getD, hc.absorb, writeTape]
@@ -136,10 +142,10 @@ theorem sim_eval_C (tm : TM) (hc : IsClassC tm) (pre suf : List Nat)
 
   | cons d rest ih =>
     have hbr : ∀ (x : Nat), x ∈ rest → x = 0 ∨ x = 1 :=
-      fun x hx => hbs x (List.mem_cons_of_mem _ hx)
-    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+      fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
     · by_cases hp : pre.length = 0
-      · have hpnil := List.length_eq_zero.mp hp; subst hpnil; simp
+      · have hpnil := List.eq_nil_of_length_eq_zero hp; subst hpnil; simp
         have hab : step tm ⟨1, 0, 0 :: rest⟩ = StepResult.halted ⟨2, 0, 1 :: rest⟩ := by
           unfold step readTape; simp [List.getD, hc.absorb, writeTape]
         exact ⟨1, _, eval_step_halt tm _ _ 0 hab, by simp [binarySucc]⟩
@@ -179,7 +185,7 @@ theorem sim_eval_C (tm : TM) (hc : IsClassC tm) (pre suf : List Nat)
 theorem classC_computesSucc (tm : TM) (hc : IsClassC tm) : ComputesSucc tm := by
   intro n _hn
   obtain ⟨fuel, cfg, heval, hfb⟩ :=
-    sim_eval_C tm hc [] (toBinary n) (fun _ h => absurd h (List.not_mem_nil _)) (toBinary_binary n)
+    sim_eval_C tm hc [] (toBinary n) (fun _ h => nomatch h) (toBinary_binary n)
   refine ⟨fuel, ?_⟩; simp at heval hfb
   simp only [run, initConfig, heval, Option.map, outputValue, fromBinary_trim, hfb]
   rw [fromBinary_binarySucc _ (toBinary_binary n), fromBinary_toBinary]

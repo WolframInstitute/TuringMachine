@@ -87,72 +87,8 @@ private theorem walk3_halt (tape : List Nat) (h : readTape tape 0 = 0) :
     StepResult.halted ⟨2, 0, writeTape tape 0 0⟩ := by
   simp only [step, h, rule146514]; rfl
 
--- ============================================================================
--- Tape helpers
--- ============================================================================
-
--- readTape in all-zero prefix
-private theorem rt_zeros (n : Nat) (suf : List Nat) (i : Nat) (h : i < n) :
-    readTape (List.replicate n 0 ++ suf) i = 0 := by
-  induction n generalizing i with
-  | zero => omega
-  | succ m ih =>
-    rw [List.replicate_succ]
-    simp only [show (0 :: List.replicate m 0) ++ suf =
-      0 :: (List.replicate m 0 ++ suf) from by simp]
-    cases i with
-    | zero => simp [readTape_cons_zero]
-    | succ j => simp only [readTape_cons_succ]; exact ih j (by omega)
-
--- readTape at split point
-private theorem rt_split (n : Nat) (d : Nat) (rest : List Nat) :
-    readTape (List.replicate n 0 ++ d :: rest) n = d := by
-  induction n with
-  | zero => simp [readTape, List.getD]
-  | succ m ih =>
-    rw [List.replicate_succ]
-    simp only [show (0 :: List.replicate m 0) ++ d :: rest =
-      0 :: (List.replicate m 0 ++ d :: rest) from by simp, readTape_cons_succ]
-    exact ih
-
--- readTape beyond tape length
-private theorem rt_beyond (tape : List Nat) (pos : Nat) (h : tape.length ≤ pos) :
-    readTape tape pos = 0 := by
-  induction tape generalizing pos with
-  | nil => simp [readTape, List.getD]
-  | cons a rest ih =>
-    cases pos with
-    | zero => simp at h
-    | succ p => simp only [readTape_cons_succ]; exact ih p (by simp at h; omega)
-
--- writeTape at split point
-private theorem wt_split (n : Nat) (d : Nat) (suf : List Nat) (v : Nat) :
-    writeTape (List.replicate n 0 ++ d :: suf) n v = List.replicate n 0 ++ v :: suf := by
-  induction n with
-  | zero => simp [writeTape, List.set]
-  | succ m ih =>
-    rw [List.replicate_succ]
-    simp only [show (0 :: List.replicate m 0) ++ d :: suf =
-      0 :: (List.replicate m 0 ++ d :: suf) from by simp, writeTape_cons_succ]
-    rw [ih]; simp [List.replicate_succ]
-
--- replicate n 0 ++ [0] = replicate (n+1) 0
-private theorem rep_snoc (n : Nat) :
-    List.replicate n 0 ++ [0] = List.replicate (n + 1) 0 := by
-  induction n with
-  | zero => simp
-  | succ m ih => simp [List.replicate_succ]; exact ih
-
--- writeTape extending replicate by one element
-private theorem wt_rep_extend (n : Nat) (v : Nat) :
-    writeTape (List.replicate n 0) n v = List.replicate n 0 ++ [v] := by
-  induction n with
-  | zero => rfl
-  | succ m ih =>
-    rw [List.replicate_succ]
-    show writeTape (0 :: List.replicate m 0) (m + 1) v = 0 :: (List.replicate m 0 ++ [v])
-    rw [writeTape_cons_succ, ih]
-
+-- Tape helpers: use rt_zeros, rt_split, rt_beyond, wt_split, rep_snoc,
+-- wt_rep_extend from Basic.lean (imported via OneSidedTM.Basic)
 -- ============================================================================
 -- Walk-back: single-step induction on position, tracking state {2,3}
 -- ============================================================================
@@ -225,8 +161,8 @@ theorem sim_eval146 (n : Nat) (suf : List Nat)
         by rw [htw]⟩
   | cons d rest ih =>
     have hbr : ∀ x ∈ rest, x = 0 ∨ x = 1 :=
-      fun x hx => hbs x (List.mem_cons_of_mem _ hx)
-    rcases hbs d (List.mem_cons_self _ _) with rfl | rfl
+      fun x hx => hbs x (List.mem_cons.mpr (.inr hx))
+    rcases hbs d (List.mem_cons.mpr (.inl rfl)) with rfl | rfl
     · -- d = 0: absorb → walk back
       simp only [binarySucc]
       cases n with

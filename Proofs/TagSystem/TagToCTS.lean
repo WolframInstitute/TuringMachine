@@ -288,9 +288,6 @@ theorem tagToCTS_appendant_first {k : Nat} (ts : Tag k) (hk : k > 0) (a : Fin k)
   have h_lt2 : a.val < k + k := by omega
   have h_mod : a.val % (k + k) = a.val := Nat.mod_eq_of_lt h_lt2
   simp [h_mod]
-  have h1 : a.val < (List.map (fun i => tagWordEncode k (ts.productions i)) (List.finRange k)).length := by simp [a.isLt]
-  rw [List.getElem_append_left (h := h1)]
-  simp
 
 theorem tagToCTS_appendant_second {k : Nat} (ts : Tag k) (hk : k > 0) (b : Fin k) :
   (tagToCTS ts hk).currentAppendant (k + b.val) = [] := by
@@ -298,11 +295,6 @@ theorem tagToCTS_appendant_second {k : Nat} (ts : Tag k) (hk : k > 0) (b : Fin k
   have h_lt2 : k + b.val < k + k := by omega
   have h_mod : (k + b.val) % (k + k) = k + b.val := Nat.mod_eq_of_lt h_lt2
   simp [h_mod]
-  have hz : (List.map (fun i => tagWordEncode k (ts.productions i)) (List.finRange k)).length = k := by simp
-  have h1 : (List.map (fun i => tagWordEncode k (ts.productions i)) (List.finRange k)).length ≤ k + b.val := by rw [hz]; omega
-  have h2 : k + b.val < (List.map (fun i : Fin k => tagWordEncode k (ts.productions i)) (List.finRange k) ++ List.map (fun x : Fin k => []) (List.finRange k)).length := by simp [b.isLt]
-  rw [List.getElem_append_right (h₁ := h1) (h₂ := h2)]
-  simp [hz]
 
 -- Processing k CTS steps through a one-hot symbol:
 -- Starting at phase p, with data = symbolEncode k a ++ suffix,
@@ -361,30 +353,7 @@ theorem tagToCTS_simulation {k : Nat} (ts : Tag k) (hk : k > 0)
       rw [←h_step]
       simp [tagConfigToCTS, tagWordEncode_append]
 
--- ============================================================================
--- Tag.step/halted consistency
--- ============================================================================
-
-/-- Tag step returns none iff tag is halted -/
-theorem Tag.step_none_iff_halted {k : Nat} (ts : Tag k) (cfg : TagConfig k) :
-    ts.step cfg = none ↔ tagHalted cfg = true := by
-  constructor
-  · intro h
-    simp [Tag.step] at h
-    cases cfg with
-    | nil => simp [tagHalted]
-    | cons a rest =>
-      cases rest with
-      | nil => simp [tagHalted]
-      | cons b rest' => simp at h
-  · intro h
-    simp [tagHalted] at h
-    cases cfg with
-    | nil => simp [Tag.step]
-    | cons a rest =>
-      cases rest with
-      | nil => simp [Tag.step]
-      | cons b rest' => exact absurd h (by simp [tagHalted])
+-- (Tag.step_none_iff_halted is imported from TagSystem.Basic)
 
 /-- Tag halted means word has length 0 or 1 -/
 theorem tagHalted_iff_short {k : Nat} (cfg : TagConfig k) :
@@ -424,9 +393,56 @@ theorem tagToCTS_halting_forward {k : Nat} (ts : Tag k) (hk : k > 0)
         simp [this] at hh
       | some cfg' =>
         simp [h_step_eq] at h_eval
-        have ih_result := ih cfg' h_eval
+        have ⟨fuel', result', he⟩ := ih cfg' h_eval
         have h_sim := tagToCTS_simulation ts hk cfg cfg' h_step_eq
-        exact cts_halts_after_nSteps _ _ _ _ h_sim ih_result
+        exact cts_halts_after_nSteps _ _ _ _ h_sim ⟨fuel', result', he⟩
+
+/-- Helper for tag halting proof -/
+theorem Tag.not_halted_exists_three {k : Nat} {cfg : TagConfig k} (h : tagHalted cfg = false) :
+    ∃ a b rest, cfg = a :: b :: rest := by
+  cases cfg with
+  | nil => simp [tagHalted] at h
+  | cons a tl =>
+    cases tl with
+    | nil => simp [tagHalted] at h
+    | cons b rest => exact ⟨a, b, rest, rfl⟩
+
+theorem cts_step_none_iff_halted (cts : CTS) (cfg : CTSConfig) :
+    cts.step cfg = none ↔ ctsHalted cfg = true := by
+  dsimp [CTS.step, ctsHalted]
+  cases cfg.data <;> simp
+
+/-- If CTS has data of length L, it cannot halt in fewer than L steps. -/
+theorem cts_eval_none_of_length {cts : CTS} {cfg : CTSConfig} {f : Nat} :
+    f < cfg.data.length → cts.eval cfg f = none := by
+  induction f generalizing cfg with
+  | zero =>
+    intro h
+    unfold CTS.eval
+    split <;> rename_i h_h
+    · simp [ctsHalted, List.isEmpty_iff_length_eq_zero] at h_h
+      rw [h_h] at h; simp at h
+    · rfl
+  | succ f ih =>
+    intro h
+    unfold CTS.eval
+    split <;> rename_i h_h
+    · simp [ctsHalted, List.isEmpty_iff_length_eq_zero] at h_h
+      rw [h_h] at h; simp at h
+    · cases h_st : cts.step cfg with
+      | none =>
+        have h_halt := (cts_step_none_iff_halted cts cfg).mp h_st
+        rw [h_halt] at h_h
+        contradiction
+      | some cfg' =>
+        have h_len : cfg'.data.length ≥ cfg.data.length - 1 := by
+          cases h_c : cfg.data with
+          | nil => simp [CTS.step, h_c] at h_st
+          | cons head rest =>
+            simp [CTS.step, h_c] at h_st
+            subst h_st
+            cases head <;> (try simp) <;> (try omega)
+        exact ih (by omega)
 
 -- ============================================================================
 -- Halting correspondence
@@ -442,7 +458,73 @@ theorem tagToCTS_halting {k : Nat} (ts : Tag k) (hk : k > 0)
 theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
     (cfg : TagConfig k) :
     (tagToCTS ts hk).Halts (tagConfigToCTS k cfg) → ts.Halts cfg := by
-  sorry
+  intro ⟨fuel, result, h_eval⟩
+  induction fuel using Nat.strongRecOn generalizing cfg result with
+  | ind n ih =>
+    cases h_h : ctsHalted (tagConfigToCTS k cfg) with
+    | true =>
+      -- CTS is halted
+      have h_cfg_nil : cfg = [] := by
+        simp [ctsHalted, tagConfigToCTS] at h_h
+        have h_len_mul := tagWordEncode_length k cfg
+        rw [h_h] at h_len_mul
+        simp at h_len_mul
+        cases h_len : cfg.length with
+        | zero => exact List.eq_nil_of_length_eq_zero h_len
+        | succ n =>
+          rw [h_len] at h_len_mul
+          have h_pos : k * (n + 1) > 0 := Nat.mul_pos hk (Nat.succ_pos n)
+          rw [h_len_mul] at h_pos
+          omega
+      subst h_cfg_nil
+      exact ⟨0, [], by simp [Tag.eval, tagHalted]⟩
+    | false =>
+      -- CTS is not halted
+      have h_eval_orig := h_eval
+      unfold CTS.eval at h_eval
+      rw [h_h] at h_eval
+      cases n with
+      | zero => contradiction
+      | succ n' =>
+        -- fuel = n' + 1
+        cases h_st : (tagToCTS ts hk).step (tagConfigToCTS k cfg) with
+        | none =>
+          -- Should not happen since not halted
+          have := (cts_step_none_iff_halted _ _).mp h_st
+          rw [this] at h_h; contradiction
+        | some cfg_next =>
+          rw [h_st] at h_eval
+          cases hh : tagHalted cfg with
+          | true => exact ⟨0, cfg, by simp [Tag.eval, hh]⟩
+          | false =>
+            -- Not halted, so it has at least 2 symbols
+            obtain ⟨a, b, rest, h_cfg_s⟩ := Tag.not_halted_exists_three hh
+            subst h_cfg_s
+            let cfg_s : TagConfig k := a :: b :: rest
+            let cfg' := rest ++ ts.productions a
+            have h_step : ts.step cfg_s = some cfg' := by
+              simp [Tag.step, cfg_s, cfg']
+            have h_sim := tagToCTS_simulation ts hk cfg_s cfg' h_step
+            -- If fuel is not enough to process 2k steps, it can't halt
+            by_cases h_fuel : n' + 1 < 2 * k
+            · have h_none : (tagToCTS ts hk).eval (tagConfigToCTS k cfg_s) (n' + 1) = none := by
+                apply cts_eval_none_of_length
+                unfold tagConfigToCTS
+                rw [tagWordEncode_length]
+                have h_le_2 : 2 ≤ cfg_s.length := by simp [cfg_s]
+                have h_le_mul : 2 * k ≤ k * cfg_s.length := by
+                  rw [Nat.mul_comm]
+                  apply Nat.mul_le_mul_left k h_le_2
+                omega
+              rw [h_none] at h_eval_orig; contradiction
+            · -- Enough fuel to process 2k steps (n' + 1 ≥ 2k)
+              have h_nsteps : (tagToCTS ts hk).nSteps (tagConfigToCTS k cfg_s) (2 * k) = some (tagConfigToCTS k cfg') := h_sim
+              have h_eval' : (tagToCTS ts hk).eval (tagConfigToCTS k cfg') (n' + 1 - 2 * k) = some result := by
+                rw [← cts_nSteps_prepend_eval (tagToCTS ts hk) (tagConfigToCTS k cfg_s) (tagConfigToCTS k cfg') (2 * k) (n' + 1 - 2 * k) h_nsteps]
+                rw [Nat.sub_add_cancel (by omega)]
+                exact h_eval_orig
+              have ⟨f', r', he⟩ := ih (n' + 1 - 2 * k) (by omega) cfg' result h_eval'
+              exact ⟨f' + 1, r', by rw [Tag.eval_step ts cfg_s cfg' f' (by simp [tagHalted, hh, cfg_s]) h_step, he]⟩
 
 -- ============================================================================
 -- Verification examples
