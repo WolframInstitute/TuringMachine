@@ -21,6 +21,12 @@ Proofs/build/
 # IDE
 .vscode/
 
+# Generated artifacts
+Proofs/call_graphs/
+Proofs/old_call_graphs/
+Proofs/lean_dep_edges.csv
+Proofs/lean_dep_full.dot
+
 # Temp / scratch
 *.tmp
 *.swp
