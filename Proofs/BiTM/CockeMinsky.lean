@@ -100,18 +100,226 @@ def cockeMinskyConfigEncode (tm : Machine) (cfg : Config) :
       [a] ++ rightCells ++ [sep] ++ leftCells
     else []
 
-/-- **Step simulation**: One TM step → bounded tag system steps. -/
+/-- Run a tag system for exactly n steps. Returns none if the system
+    halts (word too short) before completing n steps. -/
+def tagNSteps {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Nat → Option (TagConfig k)
+  | 0 => some cfg
+  | n + 1 =>
+    match ts.step cfg with
+    | none => none
+    | some cfg' => tagNSteps ts cfg' n
+
+/-- **Step simulation**: One TM step corresponds to a bounded number of
+    exact tag system steps (Cocke-Minsky 1964). -/
 theorem cockeMinsky_step_simulation (tm : Machine) (cfg cfg' : Config) :
     step tm cfg = some cfg' →
     ∃ (n : Nat),
-      (cockeMinskyTag tm).eval (cockeMinskyConfigEncode tm cfg) n =
+      tagNSteps (cockeMinskyTag tm) (cockeMinskyConfigEncode tm cfg) n =
       some (cockeMinskyConfigEncode tm cfg') := by
   sorry
 
-/-- **Halting correspondence**: TM halts ↔ tag system halts. -/
+theorem Tag_eval_step {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) (fuel : Nat)
+    (hnh : tagHalted cfg = false) (hs : ts.step cfg = some cfg') :
+    ts.eval cfg (fuel + 1) = ts.eval cfg' fuel := by
+  simp [Tag.eval, hnh, hs]
+
+theorem Tag_eval_halted {k : Nat} (ts : Tag k) (cfg : TagConfig k) (fuel : Nat)
+    (hh : tagHalted cfg = true) :
+    ts.eval cfg fuel = some cfg := by
+  cases fuel with
+  | zero => simp [Tag.eval, hh]
+  | succ n => simp [Tag.eval, hh]
+
+theorem Tag_step_none_iff_halted {k : Nat} (ts : Tag k) (cfg : TagConfig k) :
+  ts.step cfg = none ↔ tagHalted cfg = true := by
+  dsimp [Tag.step, tagHalted]
+  cases cfg with
+  | nil => simp
+  | cons head tail =>
+    cases tail with
+    | nil => simp
+    | cons head' tail' =>
+      simp
+
+theorem Tag_eval_add {k : Nat} (ts : Tag k) (n m : Nat) (cfg mid result : TagConfig k) :
+  ts.eval cfg n = some mid → ts.eval mid m = some result → ts.eval cfg (n + m) = some result := by
+  induction n generalizing cfg with
+  | zero =>
+    dsimp [Tag.eval]
+    split
+    · intro h1 h2
+      injection h1 with e; subst e
+      exact (by rw [Nat.zero_add]; exact h2)
+    · intro h1
+      contradiction
+  | succ n ih =>
+    dsimp [Tag.eval]
+    split
+    · rename_i h_halt
+      intro h1 h2
+      injection h1 with e; subst e
+      have h3 := Tag_eval_halted ts cfg (n + 1 + m) h_halt
+      have h4 := Tag_eval_halted ts cfg m h_halt
+      rw [h4] at h2
+      injection h2 with e; subst e
+      exact h3
+    · rename_i h_not_halt
+      intro h1 h2
+      cases h_step : ts.step cfg with
+      | none =>
+        have h_halt2 : tagHalted cfg = true := (Tag_step_none_iff_halted ts cfg).mp h_step
+        rw [h_halt2] at h_not_halt
+        contradiction
+      | some cfg' =>
+        rw [h_step] at h1
+        have hm := ih cfg' h1 h2
+        rw [Nat.add_right_comm]
+        have h_halt_f : tagHalted cfg = false := by cases h_t : tagHalted cfg <;> simp_all
+        rw [Tag_eval_step ts cfg cfg' (n + m) h_halt_f h_step]
+        exact hm
+
+-- ============================================================================
+-- Tag system exact stepping lemmas
+-- ============================================================================
+
+private theorem tag_step_some_not_halted {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) :
+    ts.step cfg = some cfg' → tagHalted cfg = false := by
+  intro h
+  cases cfg with
+  | nil => simp [Tag.step] at h
+  | cons a tl =>
+    cases tl with
+    | nil => simp [Tag.step] at h
+    | cons _ _ => simp [tagHalted]
+
+/-- nSteps through non-halted configs can be prepended to eval. -/
+theorem tag_nSteps_prepend_eval {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) (n fuel : Nat) :
+    tagNSteps ts cfg n = some cfg' →
+    ts.eval cfg (fuel + n) = ts.eval cfg' fuel := by
+  intro h_nsteps
+  induction n generalizing cfg with
+  | zero =>
+    simp [tagNSteps] at h_nsteps
+    rw [h_nsteps]; simp
+  | succ n ih =>
+    simp only [tagNSteps] at h_nsteps
+    split at h_nsteps
+    · simp at h_nsteps
+    · rename_i cfg'' h_step
+      rw [Nat.add_succ]
+      have h_nh := tag_step_some_not_halted ts cfg cfg'' h_step
+      rw [Tag_eval_step ts cfg cfg'' (fuel + n) h_nh h_step]
+      exact ih cfg'' h_nsteps
+
+/-- If tag system reaches cfg' in n exact steps, and cfg' halts, then cfg halts. -/
+theorem tag_halts_after_nSteps {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) (n : Nat) :
+    tagNSteps ts cfg n = some cfg' →
+    ts.Halts cfg' →
+    ts.Halts cfg := by
+  intro h_nsteps ⟨fuel, result, h_eval⟩
+  exact ⟨fuel + n, result, by rw [tag_nSteps_prepend_eval ts cfg cfg' n fuel h_nsteps]; exact h_eval⟩
+
+theorem cmHalted_imp_tagHalted (tm : Machine) (cfg : Config) :
+  halted cfg = true → tagHalted (cockeMinskyConfigEncode tm cfg) = true := by
+  intro h
+  dsimp [halted] at h
+  dsimp [cockeMinskyConfigEncode]
+  split
+  · rfl
+  · split
+    · rename_i h1
+      have : cfg.state = 0 := by exact of_decide_eq_true h
+      omega
+    · rfl
+
+theorem cockeMinsky_halting_forward (tm : Machine) (cfg : Config) :
+  Halts tm cfg → (cockeMinskyTag tm).Halts (cockeMinskyConfigEncode tm cfg) := by
+  intro ⟨fuel, result, h_eval⟩
+  induction fuel generalizing cfg with
+  | zero =>
+    dsimp [eval] at h_eval
+    split at h_eval
+    · rename_i h_halt
+      injection h_eval with h_eq; subst h_eq
+      exact ⟨0, cockeMinskyConfigEncode tm cfg, by simp [Tag.eval, cmHalted_imp_tagHalted tm cfg h_halt]⟩
+    · contradiction
+  | succ fuel ih =>
+    dsimp [eval] at h_eval
+    split at h_eval
+    · rename_i h_halt
+      injection h_eval with h_eq; subst h_eq
+      exact ⟨0, cockeMinskyConfigEncode tm cfg, by simp [Tag.eval, cmHalted_imp_tagHalted tm cfg h_halt]⟩
+    · rename_i h_not_halt
+      cases h_step : step tm cfg with
+      | none =>
+        have h_step_false : step tm cfg ≠ none := by
+          intro h
+          have h_f : (cfg.state == 0) = false := by
+            cases h_t : cfg.state == 0 <;> simp_all [halted]
+          dsimp [step, halted] at h
+          simp [h_f] at h
+          split at h <;> contradiction
+        contradiction
+      | some cfg' =>
+        rw [h_step] at h_eval
+        have ⟨n, hn⟩ := cockeMinsky_step_simulation tm cfg cfg' h_step
+        exact tag_halts_after_nSteps (cockeMinskyTag tm) _ _ n hn (ih cfg' h_eval)
+
+/-- **Halting correspondence**: TM halts iff tag system halts. -/
 theorem cockeMinsky_halting (tm : Machine) (cfg : Config) :
     Halts tm cfg ↔ (cockeMinskyTag tm).Halts (cockeMinskyConfigEncode tm cfg) := by
-  sorry
+  constructor
+  · exact cockeMinsky_halting_forward tm cfg
+  · sorry
+
+theorem cmHalted_imp_tagEmpty (tm : Machine) (cfg : Config) :
+  halted cfg = true → cockeMinskyConfigEncode tm cfg = [] := by
+  intro h
+  dsimp [halted] at h
+  dsimp [cockeMinskyConfigEncode]
+  split
+  · rfl
+  · split
+    · rename_i h1
+      have : cfg.state = 0 := by exact of_decide_eq_true h
+      omega
+    · rfl
+
+theorem cockeMinsky_halting_empty_forward (tm : Machine) (cfg : Config) :
+  Halts tm cfg → (cockeMinskyTag tm).HaltsEmpty (cockeMinskyConfigEncode tm cfg) := by
+  intro ⟨fuel, result, h_eval⟩
+  have hk : cockeMinskyTagSize tm > 0 := by unfold cockeMinskyTagSize; omega
+  have h_th : tagHalted ([] : TagConfig (cockeMinskyTagSize tm)) = true := by rfl
+  induction fuel generalizing cfg with
+  | zero =>
+    dsimp [eval] at h_eval
+    split at h_eval
+    · rename_i h_halt
+      injection h_eval with h_eq; subst h_eq
+      exact ⟨0, by simp [Tag.eval, h_th, cmHalted_imp_tagEmpty tm cfg h_halt]⟩
+    · contradiction
+  | succ fuel ih =>
+    dsimp [eval] at h_eval
+    split at h_eval
+    · rename_i h_halt
+      injection h_eval with h_eq; subst h_eq
+      exact ⟨0, by simp [Tag.eval, h_th, cmHalted_imp_tagEmpty tm cfg h_halt]⟩
+    · rename_i h_not_halt
+      cases h_step : step tm cfg with
+      | none =>
+        have h_step_false : step tm cfg ≠ none := by
+          intro h
+          have h_f : (cfg.state == 0) = false := by
+            cases h_t : cfg.state == 0 <;> simp_all [halted]
+          dsimp [step, halted] at h
+          simp [h_f] at h
+          split at h <;> contradiction
+        contradiction
+      | some cfg' =>
+        rw [h_step] at h_eval
+        have ⟨n, hn⟩ := cockeMinsky_step_simulation tm cfg cfg' h_step
+        have ⟨m, hm⟩ := ih cfg' h_eval
+        exact ⟨m + n, by rw [tag_nSteps_prepend_eval (cockeMinskyTag tm) _ _ n m hn]; exact hm⟩
 
 -- ============================================================================
 -- Step 2: Tag → CTS (Cook 2004) — imported from TagSystem.TagToCTS
@@ -132,18 +340,16 @@ theorem tm_to_cts :
         (Halts tm cfg ↔ cts.Halts ctsCfg) := by
   intro tm cfg
   have hsize : cockeMinskyTagSize tm > 0 := by unfold cockeMinskyTagSize; omega
-  -- Step 1: Cocke-Minsky — TM halts ↔ tag system halts
-  have h_tm_tag := cockeMinsky_halting tm cfg
-  -- Step 2: Cook — tag system halts ↔ CTS halts
-  have h_tag_cts := tagToCTS_halting (cockeMinskyTag tm) hsize
-                      (cockeMinskyConfigEncode tm cfg)
   -- Compose and provide witnesses
-  refine ⟨tagToCTS (cockeMinskyTag tm) hsize,
-          tagConfigToCTS (cockeMinskyTagSize tm) (cockeMinskyConfigEncode tm cfg), ?_⟩
-  -- The full proof requires composing cockeMinsky_halting (Halts ↔ Tag.Halts)
-  -- with tagToCTS_halting (HaltsEmpty → CTS.Halts) and its converse.
-  -- Since both directions depend on sorry-based theorems, we use sorry here.
-  sorry
+  exists tagToCTS (cockeMinskyTag tm) hsize
+  exists tagConfigToCTS (cockeMinskyTagSize tm) (cockeMinskyConfigEncode tm cfg)
+  constructor
+  · intro h
+    have h_empty := cockeMinsky_halting_empty_forward tm cfg h
+    exact tagToCTS_halting_forward (cockeMinskyTag tm) hsize _ h_empty
+  · intro h
+    exact (cockeMinsky_halting tm cfg).mpr
+      (cts_to_tag_halting (cockeMinskyTag tm) hsize (cockeMinskyConfigEncode tm cfg) h)
 
 -- ============================================================================
 -- Step 3: Smith's (2,3) TM simulation of CTS (Smith 2007)
