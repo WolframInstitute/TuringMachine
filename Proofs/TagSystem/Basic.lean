@@ -118,7 +118,6 @@ theorem Tag.eval_add {k : Nat} (ts : Tag k) (n m : Nat) (cfg mid result : TagCon
 -- ============================================================================
 -- Cyclic Tag Systems
 -- ============================================================================
--- ============================================================================
 
 /-- A cyclic tag system: binary alphabet, cyclic list of appendants.
     Each step:

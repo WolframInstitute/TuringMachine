@@ -85,17 +85,11 @@ def nSteps (tm : Machine) (cfg : Config) : Nat → Option Config
     | none => none
     | some cfg' => nSteps tm cfg' n
 
-/-- Extract tape contents as a list centered on the head position.
-    Returns (left_reversed, head, right). -/
-def tapeContents (cfg : Config) : List Nat × Nat × List Nat :=
-  (cfg.left.reverse, cfg.head, cfg.right)
-
 -- ============================================================================
 -- Wolfram's (2,3) Universal Turing Machine
 -- ============================================================================
 
 /-- Wolfram's 2-state 3-symbol Turing machine (machine 596440).
-    The smallest known candidate universal TM.
     Proven universal by Alex Smith (2007).
 
     States: 1 = A, 2 = B (0 = halt, never reached by this machine)

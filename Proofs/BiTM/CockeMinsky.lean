@@ -16,9 +16,7 @@
   Status: 0 sorry, 0 axiom.
   The Tag → CTS step is fully proved in TagToCTS.lean.
   The TM → Tag step simulation (Cocke-Minsky) and CTS → TM simulation (Smith)
-  are stated as explicit hypotheses of the universality theorem. These are
-  well-established published results, but their full formalization is left
-  as future work.
+  are stated as explicit hypotheses of the universality theorem.
 -/
 
 import BiTM.Basic

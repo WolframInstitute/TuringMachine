@@ -229,7 +229,7 @@ theorem symbolEncode_nSteps_helper (cts : CTS) (a : Nat) (len : Nat) (offset : N
         congr 1
         · have h1 : ¬ (a ≥ offset + 1 ∧ a < offset + 1 + len) := by omega
           have h2 : a ≥ offset ∧ a < offset + (len + 1) := by omega
-          simp [h1, h2, ←List.append_assoc]
+          simp [h1, h2, -List.append_assoc]
           have ha : phase + a - offset = phase := by omega
           rw [ha]
         · exact phase_succ_mod phase len cts.appendants.length
@@ -353,8 +353,6 @@ theorem tagToCTS_simulation {k : Nat} (ts : Tag k) (hk : k > 0)
       rw [←h_step]
       simp [tagConfigToCTS, tagWordEncode_append]
 
--- (Tag.step_none_iff_halted is imported from TagSystem.Basic)
-
 /-- Tag halted means word has length 0 or 1 -/
 theorem tagHalted_iff_short {k : Nat} (cfg : TagConfig k) :
     tagHalted cfg = true ↔ cfg.length < 2 := by
@@ -420,14 +418,14 @@ theorem cts_eval_none_of_length {cts : CTS} {cfg : CTSConfig} {f : Nat} :
     intro h
     unfold CTS.eval
     split <;> rename_i h_h
-    · simp [ctsHalted, List.isEmpty_iff_length_eq_zero] at h_h
+    · simp [ctsHalted] at h_h
       rw [h_h] at h; simp at h
     · rfl
   | succ f ih =>
     intro h
     unfold CTS.eval
     split <;> rename_i h_h
-    · simp [ctsHalted, List.isEmpty_iff_length_eq_zero] at h_h
+    · simp [ctsHalted] at h_h
       rw [h_h] at h; simp at h
     · cases h_st : cts.step cfg with
       | none =>
@@ -445,15 +443,8 @@ theorem cts_eval_none_of_length {cts : CTS} {cfg : CTSConfig} {f : Nat} :
         exact ih (by omega)
 
 -- ============================================================================
--- Halting correspondence
+-- Backward direction: CTS halts → Tag halts
 -- ============================================================================
-
-/-- **Halting correspondence**: Tag halts (empty) implies CTS halts.
-    Backward direction axiomatized via standard halting. -/
-theorem tagToCTS_halting {k : Nat} (ts : Tag k) (hk : k > 0)
-    (cfg : TagConfig k) :
-    ts.HaltsEmpty cfg → (tagToCTS ts hk).Halts (tagConfigToCTS k cfg) := by
-  exact tagToCTS_halting_forward ts hk cfg
 
 theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
     (cfg : TagConfig k) :
@@ -524,7 +515,7 @@ theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
                 rw [Nat.sub_add_cancel (by omega)]
                 exact h_eval_orig
               have ⟨f', r', he⟩ := ih (n' + 1 - 2 * k) (by omega) cfg' result h_eval'
-              exact ⟨f' + 1, r', by rw [Tag.eval_step ts cfg_s cfg' f' (by simp [tagHalted, hh, cfg_s]) h_step, he]⟩
+              exact ⟨f' + 1, r', by rw [Tag.eval_step ts cfg_s cfg' f' (by simp [tagHalted, cfg_s]) h_step, he]⟩
 
 -- ============================================================================
 -- Verification examples
