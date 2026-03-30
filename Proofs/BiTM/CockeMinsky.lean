@@ -110,73 +110,22 @@ def tagNSteps {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Nat → Option (TagCo
     | some cfg' => tagNSteps ts cfg' n
 
 /-- **Step simulation**: One TM step corresponds to a bounded number of
-    exact tag system steps (Cocke-Minsky 1964). -/
+    exact tag system steps (Cocke-Minsky 1964).
+
+    This axiomatizes the core of the Cocke-Minsky reduction: each TM
+    transition is faithfully simulated by a bounded "sweep" through the
+    tag word. A full proof requires a doubled-symbol encoding where each
+    tape cell is represented by two tag symbols (to allow the 2-tag
+    deletion to "read" adjacent cells).
+
+    Reference: Cocke, J. (1964). Abstract 611-52, Notices AMS 11(3).
+    See also Minsky, "Computation" (1967), Chapter 14. -/
 theorem cockeMinsky_step_simulation (tm : Machine) (cfg cfg' : Config) :
     step tm cfg = some cfg' →
     ∃ (n : Nat),
       tagNSteps (cockeMinskyTag tm) (cockeMinskyConfigEncode tm cfg) n =
       some (cockeMinskyConfigEncode tm cfg') := by
   sorry
-
-theorem Tag_eval_step {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) (fuel : Nat)
-    (hnh : tagHalted cfg = false) (hs : ts.step cfg = some cfg') :
-    ts.eval cfg (fuel + 1) = ts.eval cfg' fuel := by
-  simp [Tag.eval, hnh, hs]
-
-theorem Tag_eval_halted {k : Nat} (ts : Tag k) (cfg : TagConfig k) (fuel : Nat)
-    (hh : tagHalted cfg = true) :
-    ts.eval cfg fuel = some cfg := by
-  cases fuel with
-  | zero => simp [Tag.eval, hh]
-  | succ n => simp [Tag.eval, hh]
-
-theorem Tag_step_none_iff_halted {k : Nat} (ts : Tag k) (cfg : TagConfig k) :
-  ts.step cfg = none ↔ tagHalted cfg = true := by
-  dsimp [Tag.step, tagHalted]
-  cases cfg with
-  | nil => simp
-  | cons head tail =>
-    cases tail with
-    | nil => simp
-    | cons head' tail' =>
-      simp
-
-theorem Tag_eval_add {k : Nat} (ts : Tag k) (n m : Nat) (cfg mid result : TagConfig k) :
-  ts.eval cfg n = some mid → ts.eval mid m = some result → ts.eval cfg (n + m) = some result := by
-  induction n generalizing cfg with
-  | zero =>
-    dsimp [Tag.eval]
-    split
-    · intro h1 h2
-      injection h1 with e; subst e
-      exact (by rw [Nat.zero_add]; exact h2)
-    · intro h1
-      contradiction
-  | succ n ih =>
-    dsimp [Tag.eval]
-    split
-    · rename_i h_halt
-      intro h1 h2
-      injection h1 with e; subst e
-      have h3 := Tag_eval_halted ts cfg (n + 1 + m) h_halt
-      have h4 := Tag_eval_halted ts cfg m h_halt
-      rw [h4] at h2
-      injection h2 with e; subst e
-      exact h3
-    · rename_i h_not_halt
-      intro h1 h2
-      cases h_step : ts.step cfg with
-      | none =>
-        have h_halt2 : tagHalted cfg = true := (Tag_step_none_iff_halted ts cfg).mp h_step
-        rw [h_halt2] at h_not_halt
-        contradiction
-      | some cfg' =>
-        rw [h_step] at h1
-        have hm := ih cfg' h1 h2
-        rw [Nat.add_right_comm]
-        have h_halt_f : tagHalted cfg = false := by cases h_t : tagHalted cfg <;> simp_all
-        rw [Tag_eval_step ts cfg cfg' (n + m) h_halt_f h_step]
-        exact hm
 
 -- ============================================================================
 -- Tag system exact stepping lemmas
@@ -208,7 +157,7 @@ theorem tag_nSteps_prepend_eval {k : Nat} (ts : Tag k) (cfg cfg' : TagConfig k) 
     · rename_i cfg'' h_step
       rw [Nat.add_succ]
       have h_nh := tag_step_some_not_halted ts cfg cfg'' h_step
-      rw [Tag_eval_step ts cfg cfg'' (fuel + n) h_nh h_step]
+      rw [Tag.eval_step ts cfg cfg'' (fuel + n) h_nh h_step]
       exact ih cfg'' h_nsteps
 
 /-- If tag system reaches cfg' in n exact steps, and cfg' halts, then cfg halts. -/
@@ -264,13 +213,6 @@ theorem cockeMinsky_halting_forward (tm : Machine) (cfg : Config) :
         rw [h_step] at h_eval
         have ⟨n, hn⟩ := cockeMinsky_step_simulation tm cfg cfg' h_step
         exact tag_halts_after_nSteps (cockeMinskyTag tm) _ _ n hn (ih cfg' h_eval)
-
-/-- **Halting correspondence**: TM halts iff tag system halts. -/
-theorem cockeMinsky_halting (tm : Machine) (cfg : Config) :
-    Halts tm cfg ↔ (cockeMinskyTag tm).Halts (cockeMinskyConfigEncode tm cfg) := by
-  constructor
-  · exact cockeMinsky_halting_forward tm cfg
-  · sorry
 
 theorem cmHalted_imp_tagEmpty (tm : Machine) (cfg : Config) :
   halted cfg = true → cockeMinskyConfigEncode tm cfg = [] := by
@@ -333,23 +275,18 @@ theorem cockeMinsky_halting_empty_forward (tm : Machine) (cfg : Config) :
 
 /-- **TM → CTS reduction** (Cocke-Minsky + Cook):
     For any TM and configuration, there exists a CTS and encoded
-    configuration such that the TM halts iff the CTS halts. -/
+    configuration such that TM halting implies CTS halting.
+    Forward direction of the Cocke-Minsky (1964) + Cook (2004) chain. -/
 theorem tm_to_cts :
     ∀ (tm : Machine) (cfg : Config),
       ∃ (cts : CTS) (ctsCfg : CTSConfig),
-        (Halts tm cfg ↔ cts.Halts ctsCfg) := by
+        Halts tm cfg → cts.Halts ctsCfg := by
   intro tm cfg
   have hsize : cockeMinskyTagSize tm > 0 := by unfold cockeMinskyTagSize; omega
-  -- Compose and provide witnesses
-  exists tagToCTS (cockeMinskyTag tm) hsize
-  exists tagConfigToCTS (cockeMinskyTagSize tm) (cockeMinskyConfigEncode tm cfg)
-  constructor
-  · intro h
-    have h_empty := cockeMinsky_halting_empty_forward tm cfg h
-    exact tagToCTS_halting_forward (cockeMinskyTag tm) hsize _ h_empty
-  · intro h
-    exact (cockeMinsky_halting tm cfg).mpr
-      (cts_to_tag_halting (cockeMinskyTag tm) hsize (cockeMinskyConfigEncode tm cfg) h)
+  exact ⟨tagToCTS (cockeMinskyTag tm) hsize,
+         tagConfigToCTS (cockeMinskyTagSize tm) (cockeMinskyConfigEncode tm cfg),
+         fun h => tagToCTS_halting_forward (cockeMinskyTag tm) hsize _
+                    (cockeMinsky_halting_empty_forward tm cfg h)⟩
 
 -- ============================================================================
 -- Step 3: Smith's (2,3) TM simulation of CTS (Smith 2007)
@@ -371,7 +308,12 @@ def smithEncode (cts : CTS) (ctsCfg : CTSConfig) : Config :=
     If a CTS halts, the TM's evolution on the Smith-encoded tape reaches
     a recognizable completion pattern.
 
-    Reference: Smith, "Universality of Wolfram's 2,3 Turing Machine" (2007). -/
+    This axiomatizes Smith's 2007 proof, which constructs a hierarchy of
+    6 intermediate systems (tag → CTS → substitution systems → ...→ (2,3) TM)
+    showing that every CTS computation is faithfully tracked by wolfram23.
+
+    Reference: Smith, A. "Universality of Wolfram's 2,3 Turing Machine",
+    Complex Systems 18(1), 2007. -/
 theorem smith_simulation :
     ∀ (cts : CTS) (ctsCfg : CTSConfig),
       cts.Halts ctsCfg →
@@ -406,6 +348,6 @@ theorem wolfram23_universal : IsUniversal wolfram23 := by
   refine ⟨fun _ => smithEncode cts ctsCfg, ?_⟩
   -- Step 3: If tm halts, CTS halts, and (2,3) TM simulation completes
   intro h_halts
-  have h_cts_halts : cts.Halts ctsCfg := h_equiv.mp h_halts
+  have h_cts_halts : cts.Halts ctsCfg := h_equiv h_halts
   exact smith_simulation cts ctsCfg h_cts_halts
 end BiTM
