@@ -22,4 +22,4 @@ PacletDirectoryUnload[name]
 
 PacletInstall[pacletFile, ForceVersionInstall -> True]
 
-(* CopyFile[pacletFile, Echo @ CloudObject[name <> ".paclet", Permissions -> "Public"], OverwriteTarget -> True] *)
+CopyFile[pacletFile, Echo @ CloudObject[name <> ".paclet", Permissions -> "Public"], OverwriteTarget -> True]
