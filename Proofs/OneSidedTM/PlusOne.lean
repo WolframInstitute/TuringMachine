@@ -454,7 +454,7 @@ theorem sim_eval (pre suf : List Nat)
       · -- suffix = 0 :: rest with rest ≠ []: absorb + direct scanback
         have hlen : pre.length + 1 < (pre ++ 1 :: rest).length := by
           simp; exact Nat.pos_of_ne_zero
-            (by intro h; exact hrest (List.length_eq_zero_iff.mp h))
+            (by simp [hrest])
         have heval : eval rule445 ⟨1, pre.length, pre ++ 0 :: rest⟩ (pre.length + 3) =
             some ⟨2, 0, pre ++ 1 :: rest⟩ := by
           rw [show pre.length + 3 = (pre.length + 2) + 1 from by omega,

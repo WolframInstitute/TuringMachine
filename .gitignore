@@ -9,3 +9,19 @@ target/
 .DS_Store
 
 paclet_version.txt
+
+# Lean
+Proofs/.lake/
+Proofs/build/
+
+# Wolfram
+*.mx
+*.wl.bak
+
+# IDE
+.vscode/
+
+# Temp / scratch
+*.tmp
+*.swp
+*~

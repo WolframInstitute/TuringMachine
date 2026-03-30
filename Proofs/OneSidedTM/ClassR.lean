@@ -25,10 +25,10 @@ private theorem readTape_zeros (pre : List Nat) (suf : List Nat)
   | nil => simp at hi
   | cons a rest ih =>
     cases i with
-    | zero => simp [readTape_cons_zero]; exact hp a (List.mem_cons_self _ _)
+    | zero => simp [readTape_cons_zero]; exact hp a (List.mem_cons.mpr (.inl rfl))
     | succ j =>
       simp [readTape_cons_succ]
-      exact ih (fun d hd => hp d (List.mem_cons_of_mem _ hd)) j (by simp at hi; omega)
+      exact ih (fun d hd => hp d (List.mem_cons.mpr (.inr hd))) j (by simp at hi; omega)
 
 -- ============================================================
 -- Sub-class RC: Reverse Carry (Groups 19-20)
@@ -330,7 +330,7 @@ theorem reverse_scan_ones (tm : TM) (α β : Nat) (hc : IsClassRS tm α β)
   have hsuf0 : readTape suf 0 = 0 ∨ readTape suf 0 = 1 := by
     cases suf with
     | nil => simp at hsuf
-    | cons d rest => simp [readTape_cons_zero]; exact hbs d (List.mem_cons_self _ _)
+    | cons d rest => simp [readTape_cons_zero]; exact hbs d (List.mem_cons.mpr (.inl rfl))
   have hwt_turn : writeTape (rsTape p suf) (p + 2) (readTape suf 0) = rsTape p suf := by
     simp only [rsTape, wt_past_sep (p + 1) 0 suf]
     cases suf with
