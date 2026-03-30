@@ -2,7 +2,7 @@
 
 BeginPackage["WolframInstitute`TuringMachine`"]
 
-OneSidedTuringMachinePlot::usage = 
+OneSidedTuringMachinePlot::usage =
   "OneSidedTuringMachinePlot[rule, input, maxsteps, opts] generates a visualization of the evolution of a one-sided Turing machine.
    - rule: an integer encoding the Turing machine rules.
    - input: an integer representing the binary input on the tape.
@@ -17,6 +17,7 @@ OneSidedTuringMachinePlot::usage =
    - \"LabelInputStyle\": style options for the input label (default: {}).
    - \"LabelOutputStyle\": style options for the output label (default: {}).
    - \"TerminationColumnColor\": color for the termination column (default: GrayLevel[.7]).
+   - \"Columns\": number of columns to split the plot into (default: 1).
    - ImageSize: size of the image (default: 50)."
 
 OneSidedTuringMachineEvolution
@@ -28,37 +29,58 @@ TuringMachineWorstCasePlot
 
 Begin["`Private`"]
 
-$PvsNPStyles = <|"FunctionValueColor" -> Hue[0.6111111111111112, 0.6, 1.], 
- "FunctionRuntimeColor" -> Hue[0.099, 1, 0.98], "RuntimeTableColor" -> 
-  RGBColor[0.994, 0.868, 0.751], "ValueTableColor" -> RGBColor[0.87, 0.94, 1], 
- "TuringMachineColorRules" -> {0 -> GrayLevel[1], 
-   1 -> Hue[0.034, 0.704, 0.9500000000000001], 2 -> Hue[0.12, 0.762, 1], 
-   -1 -> GrayLevel[0.85]}, "DistributionStyle" -> 
-  Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}], "FrameStyle" -> GrayLevel[0.7], 
- "MultiwayPathColorRules" -> {1 -> RGBColor[0.34500000000000003, 0.712, 1], 
-   2 -> RGBColor[0.8260000000000001, 0.20500000000000002, 1]}, 
- "GridFrame" -> GrayLevel[0.6], "FunctionValuePlotOptions" -> 
-  {Frame -> True, Filling -> Axis, PlotStyle -> RGBColor[0.32, 0.47999999999999987, 
-     0.8], FillingStyle -> Hue[0.6111111111111112, 0.6, 1.], 
-   PlotInteractivity -> False}, "FunctionRuntimePlotOptions" -> 
-  {Frame -> True, Filling -> Axis, PlotStyle -> RGBColor[0.882, 0.523908, 0.], 
-   FillingStyle -> Hue[0.099, 1, 0.98], PlotInteractivity -> False}|>
+$PvsNPStyles = <|
+    "FunctionValueColor" -> Hue[0.6111111111111112, 0.6, 1.],
+    "FunctionRuntimeColor" -> Hue[0.099, 1, 0.98],
+    "RuntimeTableColor" -> RGBColor[0.994, 0.868, 0.751],
+    "ValueTableColor" -> RGBColor[0.87, 0.94, 1],
+    "TuringMachineColorRules" -> {
+        0 -> GrayLevel[1],
+        1 -> Hue[0.034, 0.704, 0.9500000000000001],
+        2 -> Hue[0.12, 0.762, 1],
+        -1 -> GrayLevel[0.85]
+    },
+    "DistributionStyle" -> Directive[{Hue[0.483, 0.6, 0.772], EdgeForm[None]}],
+    "FrameStyle" -> GrayLevel[0.7],
+    "MultiwayPathColorRules" -> {
+        1 -> RGBColor[0.34500000000000003, 0.712, 1],
+        2 -> RGBColor[0.8260000000000001, 0.20500000000000002, 1]
+    },
+    "GridFrame" -> GrayLevel[0.6],
+    "FunctionValuePlotOptions" -> {
+        Frame -> True, Filling -> Axis,
+        PlotStyle -> RGBColor[0.32, 0.47999999999999987, 0.8],
+        FillingStyle -> Hue[0.6111111111111112, 0.6, 1.],
+        PlotInteractivity -> False
+    },
+    "FunctionRuntimePlotOptions" -> {
+        Frame -> True, Filling -> Axis,
+        PlotStyle -> RGBColor[0.882, 0.523908, 0.],
+        FillingStyle -> Hue[0.099, 1, 0.98],
+        PlotInteractivity -> False
+    }
+|>
 
 
 
 DecodeInput[{_, tape_}, k_Integer : 2] := FromDigits[Most[tape], k]
 
-CalculateOutput[{headstate_, tape_}, k_Integer : 2, undef_ : Undefined] := 
-    If[headstate[[2]] != Length[tape], undef, FromDigits[ Most[tape], k]] 
+CalculateOutput[{headstate_, tape_}, k_Integer : 2, undef_ : Undefined] :=
+    If[headstate[[2]] != Length[tape], undef, FromDigits[Most[tape], k]]
 
 CalculateOutput[s_String, args___] := CalculateOutput[ToExpression[s], args]
 
 
 
-OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integer, maxSteps_Integer, width_ : Automatic] := With[
+OneSidedTuringMachineEvolution[
+    {rule_Integer, s_Integer, k_Integer},
+    input_Integer, maxSteps_Integer, width_ : Automatic
+] := With[
     {history = OneSidedTuringMachineFunction[{rule, s, k}, input, maxSteps, "History"]},
-    {w = Replace[width, {Automatic :> Max[Max[history[[All, 2]]] + 1, IntegerLength[input, k] + 1], "Maximum"->maxSteps+1}]}
-,
+    {w = Replace[width, {
+        Automatic :> Max[Max[history[[All, 2]]] + 1, IntegerLength[input, k] + 1],
+        "Maximum" -> maxSteps + 1
+    }]},
     Replace[
         history,
         {state_, pos_, value_} :> {
@@ -70,199 +92,350 @@ OneSidedTuringMachineEvolution[{rule_Integer, s_Integer, k_Integer}, input_Integ
 ]
 
 Clear[OneSidedTuringMachinePlot]
-Options[OneSidedTuringMachinePlot] = 
-  Join[{"Width" -> Automatic, "HorizontalPadding" -> 1, 
-    "Input" -> Automatic, "LabelInput" -> False, 
-    "kValue" -> Automatic, "sValue" -> Automatic, 
-    "LabelOutput" -> True, "LabelRuntime" -> False, 
-    "LabelRuntimeStyle" -> {}, "PlotSize" -> "Automatic", 
-    "UndefinedLabel" -> Undefined, "LabelInputStyle" -> {}, 
-    "LabelOutputStyle" -> {}, "LabelOutputFunction" -> Automatic, 
-    "TerminationColumnColor" -> GrayLevel[.7], ImageSize -> 90}, 
-   Options[ArrayPlot]];
+Options[OneSidedTuringMachinePlot] = Join[
+    {
+        "Width" -> Automatic,
+        "HorizontalPadding" -> 1,
+        "Input" -> Automatic,
+        "LabelInput" -> False,
+        "kValue" -> Automatic,
+        "sValue" -> Automatic,
+        "LabelOutput" -> True,
+        "LabelRuntime" -> False,
+        "LabelRuntimeStyle" -> {},
+        "PlotSize" -> "Automatic",
+        "UndefinedLabel" -> Undefined,
+        "LabelInputStyle" -> {},
+        "LabelOutputStyle" -> {},
+        "LabelOutputFunction" -> Automatic,
+        "TerminationColumnColor" -> GrayLevel[.7],
+        "Columns" -> 1,
+        ImageSize -> 90
+    },
+    Options[ArrayPlot]
+];
 
-OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, 
-  opts : OptionsPattern[]] := 
- OneSidedTuringMachinePlot[rule, input, {maxsteps, Automatic}, opts]
+OneSidedTuringMachinePlot[rule_, input_Integer, maxsteps_Integer, opts : OptionsPattern[]] :=
+    OneSidedTuringMachinePlot[rule, input, {maxsteps, Automatic}, opts]
 
-OneSidedTuringMachinePlot[rule : {_Integer, _Integer, _Integer}, 
-  input_Integer, {maxsteps_Integer, width_}, 
-  opts : OptionsPattern[]] := 
- OneSidedTuringMachinePlot[
-  OneSidedTuringMachineEvolution[rule, input, maxsteps, "Maximum"], 
-  "Width" -> width, "Input" -> input, "sValue" -> rule[[2]], 
-  "kValue" -> rule[[3]], opts]
+OneSidedTuringMachinePlot[
+    rule : {_Integer, _Integer, _Integer},
+    input_Integer, {maxsteps_Integer, width_},
+    opts : OptionsPattern[]
+] :=
+    OneSidedTuringMachinePlot[
+        OneSidedTuringMachineEvolution[rule, input, maxsteps, "Maximum"],
+        "Width" -> width, "Input" -> input,
+        "sValue" -> rule[[2]], "kValue" -> rule[[3]], opts
+    ]
 
-OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] := 
- Module[{auto = Max[If[OptionValue["Input"]===Automatic,-Infinity,IntegerLength[OptionValue["Input"],OptionValue["kValue"]]],Max[-states[[All,1,3]]] + 1]+OptionValue["HorizontalPadding"]}, 
-With[{wval=Replace[OptionValue["Width"],{Automatic:>auto,
-UpTo[i_]:> Min[i, auto],
-w_?NumericQ:>w-1}],headstates=states[[All,1,1]],headpoints=CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="]},{leftcut=Max[Length[states[[1,2]]]-wval,1],labelInputQ=TrueQ[OptionValue["LabelInput"]],labelOutputQ=TrueQ[OptionValue["LabelOutput"]],labelOutputFunction=OptionValue["LabelOutputFunction"],s=Replace[OptionValue["sValue"],Automatic:>Max[headstates]],k=Replace[OptionValue["kValue"],Automatic:>Max[states[[All,1,3]]]]},ArrayPlot[MapAt[-1&,#[[2,leftcut;;]]&/@states,{All,-1}],FilterRules[FilterRules[{opts},Options[ArrayPlot]],Except[ImageSize]],ImageSize->With[{ar={wval+1,Length[states]}},Replace[OptionValue[ImageSize],{scale_Integer:>scale/10*ar,"Scaled":>((20 (Times@@ar)^-.25)*ar),{"Scaled",a_}:>((a/2.5 (Times@@ar)^-.25)*ar),{"Scaled",a_,b_}:>((a/2.5 (Times@@ar)^-b)*ar),{w_,f_Function}:>{w,f[Length[states]]}}]],Mesh->True,AspectRatio->Full,ColorRules->$PvsNPStyles["TuringMachineColorRules"],
-        Epilog -> With[{
-            headangles = Most[Subdivide[2 Pi, s]]
-        },  
-            Join[
-                {Black}, 
-                MapThread[
-                    If[s == 1, Function[{coord, headstate}, Disk[coord, .14]],
-        
-       Function[{coord, headstate}, 
-          FilledCurve[
-           BezierCurve[
-            RotationTransform[-headangles[[headstate]], 
-              coord] /@ (# + coord & /@ 
-               headpoints)]]]],
-                   {
-                        Transpose @ {
-                            states[[All, 1, 2]] - 1 / 2 - leftcut + 1,
-                            1 / 2 + Length[states] - Range[Length[states]]
-                        }, 
-                        headstates
-                    }
+OneSidedTuringMachinePlot[states_List, opts : OptionsPattern[]] :=
+Module[
+    {
+        auto = Max[
+            If[OptionValue["Input"] === Automatic, -Infinity,
+                IntegerLength[OptionValue["Input"], OptionValue["kValue"]]],
+            Max[-states[[All, 1, 3]]] + 1
+        ] + OptionValue["HorizontalPadding"],
+        columns = Replace[OptionValue["Columns"], Except[_Integer?Positive] -> 1]
+    },
+With[
+    {
+        wval = Replace[OptionValue["Width"], {
+            Automatic :> auto,
+            UpTo[i_] :> Min[i, auto],
+            w_?NumericQ :> w - 1
+        }],
+        headstates = states[[All, 1, 1]],
+        headpoints = CompressedData["1:eJxTTMoPSmViYGAQBmIQ7WAMAoftGaAAzr/gcuPDl11w8QNnQOAOQT5U/36Yfjgf1fz9DAvuf8+PW7J/QfOCxaG6B/czSNj3Vn/evP8Av0OWsPru/QwCENoBKt4AUwfVx4BmLgOqufYwPlS/PUw/1Hx7mPlQ++1h9sP9D7UHPXwABXFyYA=="]
+    },
+    {
+        leftcut = Max[Length[states[[1, 2]]] - wval, 1],
+        labelInputQ = TrueQ[OptionValue["LabelInput"]],
+        labelOutputQ = TrueQ[OptionValue["LabelOutput"]],
+        labelOutputFunction = OptionValue["LabelOutputFunction"],
+        s = Replace[OptionValue["sValue"], Automatic :> Max[headstates]],
+        k = Replace[OptionValue["kValue"], Automatic :> Max[states[[All, 1, 3]]]]
+    },
+
+    With[{
+        singlePlot = Function[{stateSlice, sliceIndex},
+            ArrayPlot[
+                MapAt[-1 &, #[[2, leftcut ;;]] & /@ stateSlice, {All, -1}],
+                FilterRules[FilterRules[{opts}, Options[ArrayPlot]], Except[ImageSize]],
+                ImageSize -> With[
+                    {ar = {wval + 1, Length[stateSlice]}},
+                    Replace[OptionValue[ImageSize], {
+                        scale_Integer :> scale / 10 * ar,
+                        "Scaled" :> ((20 (Times @@ ar)^-.25) * ar),
+                        {"Scaled", a_} :> ((a / 2.5 (Times @@ ar)^-.25) * ar),
+                        {"Scaled", a_, b_} :> ((a / 2.5 (Times @@ ar)^-b) * ar),
+                        {w_, f_Function} :> {w, f[Length[stateSlice]]}
+                    }]
+                ],
+                Mesh -> True,
+                AspectRatio -> Full,
+                ColorRules -> $PvsNPStyles["TuringMachineColorRules"],
+                Epilog -> With[
+                    {headangles = Most[Subdivide[2 Pi, s]]},
+                    With[{
+                        sliceHeadstates = stateSlice[[All, 1, 1]],
+                        offset = (sliceIndex - 1) * Ceiling[Length[states] / columns]
+                    },
+                    Join[
+                        {Black},
+                        MapThread[
+                            If[s == 1,
+                                Function[{coord, headstate}, Disk[coord, .14]],
+                                Function[{coord, headstate},
+                                    FilledCurve[BezierCurve[
+                                        RotationTransform[-headangles[[headstate]], coord] /@
+                                            (# + coord & /@ headpoints)
+                                    ]]
+                                ]
+                            ],
+                            {
+                                Transpose @ {
+                                    stateSlice[[All, 1, 2]] - 1/2 - leftcut + 1,
+                                    1/2 + Length[stateSlice] - Range[Length[stateSlice]]
+                                },
+                                sliceHeadstates
+                            }
+                        ]
+                    ]]
                 ]
             ]
         ]
-    ] //
+    },
 
-If[labelInputQ || labelOutputQ, 
-        Labeled[#,
-            {
-                If[ labelInputQ,
-                    Style[Text[Replace[OptionValue["Input"], Automatic :> DecodeInput[First[states], k]]], 10, OptionValue["LabelInputStyle"]],
-                    None
-                ], 
-                If[labelOutputFunction===Automatic, 
-If[ labelOutputQ,
-                    Style[Text[CalculateOutput[Last[states], k, OptionValue["UndefinedLabel"]]], 10, OptionValue["LabelOutputStyle"]],
-                    None
-                ], labelOutputFunction[states]]
-            } // DeleteCases[None]
-            ,
-            If[ labelInputQ, 
-                If[labelOutputQ, {Top, Bottom}, {Top}], {Bottom}
+    If[columns <= 1,
+        (* Single column: original behavior *)
+        singlePlot[states, 1] //
+        If[labelInputQ || labelOutputQ,
+            Labeled[#,
+                {
+                    If[labelInputQ,
+                        Style[Text[Replace[OptionValue["Input"],
+                            Automatic :> DecodeInput[First[states], k]]],
+                            10, OptionValue["LabelInputStyle"]],
+                        None
+                    ],
+                    If[labelOutputFunction === Automatic,
+                        If[labelOutputQ,
+                            Style[Text[CalculateOutput[Last[states], k, OptionValue["UndefinedLabel"]]],
+                                10, OptionValue["LabelOutputStyle"]],
+                            None
+                        ],
+                        labelOutputFunction[states]
+                    ]
+                } // DeleteCases[None],
+                If[labelInputQ,
+                    If[labelOutputQ, {Top, Bottom}, {Top}],
+                    {Bottom}
+                ],
+                FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}
+            ] &,
+            Identity
+        ],
+
+        (* Multi-column: split states into column chunks *)
+        With[{
+            chunkSize = Ceiling[Length[states] / columns],
+            allPlots = Table[
+                With[{
+                    startIdx = (col - 1) * Ceiling[Length[states] / columns] + 1,
+                    endIdx = Min[col * Ceiling[Length[states] / columns], Length[states]]
+                },
+                    singlePlot[states[[startIdx ;; endIdx]], col]
+                ],
+                {col, columns}
             ]
-            , 
-            FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}
-        ] &,
-        Identity]
-]]
+        },
+            GraphicsRow[allPlots, Spacings -> 0]
+        ] //
+        If[labelInputQ || labelOutputQ,
+            Labeled[#,
+                {
+                    If[labelInputQ,
+                        Style[Text[Replace[OptionValue["Input"],
+                            Automatic :> DecodeInput[First[states], k]]],
+                            10, OptionValue["LabelInputStyle"]],
+                        None
+                    ],
+                    If[labelOutputFunction === Automatic,
+                        If[labelOutputQ,
+                            Style[Text[CalculateOutput[Last[states], k, OptionValue["UndefinedLabel"]]],
+                                10, OptionValue["LabelOutputStyle"]],
+                            None
+                        ],
+                        labelOutputFunction[states]
+                    ]
+                } // DeleteCases[None],
+                If[labelInputQ,
+                    If[labelOutputQ, {Top, Bottom}, {Top}],
+                    {Bottom}
+                ],
+                FrameMargins -> {{Automatic, Automatic}, {Automatic, None}}
+            ] &,
+            Identity
+        ]
+    ]
+]]]
 
 Clear[OneSidedTuringMachineFunctionPlot]
 Options[OneSidedTuringMachineFunctionPlot] = {};
-OneSidedTuringMachineFunctionPlot[
-  rule : {_Integer, _Integer, _Integer}, 
-  inputspec : {_Integer, _Integer}, maxsteps_Integer,  
-  ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, 
-     ListPlot}]] := 
- With[{vals = OneSidedTuringMachineFunction[rule, inputspec, maxsteps]},
-   OneSidedTuringMachineFunctionPlot[vals, ops]]
 
-OneSidedTuringMachineFunctionPlot[vals_List, 
-  ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, 
-     ListPlot}]] := 
- With[{m = Max[DeleteCases[vals, Undefined]]}, 
-  ListPlot[ReplaceAll[vals, Undefined -> Style[0, White]], 
-   FilterRules[{ops}, Options[ListPlot]], 
-   PlotStyle -> Darker[$PvsNPStyles["FunctionValueColor"], .2], 
-   AspectRatio -> 1/3, Frame -> True, Filling -> Axis,
-   FillingStyle -> $PvsNPStyles["FunctionValueColor"],
-   FrameLabel -> {"input", "value"}]]
+OneSidedTuringMachineFunctionPlot[
+    rule : {_Integer, _Integer, _Integer},
+    inputspec : {_Integer, _Integer}, maxsteps_Integer,
+    ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, ListPlot}]
+] :=
+With[{vals = OneSidedTuringMachineFunction[rule, inputspec, maxsteps]},
+    OneSidedTuringMachineFunctionPlot[vals, ops]
+]
+
+OneSidedTuringMachineFunctionPlot[
+    vals_List,
+    ops : OptionsPattern[{OneSidedTuringMachineFunctionPlot, ListPlot}]
+] :=
+With[{m = Max[DeleteCases[vals, Undefined]]},
+    ListPlot[
+        ReplaceAll[vals, Undefined -> Style[0, White]],
+        FilterRules[{ops}, Options[ListPlot]],
+        PlotStyle -> Darker[$PvsNPStyles["FunctionValueColor"], .2],
+        AspectRatio -> 1/3, Frame -> True, Filling -> Axis,
+        FillingStyle -> $PvsNPStyles["FunctionValueColor"],
+        FrameLabel -> {"input", "value"}
+    ]
+]
 
 Clear[OneSidedTuringMachineRuntimePlot]
-Options[OneSidedTuringMachineRuntimePlot] = {"ShowInfinity" -> False, 
-   "VerticalPadding" -> 10};
-OneSidedTuringMachineRuntimePlot[rule : {_Integer, _Integer, _Integer}, 
-  inputspec : {_Integer, _Integer}, maxsteps_Integer, 
-  ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, 
-     ListPlot}]] := 
- With[{vals = 
-    OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]},
-   OneSidedTuringMachineRuntimePlot[vals, ops]]
+Options[OneSidedTuringMachineRuntimePlot] = {
+    "ShowInfinity" -> False,
+    "VerticalPadding" -> 10
+};
 
-OneSidedTuringMachineRuntimePlot[vals_List, 
-  ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, 
-     ListPlot}]] := 
- With[{m = Max[DeleteCases[vals, Infinity]]}, 
-  ListPlot[ReplaceAll[vals, Infinity -> Style[0, White]], 
-   FilterRules[{ops}, Options[ListPlot]], 
-   PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
-   FillingStyle -> $PvsNPStyles["FunctionRuntimeColor"],
-    AspectRatio -> 1/3,
-   PlotRange -> 
-    If[OptionValue["ShowInfinity"], {-2, 
-      m + OptionValue["VerticalPadding"]}, Automatic],
-   Frame -> True, Filling -> Axis,
-   FrameLabel -> {"input", "runtime"},
-   Epilog -> 
-    If[OptionValue["ShowInfinity"], 
-     Style[Map[
-       Arrow[{{#, m + OptionValue["VerticalPadding"] - 15}, {#, 
-           m + OptionValue["VerticalPadding"]}}] &, 
-       Catenate[
-        Position[
-         OneSidedTuringMachineFunction[{2189, 2, 2}, {1, 255}, 1000, 
-          "Steps"], Infinity]]], Red, Arrowheads[.015]], {}]
-   ]]
+OneSidedTuringMachineRuntimePlot[
+    rule : {_Integer, _Integer, _Integer},
+    inputspec : {_Integer, _Integer}, maxsteps_Integer,
+    ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, ListPlot}]
+] :=
+With[{vals = OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]},
+    OneSidedTuringMachineRuntimePlot[vals, ops]
+]
+
+OneSidedTuringMachineRuntimePlot[
+    vals_List,
+    ops : OptionsPattern[{OneSidedTuringMachineRuntimePlot, ListPlot}]
+] :=
+With[{m = Max[DeleteCases[vals, Infinity]]},
+    ListPlot[
+        ReplaceAll[vals, Infinity -> Style[0, White]],
+        FilterRules[{ops}, Options[ListPlot]],
+        PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
+        FillingStyle -> $PvsNPStyles["FunctionRuntimeColor"],
+        AspectRatio -> 1/3,
+        PlotRange -> If[OptionValue["ShowInfinity"],
+            {-2, m + OptionValue["VerticalPadding"]}, Automatic],
+        Frame -> True, Filling -> Axis,
+        FrameLabel -> {"input", "runtime"},
+        Epilog -> If[OptionValue["ShowInfinity"],
+            Style[
+                Map[
+                    Arrow[{{#, m + OptionValue["VerticalPadding"] - 15},
+                        {#, m + OptionValue["VerticalPadding"]}}] &,
+                    Catenate[Position[
+                        OneSidedTuringMachineFunction[{2189, 2, 2}, {1, 255}, 1000, "Steps"],
+                        Infinity
+                    ]]
+                ],
+                Red, Arrowheads[.015]
+            ],
+            {}
+        ]
+    ]
+]
 
 Clear[WorstCasesIndexed]
-WorstCasesIndexed[ilist : {{_Integer, _Integer} ..}, 
-  k_ : 2] := {#[[1, 1]], MaximalBy[#, Last][[1, 2]]} & /@ 
-  SplitBy[ilist, IntegerLength[First[#], k] &]
+WorstCasesIndexed[ilist : {{_Integer, _Integer} ..}, k_ : 2] :=
+    {#[[1, 1]], MaximalBy[#, Last][[1, 2]]} & /@
+        SplitBy[ilist, IntegerLength[First[#], k] &]
 
 Clear[TuringMachineWorstCasePlot]
-Options[TuringMachineWorstCasePlot] = {"ShowEnvelope" -> True, 
-   "EnvelopeStyle" -> GrayLevel[.7, .08]};
-TuringMachineWorstCasePlot[rule_, inputspec_, maxsteps_,  
-  ops : OptionsPattern[{TuringMachineWorstCasePlot, ListPlot, 
-     ListStepPlot}]] := 
- With[{u = 
-    Transpose[{Range @@ inputspec, 
-      OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]}]},
-  {v = WorstCasesIndexed[u, rule[[3]]]},
-  If[OptionValue["ShowEnvelope"], Show[ 
-      ListStepPlot[v, 
-       Sequence @@ FilterRules[{ops}, Options[ListStepPlot]],
-       PlotInteractivity -> False, Filling -> Bottom, 
-       PlotStyle -> Opacity[.1, Gray], AspectRatio -> 1/4, 
-       Frame -> True, 
-       FrameTicks -> {{Automatic, 
-          Automatic}, {PowerRange[1, rule[[3]]^Length[v], rule[[3]]], 
-          Automatic}}], #, PlotRangeClipping -> True] &, Identity][
-   ListPlot[u, Sequence @@ FilterRules[{ops}, Options[ListPlot]],
-    PlotInteractivity -> False,
-     Filling -> Axis, 
-    PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
-    FillingStyle -> 
-     Directive[{AbsoluteThickness[1.5], $PvsNPStyles[
-        "FunctionRuntimeColor"]}],
-    AspectRatio -> 1/4]]]
+Options[TuringMachineWorstCasePlot] = {
+    "ShowEnvelope" -> True,
+    "EnvelopeStyle" -> GrayLevel[.7, .08]
+};
 
-MultiwayTuringMachinePlot[rules_, imax_ : 10, tmax_ : 10, opts___] := 
- ListPlot[
-  Catenate[
-   MapIndexed[
-    If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &, 
-    With[{w = 
-       Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
-      MapThread[
-       Append, {w[[All, 1, All, 2]], 
-        If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}] /. 
-      Null -> Nothing], {2}]], opts, Frame -> True, 
-  AspectRatio -> 1/3]
+TuringMachineWorstCasePlot[
+    rule_, inputspec_, maxsteps_,
+    ops : OptionsPattern[{TuringMachineWorstCasePlot, ListPlot, ListStepPlot}]
+] :=
+With[
+    {u = Transpose[{
+        Range @@ inputspec,
+        OneSidedTuringMachineFunction[rule, inputspec, maxsteps, "Steps"]
+    }]},
+    {v = WorstCasesIndexed[u, rule[[3]]]},
+    If[OptionValue["ShowEnvelope"],
+        Show[
+            ListStepPlot[v,
+                Sequence @@ FilterRules[{ops}, Options[ListStepPlot]],
+                PlotInteractivity -> False, Filling -> Bottom,
+                PlotStyle -> Opacity[.1, Gray], AspectRatio -> 1/4,
+                Frame -> True,
+                FrameTicks -> {{Automatic, Automatic},
+                    {PowerRange[1, rule[[3]]^Length[v], rule[[3]]], Automatic}}
+            ],
+            #, PlotRangeClipping -> True
+        ] &,
+        Identity
+    ][
+        ListPlot[u,
+            Sequence @@ FilterRules[{ops}, Options[ListPlot]],
+            PlotInteractivity -> False,
+            Filling -> Axis,
+            PlotStyle -> Darker[$PvsNPStyles["FunctionRuntimeColor"], .1],
+            FillingStyle -> Directive[{
+                AbsoluteThickness[1.5],
+                $PvsNPStyles["FunctionRuntimeColor"]
+            }],
+            AspectRatio -> 1/4
+        ]
+    ]
+]
 
-MultiwayTuringMachineRuntimePlot[rules_, imax_ : 10, tmax_ : 10, 
-  opts___] := 
- ListPlot[
-  Catenate[
-   MapIndexed[
-    If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &, 
-    With[{w = 
-       Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
-      MapThread[
-       Append, {w[[All, 1, All, 1]], 
-        If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}] /. 
-      Null -> Nothing], {2}]], opts, Frame -> True, 
-  AspectRatio -> 1/3, PlotRange -> {{.5, All}, All}]
+MultiwayTuringMachinePlot[rules_, imax_ : 10, tmax_ : 10, opts___] :=
+    ListPlot[
+        Catenate[MapIndexed[
+            If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &,
+            With[{w = Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
+                MapThread[
+                    Append,
+                    {w[[All, 1, All, 2]],
+                     If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}
+                ] /. Null -> Nothing
+            ],
+            {2}
+        ]],
+        opts, Frame -> True, AspectRatio -> 1/3
+    ]
+
+MultiwayTuringMachineRuntimePlot[rules_, imax_ : 10, tmax_ : 10, opts___] :=
+    ListPlot[
+        Catenate[MapIndexed[
+            If[# != -1, {First[#2], #1}, Style[{First[#2], -4}, Red]] &,
+            With[{w = Table[MultiwayTuringMachineFunction[rules, i, tmax], {i, imax}]},
+                MapThread[
+                    Append,
+                    {w[[All, 1, All, 1]],
+                     If[# == 0, Null, -1] & /@ w[[All, 2, -1]]}
+                ] /. Null -> Nothing
+            ],
+            {2}
+        ]],
+        opts, Frame -> True, AspectRatio -> 1/3, PlotRange -> {{.5, All}, All}
+    ]
 
 
 End[]
