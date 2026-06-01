@@ -174,7 +174,7 @@ With[
                     }]
                 ],
                 Mesh -> True,
-                AspectRatio -> Full,
+                AspectRatio -> Automatic,
                 ColorRules -> $PvsNPStyles["TuringMachineColorRules"],
                 Epilog -> With[
                     {headangles = Most[Subdivide[2 Pi, s]]},

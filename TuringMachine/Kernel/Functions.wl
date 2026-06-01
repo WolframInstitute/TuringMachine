@@ -468,7 +468,7 @@ MultiwayTuringMachineSearch[
 ]
 
 MultiwayTuringMachineSearch[rules : {__Integer}, input_Integer, output_Integer, maxSteps_Integer, opts : OptionsPattern[]] :=
-    MultiwayTuringMachineSearch[rules, 2, 2, input, output, maxSteps, opts]
+    MultiwayTuringMachineSearch[{rules, 2, 2}, input, output, maxSteps, opts]
 
 
 MultiwayTuringMachineFunction[
@@ -556,7 +556,7 @@ MultiwayTuringMachineFunction[{rules : {__Integer} | {({_Integer, _Integer} -> {
     MultiwayTuringMachineFunction[{rules, numStates, numSymbols}, inputs, <|"MaxSteps" -> maxSteps, "Target" -> target, "CycleTerminate" -> cycleTerminateQ|>]
 
 MultiwayTuringMachineFunction[rules : {__Integer}, input_, maxSteps_Integer, cycleTerminateQ : _ ? BooleanQ : False] :=
-    MultiwayTuringMachineFunction[rules, 2, 2, input, maxSteps, cycleTerminateQ]
+    MultiwayTuringMachineFunction[{rules, 2, 2}, input, maxSteps, cycleTerminateQ]
 
 MultiwayTuringMachineFunction[rules : {{_Integer, _Integer, _Integer} ..}, args___] :=
     MultiwayTuringMachineFunction[Normal @ GroupBy[Catenate[TuringMachineRuleCases /@ rules], First -> Last], args]
