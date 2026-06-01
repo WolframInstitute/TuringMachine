@@ -5,7 +5,7 @@ PacletObject[
     "Creator" -> "Nik Murzin and Willem Nielsen",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.0.9",
+    "Version" -> "1.1.0",
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
@@ -44,6 +44,11 @@ PacletObject[
       },
       {
         "Binaries"
+      },
+      {
+        "Documentation",
+        "Root" -> "Documentation",
+        "Language" -> "English"
       }
     }
   |>
