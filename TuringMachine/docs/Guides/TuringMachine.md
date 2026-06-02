@@ -45,3 +45,12 @@ This paclet provides tools for exploring and analyzing Turing machines, with an 
 - `MultiwayTuringMachineFunction` all tape values reachable from halted states
 - `MultiwayNonHaltedStatesLeft` how many states remain unexplored after a step bound
 - `NonTerminatingTuringMachineQ` tests whether a machine enters a cycle within a step bound
+
+### Visualization
+
+- `OneSidedTuringMachineEvolution` the step-by-step `{head, tape}` history a plot is built from
+- `OneSidedTuringMachineFunctionPlot` the output value as a function of the input
+- `OneSidedTuringMachineRuntimePlot` the running time as a function of the input
+- `TuringMachineWorstCasePlot` the runtime with a worst-case envelope across input sizes
+- `MultiwayTuringMachinePlot` the values reachable by a multiway machine across inputs
+- `$PvsNPStyles` the named colors and plot styles shared by the visualizations

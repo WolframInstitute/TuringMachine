@@ -5,7 +5,7 @@ PacletObject[
     "Creator" -> "Nik Murzin and Willem Nielsen",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.1.0",
+    "Version" -> "1.1.1",
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
@@ -39,7 +39,13 @@ PacletObject[
           "WolframInstitute`TuringMachine`TuringMachineRuleCount",
           "WolframInstitute`TuringMachine`TuringMachineSteps",
           "WolframInstitute`TuringMachine`TuringMachineStepsWidths",
-          "WolframInstitute`TuringMachine`TuringMachineWidths"
+          "WolframInstitute`TuringMachine`TuringMachineWidths",
+          "WolframInstitute`TuringMachine`OneSidedTuringMachineEvolution",
+          "WolframInstitute`TuringMachine`$PvsNPStyles",
+          "WolframInstitute`TuringMachine`OneSidedTuringMachineFunctionPlot",
+          "WolframInstitute`TuringMachine`OneSidedTuringMachineRuntimePlot",
+          "WolframInstitute`TuringMachine`MultiwayTuringMachinePlot",
+          "WolframInstitute`TuringMachine`TuringMachineWorstCasePlot"
         }
       },
       {

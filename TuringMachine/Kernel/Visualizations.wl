@@ -20,12 +20,17 @@ OneSidedTuringMachinePlot::usage =
    - \"Columns\": number of columns to split the plot into (default: 1).
    - ImageSize: size of the image (default: 50)."
 
-OneSidedTuringMachineEvolution
-$PvsNPStyles
-OneSidedTuringMachineFunctionPlot
-MultiwayTuringMachinePlot
-OneSidedTuringMachineRuntimePlot
-TuringMachineWorstCasePlot
+OneSidedTuringMachineEvolution::usage = "OneSidedTuringMachineEvolution[{number, s, k}, input, maxSteps] returns the step-by-step evolution of a one-sided Turing machine as a list of {head, tape} configurations, one per step. An optional fourth argument sets the displayed tape width (default Automatic). This is the data OneSidedTuringMachinePlot renders."
+
+$PvsNPStyles::usage = "$PvsNPStyles is an association of named colors, color rules, and plot options used by the package's visualization functions."
+
+OneSidedTuringMachineFunctionPlot::usage = "OneSidedTuringMachineFunctionPlot[{number, s, k}, {minInput, maxInput}, maxSteps] plots the output value of a one-sided Turing machine as a function of its input.\nOneSidedTuringMachineFunctionPlot[values] plots a precomputed list of output values."
+
+MultiwayTuringMachinePlot::usage = "MultiwayTuringMachinePlot[rules, maxInput, maxSteps] plots the tape values reachable by the multiway Turing machine defined by the integer rules for inputs 1 through maxInput, run for at most maxSteps steps. maxInput and maxSteps default to 10."
+
+OneSidedTuringMachineRuntimePlot::usage = "OneSidedTuringMachineRuntimePlot[{number, s, k}, {minInput, maxInput}, maxSteps] plots the running time (number of steps) of a one-sided Turing machine as a function of its input.\nOneSidedTuringMachineRuntimePlot[steps] plots a precomputed list of step counts."
+
+TuringMachineWorstCasePlot::usage = "TuringMachineWorstCasePlot[{number, s, k}, {minInput, maxInput}, maxSteps] plots the running time of a one-sided Turing machine against its input, together with the worst-case runtime envelope across each input size."
 
 Begin["`Private`"]
 

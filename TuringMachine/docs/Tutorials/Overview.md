@@ -44,6 +44,15 @@ Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic,
 - [MultiwayNonHaltedStatesLeft](paclet:WolframInstitute/TuringMachine/ref/MultiwayNonHaltedStatesLeft)
 - [NonTerminatingTuringMachineQ](paclet:WolframInstitute/TuringMachine/ref/NonTerminatingTuringMachineQ)
 
+### Visualization
+
+- [OneSidedTuringMachineEvolution](paclet:WolframInstitute/TuringMachine/ref/OneSidedTuringMachineEvolution)
+- [OneSidedTuringMachineFunctionPlot](paclet:WolframInstitute/TuringMachine/ref/OneSidedTuringMachineFunctionPlot)
+- [OneSidedTuringMachineRuntimePlot](paclet:WolframInstitute/TuringMachine/ref/OneSidedTuringMachineRuntimePlot)
+- [TuringMachineWorstCasePlot](paclet:WolframInstitute/TuringMachine/ref/TuringMachineWorstCasePlot)
+- [MultiwayTuringMachinePlot](paclet:WolframInstitute/TuringMachine/ref/MultiwayTuringMachinePlot)
+- [\$PvsNPStyles](paclet:WolframInstitute/TuringMachine/ref/$PvsNPStyles)
+
 ## Tutorials
 
 - [Exploring One-Sided Turing Machines](paclet:WolframInstitute/TuringMachine/tutorial/ExploringOneSidedTuringMachines)
