@@ -7,11 +7,12 @@ edition = "2024"
 bit-vec = "0.6"
 num-bigint = "0.4"
 clap = { version = "4.5.4", features = ["derive"] }
-# Pinned to a known-good feature/wxf commit (0.6.0-alpha.4) rather than the bare
-# branch, since this is pre-release and has broken before. cadc9fb includes the
-# fix for the standalone build break (wolfram-library-link now declares its
-# wolfram-serialize dep) and the cross-compilation fixes.
-wolfram-library-link = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "cadc9fb559c92a74e4624e3a90e852b3b040f79c" }
+# Pinned to a known-good feature/wxf commit (0.6.0-alpha.4). default-features
+# disabled to drop the `wstp` feature: the WSTP C++ stack (link-cplusplus) does
+# not cross-compile to macOS under Zig, and the paclet doesn't use WSTP (no
+# LinkObject functions). Functions are discovered via `__wolfram_manifest__`
+# (see ExtensionCargo), so the WSTP `generate_loader!` isn't needed.
+wolfram-library-link = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "cadc9fb559c92a74e4624e3a90e852b3b040f79c", default-features = false, features = ["automate-function-loading-boilerplate"] }
 wolfram-serialize = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "cadc9fb559c92a74e4624e3a90e852b3b040f79c" }
 num-traits = "0.2.19"
 rayon = "1.8"
