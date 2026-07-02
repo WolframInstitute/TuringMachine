@@ -54,3 +54,54 @@ This paclet provides tools for exploring and analyzing Turing machines, with an 
 - `TuringMachineWorstCasePlot` the runtime with a worst-case envelope across input sizes
 - `MultiwayTuringMachinePlot` the values reachable by a multiway machine across inputs
 - `$PvsNPStyles` the named colors and plot styles shared by the visualizations
+
+## Inductive proofs
+
+A separate `` WolframInstitute`TuringMachine`InductiveProofs` `` context proves, by equational induction, that a machine's tape-configuration semantics matches its intended behavior, and visualizes those proofs as graphs and multiway rewrite clouds.
+
+### Symbolic machines and tape terms
+
+- `DecodeTuringMachineRules` decodes a machine number into symbolic transition rules
+- `RunMachine` runs a symbolic machine and returns the tape configurations it visits
+- `CompressToRunLength` collapses runs of equal cells into run-length terms
+
+### Proof search
+
+- `FindInductiveProof` proves a goal by equational induction on a run-length variable
+- `mergedProofFor` derives a machine's proof by trying the sweep, boundary, and scan-flip strategies
+- `cachedProofFor` the on-disk-cached proof for a machine
+
+### Rendering tapes and equations
+
+- `RenderConfiguration` draws a tape configuration as a row of cells
+- `RenderEquation` draws an equation between two tape configurations
+- `RenderAxiomGrid` draws a list of axioms as an aligned grid
+- `RenderUniversalGoal` draws a universally-quantified goal
+- `ShowTapeConfiguration` draws a tape with the head inserted at a position
+- `$InductiveProofColors` the theme-switched colors shared by the proof renderers
+
+### Proof graphs
+
+- `inductionProofGraph` the token-event proof graph fusing the base and step cases
+- `proofGraph` a laid-out, styled rendering of a machine's proof graph
+
+### Multiway rewrite clouds
+
+- `multiwaySystemFor` the axioms, hypothesis, and seeds for a machine's proof
+- `multiwaySubProofCones` a bounded multiway cloud around each sub-proof
+- `multiwayCloudOverlap` measures how those sub-proof clouds share terms
+- `multiwayDistance` the multiway graph distance between two tape terms
+- `MultiwayEquationalGraph` a multiway equational-rewrite cloud with the proof path
+- `MultiwayGeodesicGraph` a multiway cloud with the geodesic between seeds
+- `MultiwayTokenEventGraph` a multiway cloud in state-event-state token form
+- `MultiwayRuleGraph` the superposition (critical-pair) rule space of an axiom set
+
+### Proof panels
+
+- `IslandsPanel` the equational cloud for one case of a machine's proof
+- `StatementPanel` the geodesic between a case's seeds, plus derived-lemma rows
+- `TokenEventPanel` the token-event graph for a case, plus derived-lemma rows
+- `MultiwayBothPanel` side-by-side base and step cones with the induction rule
+- `SettingsPanel` the full step-case geodesic for a machine
+- `RuleSpacePanel` the superposition rule space for a machine
+- `MultiwayInductiveProofPanel` a machine's proof graph embedded in its multiway cloud

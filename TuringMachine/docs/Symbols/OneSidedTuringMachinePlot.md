@@ -18,6 +18,8 @@ RelatedGuides: [TuringMachine]
 - The machine is given as `{number, s, k}`; each row is one step, with tape cells colored by their symbol value and the head drawn as a black marker whose orientation indicates the machine's current state.
 - The following options can be given:
 
+| option | default | description |
+| --- | --- | --- |
 | `"Width"` | `"Maximum"` | width of the tape to display |
 | `"LabelOutput"` | `True` | whether to label the output value |
 | `"LabelInput"` | `False` | whether to label the input value |
