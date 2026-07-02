@@ -180,7 +180,7 @@ With[
                     }]
                 ],
                 Mesh -> True,
-                MeshStyle->If[OptionValue["MeshScale"],Automatic,Directive[Gray,Opacity[.3],Thickness[.01]]],
+                MeshStyle->If[TrueQ[OptionValue["MeshScale"]], Automatic, Directive[Gray, Opacity[.3], Thickness[.01]]],
                 AspectRatio -> Automatic,
                 ColorRules -> $PvsNPStyles["TuringMachineColorRules"],
                 Epilog -> With[
