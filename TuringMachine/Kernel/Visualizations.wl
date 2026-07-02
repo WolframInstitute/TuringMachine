@@ -115,6 +115,7 @@ Options[OneSidedTuringMachinePlot] = Join[
         "LabelOutputFunction" -> Automatic,
         "TerminationColumnColor" -> GrayLevel[.7],
         "Columns" -> 1,
+        "MeshScale"->True,
         ImageSize -> 90
     },
     Options[ArrayPlot]
@@ -179,6 +180,7 @@ With[
                     }]
                 ],
                 Mesh -> True,
+                MeshStyle->If[TrueQ[OptionValue["MeshScale"]], Automatic, Directive[Gray, Opacity[.3], Thickness[.01]]],
                 AspectRatio -> Automatic,
                 ColorRules -> $PvsNPStyles["TuringMachineColorRules"],
                 Epilog -> With[
