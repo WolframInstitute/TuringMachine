@@ -3970,7 +3970,10 @@ multiwayCloudOverlap[ru_, opts : OptionsPattern[]] := cloudOverlapMeasure[multiw
 
 (* mirrors the growth-loop options of MultiwayInductiveProofPanel, on whose behalf this helper runs
    (it is handed the panel's option sequence). *)
-Options[directOverlapGrow] = {"MaxStates" -> 500, "DirectOverlapCap" -> 4000, "DirectOverlapStep" -> 500}
+Options[directOverlapGrow] = Join[
+    {"MaxStates" -> 500, "DirectOverlapCap" -> 4000, "DirectOverlapStep" -> 500},
+    Options[multiwaySubProofCones]
+]
 
 directOverlapGrow[ru_, opts : OptionsPattern[]] := Module[{
     cap = OptionValue["DirectOverlapCap"],
@@ -4124,7 +4127,7 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
     op = OptionValue["BackgroundOpacity"];
     ceq = canonicalEquation;
     coneData = If[ TrueQ[OptionValue["DirectOverlap"]],
-        directOverlapGrow[ru, opts]["Data"]
+        directOverlapGrow[ru, FilterRules[{opts}, Options[directOverlapGrow]]]["Data"]
         ,
         multiwaySubProofCones[ru, FilterRules[{opts}, Options[multiwaySubProofCones]]]
     ];
