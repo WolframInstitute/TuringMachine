@@ -527,7 +527,7 @@ MultiwayTuringMachineFunction[
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
    Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesTriplesRust[
-        rules,
+        Apply[Developer`DataStore, rules, {0, 1}],
         numStates,
         numSymbols,
         Developer`DataStore @@ ToString /@ Flatten[{inputs}],
