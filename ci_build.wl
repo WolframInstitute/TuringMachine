@@ -1,24 +1,16 @@
-(* ci_build.wl - Build paclet for CI (no cloud upload) *)
-
-(* Install Build Dependencies *)
-PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
-PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
-
-PacletDirectoryLoad[FileNameJoin[{Directory[], "TuringMachine"}]]
-
-Needs["ExtensionCargo`"]
+(* ci_build.wl - Package the paclet for CI (no cloud upload).
+   Binaries are built and installed into TuringMachine/LibraryResources/<SystemID>/
+   by build_all_targets.sh beforehand; no ExtensionCargo / PacletExtensions. *)
 
 publisher = "WolframInstitute"
 name = "TuringMachine"
-paclet = PacletObject[publisher <> "/" <> name]
 
-(* CargoCollect - collects binaries built by build_all_targets.sh *)
-Print["Running CargoCollect..."]
-ExtensionCargo`CargoCollect[ParentDirectory[paclet["Location"]], FileNameJoin[name, "Binaries"]]
+PacletDirectoryLoad[FileNameJoin[{Directory[], name}]]
+paclet = PacletObject[publisher <> "/" <> name]
 
 (* Create Paclet Archive *)
 Print["Creating Paclet Archive..."]
-pacletFile = CreatePacletArchive[name]
+pacletFile = CreatePacletArchive[paclet["Location"]]
 Print["Paclet created: ", pacletFile]
 Print["Size: ", FileSize[pacletFile]]
 

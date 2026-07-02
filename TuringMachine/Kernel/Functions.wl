@@ -66,36 +66,45 @@ NonTerminatingTuringMachineQ[{rule, numStates, numSymbols}, input, maxSteps] che
 Begin["`Private`"];
 
 
-pacletInstalledQ[paclet_, version_] := AnyTrue[Through[PacletFind[paclet]["Version"]], ResourceFunction["VersionOrder"][#, version] <= 0 &]
+$rustLibraryName = "ndtm_search"
 
+$rustLibraryExtension := Replace[$OperatingSystem, {"MacOSX" -> "dylib", "Windows" -> "dll", _ -> "so"}]
+
+$rustLibraryPath := FileNameJoin[{
+	PacletObject["WolframInstitute/TuringMachine"]["Location"],
+	"LibraryResources",
+	$SystemID,
+	$rustLibraryName <> "." <> $rustLibraryExtension
+}]
+
+(* Load every #[wll::export] function straight from the library, no
+   ExtensionCargo / PacletExtensions. The prebuilt library ships in
+   LibraryResources/$SystemID (installed via build_all_targets.sh); it exposes a
+   `rustlink_autodiscover_wxf` loader returning the WXF of
+   <|name -> LibraryFunctionLoad[path, name, argtypes, rettype]|>, which
+   deserializes directly into loaded LibraryFunctions. *)
 functions := functions = (
-	If[ ! pacletInstalledQ["ExternalEvaluate", "38.0.1"],
-		PacletInstall["ExternalEvaluate"]
-	];
-	If[ ! pacletInstalledQ["PacletExtensions", "40.0.0"],
-		PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
-	];
-	Needs["ExtensionCargo`"];
-	Replace[
-		ExtensionCargo`CargoLoad[
-			PacletObject["WolframInstitute/TuringMachine"],
-			"Functions"
-		],
-		Except[_ ? AssociationQ] :> Replace[
-			ExtensionCargo`CargoBuild[PacletObject["WolframInstitute/TuringMachine"]], {
-				f : Except[{__ ? FileExistsQ}] :> Function @ Function @ Failure["CargoBuildError", <|
-						"MessageTemplate" -> "Cargo build failed",
-						"Return" -> f
-					|>],
-				files_ :> Replace[
-					ExtensionCargo`CargoLoad[files, "Functions"],
-					f : Except[_ ? AssociationQ] :>
-						Function @ Function @ Failure["CargoLoadError", <|
-							"MessageTemplate" -> "Cargo load failed",
-							"Return" -> f
-						|>]
+	Block[{libPath = $rustLibraryPath, discover},
+		If[ ! FileExistsQ[libPath]
+			,
+			Function @ Function @ Failure["RustLibraryLoad", <|
+				"MessageTemplate" -> "ndtm_search library not found for ``",
+				"MessageParameters" -> {$SystemID}
+			|>]
+			,
+			discover = LibraryFunctionLoad[libPath, "rustlink_autodiscover_wxf", {"UTF8String"}, LibraryDataType[NumericArray, "UnsignedInteger8"]];
+			If[ ! MatchQ[discover, _LibraryFunction]
+				,
+				Function @ Function @ Failure["RustLibraryLoad", <|
+					"MessageTemplate" -> "ndtm_search autodiscovery loader could not be loaded",
+					"Return" -> discover
+				|>]
+				,
+				Replace[
+					BinaryDeserialize[ByteArray[Normal[discover[libPath]]]],
+					Except[_ ? AssociationQ] :> Function @ Function @ Failure["RustLibraryLoad", <|"MessageTemplate" -> "failed to deserialize the ndtm_search function table"|>]
 				]
-			}
+			]
 		]
 	]
 ) // Replace[{

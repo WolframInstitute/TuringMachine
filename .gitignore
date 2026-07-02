@@ -34,3 +34,5 @@ Proofs/lean_dep_full.dot
 *.tmp
 *.swp
 *~
+# Rust libraries built into the paclet by build_all_targets.sh / dev fallback
+TuringMachine/LibraryResources/
