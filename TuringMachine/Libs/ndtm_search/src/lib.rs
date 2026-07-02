@@ -10,6 +10,7 @@ use std::collections::BinaryHeap;
 use rayon::prelude::*;
 
 pub mod models;
+pub mod wxf;
 /// Build a table of deterministic TM outputs:
 /// Rows correspond to rule numbers 0 .. (2*s*k)^(s*k) - 1
 /// Columns correspond to input tape integers 0 .. max_input
@@ -1169,15 +1170,138 @@ pub fn find_matching_rules_vec(
 
 // Wolfram LibraryLink wrappers
 
+// ---- DataStore marshaling helpers ----
+// Upstream wolfram-library-link only marshals DataStore for list-like values
+// (the previous fork had FromArg/IntoArg impls for Vec<...> and tuples), so
+// these helpers convert at the boundary while keeping the WL-side calling
+// convention (Developer`DataStore in / Developer`DataStore out) identical.
+
+fn ds_strings(ds: &wll::DataStore) -> Vec<String> {
+    ds.nodes()
+        .map(|node| match node.value() {
+            wll::DataStoreNodeValue::Str(s) => s.to_owned(),
+            _ => panic!("expected string DataStore node"),
+        })
+        .collect()
+}
+
+fn ds_ints(ds: &wll::DataStore) -> Vec<i64> {
+    ds.nodes()
+        .map(|node| match node.value() {
+            wll::DataStoreNodeValue::Integer(i) => i,
+            _ => panic!("expected integer DataStore node"),
+        })
+        .collect()
+}
+
+fn ds_u64s(ds: &wll::DataStore) -> Vec<u64> {
+    ds_ints(ds).into_iter().map(|i| i as u64).collect()
+}
+
+fn ds_triples(ds: &wll::DataStore) -> Vec<(u32, u32, i32)> {
+    ds.nodes()
+        .map(|node| match node.value() {
+            wll::DataStoreNodeValue::DataStore(sub) => {
+                let v = ds_ints(sub);
+                assert_eq!(v.len(), 3, "expected rule triple");
+                (v[0] as u32, v[1] as u32, v[2] as i32)
+            },
+            _ => panic!("expected DataStore node"),
+        })
+        .collect()
+}
+
+fn ds_quints(ds: &wll::DataStore) -> Vec<(u32, u32, u32, u32, i32)> {
+    ds.nodes()
+        .map(|node| match node.value() {
+            wll::DataStoreNodeValue::DataStore(sub) => {
+                let v = ds_ints(sub);
+                assert_eq!(v.len(), 5, "expected rule quintuple");
+                (v[0] as u32, v[1] as u32, v[2] as u32, v[3] as u32, v[4] as i32)
+            },
+            _ => panic!("expected DataStore node"),
+        })
+        .collect()
+}
+
+/// Values appendable to a `DataStore`; nested lists/tuples become nested stores.
+trait DsValue {
+    fn add_to(&self, ds: &mut wll::DataStore);
+}
+
+macro_rules! impl_ds_int {
+    ($($t:ty),*) => { $(
+        impl DsValue for $t {
+            fn add_to(&self, ds: &mut wll::DataStore) { ds.add_i64(*self as i64) }
+        }
+    )* }
+}
+impl_ds_int!(i32, i64, u32, u64, usize);
+
+impl DsValue for bool {
+    fn add_to(&self, ds: &mut wll::DataStore) { ds.add_bool(*self) }
+}
+impl DsValue for String {
+    fn add_to(&self, ds: &mut wll::DataStore) { ds.add_str(self) }
+}
+impl<T: DsValue> DsValue for Vec<T> {
+    fn add_to(&self, ds: &mut wll::DataStore) { ds.add_data_store(self.into_ds()) }
+}
+impl<A: DsValue, B: DsValue> DsValue for (A, B) {
+    fn add_to(&self, ds: &mut wll::DataStore) { ds.add_data_store(self.into_ds()) }
+}
+impl<A: DsValue, B: DsValue, C: DsValue> DsValue for (A, B, C) {
+    fn add_to(&self, ds: &mut wll::DataStore) { ds.add_data_store(self.into_ds()) }
+}
+
+/// Convert a return value into the `DataStore` handed back to WL.
+trait IntoDs {
+    fn into_ds(&self) -> wll::DataStore;
+}
+impl<T: DsValue> IntoDs for Vec<T> {
+    fn into_ds(&self) -> wll::DataStore {
+        let mut ds = wll::DataStore::new();
+        for x in self {
+            x.add_to(&mut ds);
+        }
+        ds
+    }
+}
+impl<A: DsValue, B: DsValue> IntoDs for (A, B) {
+    fn into_ds(&self) -> wll::DataStore {
+        let mut ds = wll::DataStore::new();
+        self.0.add_to(&mut ds);
+        self.1.add_to(&mut ds);
+        ds
+    }
+}
+impl<A: DsValue, B: DsValue, C: DsValue> IntoDs for (A, B, C) {
+    fn into_ds(&self) -> wll::DataStore {
+        let mut ds = wll::DataStore::new();
+        self.0.add_to(&mut ds);
+        self.1.add_to(&mut ds);
+        self.2.add_to(&mut ds);
+        ds
+    }
+}
+
+
 #[wll::export]
 pub fn exhaustive_search_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
-) -> Vec<String> {
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
+) -> wll::DataStore {
+    let rules = ds_strings(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: Vec<String> = (move || {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
@@ -1197,17 +1321,26 @@ pub fn exhaustive_search_wl(
             .collect(),
         None => Vec::new(),
     }
+    })();
+    __ret.into_ds()
 }
 
 #[wll::export]
 pub fn exhaustive_search_parallel_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
-) -> Vec<String> {
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
+) -> wll::DataStore {
+    let rules = ds_strings(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: Vec<String> = (move || {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguints: Vec<BigUint> = initials.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
@@ -1225,30 +1358,44 @@ pub fn exhaustive_search_parallel_wl(
             .collect(),
         None => Vec::new(),
     }
+    })();
+    __ret.into_ds()
 }
 
 
 #[wll::export]
 pub fn run_dtm_wl(
-    rule_triples: Vec<(u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
+    rule_triples: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
     initial: String,
-    max_steps: u64,
-) -> (u64, String, u64) {
+    max_steps: i64,
+) -> wll::DataStore {
+    let rule_triples = ds_triples(rule_triples);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let __ret: (u64, String, u64) = (move || {
     let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { Ok(t) => t, Err(_) => return (0, String::new(), 0) };
     let initial_biguint: BigUint = match initial.parse::<BigUint>() { Ok(v) => v, Err(_) => return (0, String::new(), 0) };
     match run_dtm(&tm, &initial_biguint, max_steps) { Some((steps, out, pos)) => (steps, out.to_string(), pos + 1), None => (0, String::new(), 0) }
+    })();
+    __ret.into_ds()
 }
 
 #[wll::export]
 pub fn run_dtm_with_history_wl(
-    rule_triples: Vec<(u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
+    rule_triples: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
     initial: String,
-    max_steps: u64,
-) -> Vec<(u32, u64, String)> {
+    max_steps: i64,
+) -> wll::DataStore {
+    let rule_triples = ds_triples(rule_triples);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let __ret: Vec<(u32, u64, String)> = (move || {
     let tm = match TuringMachine::from_rule_triples(&rule_triples, num_states, num_symbols) { 
         Ok(t) => t, 
         Err(_) => return Vec::new() 
@@ -1262,35 +1409,51 @@ pub fn run_dtm_with_history_wl(
     history.into_iter()
         .map(|(state, pos, value)| (state, pos as u64, value.to_string()))
         .collect()
+    })();
+    __ret.into_ds()
 }
 
 
 #[wll::export]
 pub fn collect_seen_values_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
     terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+) -> wll::DataStore {
+    let rules = ds_strings(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: (Vec<(u64, String)>, Vec<usize>, bool) = (move || {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let target_biguints: Vec<BigUint> = targets.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+    })();
+    __ret.into_ds()
 }
 
 #[wll::export]
 pub fn detect_cycle_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    max_steps: u64,
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    max_steps: i64,
 ) -> bool {
+    let rules = ds_strings(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let max_steps = max_steps as u64;
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
@@ -1299,16 +1462,24 @@ pub fn detect_cycle_wl(
 
 #[wll::export]
 pub fn ndtm_traverse_queue_size_wl(
-    rules: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    max_steps: u64,
-) -> usize {
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    max_steps: i64,
+) -> i64 {
+    let rules = ds_strings(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let max_steps = max_steps as u64;
+    let __ret: usize = (move || {
     let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
     let initial_biguints: Vec<BigUint> = initials.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     ndtm_traverse_queue_size(&tm, &initial_biguints, max_steps)
+    })();
+    __ret as i64
 }
 
 /// Export deterministic TM rules without strings or rule numbers.
@@ -1317,9 +1488,12 @@ pub fn ndtm_traverse_queue_size_wl(
 #[wll::export]
 pub fn tm_rules_from_number_wl(
     rule_number: String,
-    num_states: u32,
-    num_symbols: u32,
-) -> Vec<((u32, u32), (u32, u32, i32))> {
+    num_states: i64,
+    num_symbols: i64,
+) -> wll::DataStore {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let __ret: Vec<((u32, u32), (u32, u32, i32))> = (move || {
     let n: BigInt = rule_number.parse::<BigInt>().unwrap();
     let tm = TuringMachine::from_number(&n, num_states, num_symbols).unwrap();
     let mut out: Vec<((u32, u32), (u32, u32, i32))> = Vec::with_capacity((num_states * num_symbols) as usize);
@@ -1331,16 +1505,22 @@ pub fn tm_rules_from_number_wl(
         }
     }
     out
+    })();
+    __ret.into_ds()
 }
 
 /// Export non-deterministic TM rules from multiple rule numbers.
 /// Returns Vec of ((state, symbol), Vec<(next_state, write_symbol, direction)>).
 #[wll::export]
 pub fn tm_rules_from_numbers_wl(
-    rule_numbers: Vec<String>,
-    num_states: u32,
-    num_symbols: u32,
-) -> Vec<((u32, u32), Vec<(u32, u32, i32)>)> {
+    rule_numbers: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+) -> wll::DataStore {
+    let rule_numbers = ds_strings(rule_numbers);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let __ret: Vec<((u32, u32), Vec<(u32, u32, i32)>)> = (move || {
     let nums: Vec<BigInt> = rule_numbers.into_iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let tm = TuringMachine::from_numbers(&nums, num_states, num_symbols).unwrap();
     let mut out: Vec<((u32, u32), Vec<(u32, u32, i32)>)> = Vec::with_capacity((num_states * num_symbols) as usize);
@@ -1358,6 +1538,8 @@ pub fn tm_rules_from_numbers_wl(
         }
     }
     out
+    })();
+    __ret.into_ds()
 }
 
 
@@ -1365,114 +1547,163 @@ pub fn tm_rules_from_numbers_wl(
 /// Non-halting entries are empty strings.
 #[wll::export]
 pub fn dtm_output_table_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 /// Parallel WL wrapper (string conversion); non-halting entries empty string.
 #[wll::export]
 pub fn dtm_output_table_parallel_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 #[wll::export]
 pub fn dtm_output_table_triple_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_triple(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 
 /// Parallel WL wrapper including step counts.
 #[wll::export]
 pub fn dtm_output_table_triple_parallel_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_triple_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 /// WL wrapper for dtm_output_table_triple_with_history (sequential version).
 #[wll::export]
 pub fn dtm_output_table_triple_with_history_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_triple_with_history(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     // Convert usize to u64 for WXF serialization
     let table_u64: Vec<Vec<Vec<(u32, u64, BigUint)>>> = table
         .into_iter()
         .map(|row| row.into_iter().map(|history| history.into_iter().map(|(s, p, v)| (s, p as u64, v)).collect()).collect())
         .collect();
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table_u64).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table_u64).unwrap())
 }
 
 /// WL wrapper for dtm_output_table_triple_with_history_parallel (parallel version).
 #[wll::export]
 pub fn dtm_output_table_triple_with_history_parallel_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_triple_with_history_parallel(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     // Convert usize to u64 for WXF serialization
     let table_u64: Vec<Vec<Vec<(u32, u64, BigUint)>>> = table
         .into_iter()
         .map(|row| row.into_iter().map(|history| history.into_iter().map(|(s, p, v)| (s, p as u64, v)).collect()).collect())
         .collect();
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table_u64).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table_u64).unwrap())
 }
 
 /// Parallel WL wrapper returning contiguous array of f64 pairs (step, value), {0.0, 0.0} for non-halting cases.
 #[wll::export]
 pub fn dtm_output_table_pair_parallel_f64_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<f64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let arr = dtm_output_table_pair_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
@@ -1483,14 +1714,21 @@ pub fn dtm_output_table_pair_parallel_f64_wl(
 /// WL wrapper returning a 2D NumericArray<u64> of steps (0 for non-halting). Dimensions: [num_rules, num_inputs]
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_u64_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let arr = dtm_output_table_parallel_steps_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
@@ -1500,14 +1738,21 @@ pub fn dtm_output_table_parallel_steps_u64_wl(
 /// WL wrapper returning a 2D NumericArray<u64> of max widths (0 for non-halting). Dimensions: [num_rules, num_inputs]
 #[wll::export]
 pub fn dtm_output_table_parallel_width_u64_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let arr = dtm_output_table_parallel_width_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
@@ -1516,14 +1761,21 @@ pub fn dtm_output_table_parallel_width_u64_wl(
 
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_width_u64_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let arr = dtm_output_table_parallel_steps_width_u64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
@@ -1533,29 +1785,43 @@ pub fn dtm_output_table_parallel_steps_width_u64_wl(
 /// WL wrapper returning (steps, value) pairs with full precision via WXF serialization.
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_value_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let table = dtm_output_table_parallel_steps_value(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 /// WL wrapper returning a 3D NumericArray<f64> of triples (steps,value,width); non-halting has {0.0,-1.0,0.0}
 #[wll::export]
 pub fn dtm_output_table_triple_parallel_f64_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    min_rule: u64,
-    max_rule: u64,
-    min_input: u32,
-    max_input: u32,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    min_rule: i64,
+    max_rule: i64,
+    min_input: i64,
+    max_input: i64,
 ) -> wll::NumericArray<f64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let min_input = min_input as u32;
+    let max_input = max_input as u32;
     let arr = dtm_output_table_triple_parallel_f64(num_states, num_symbols, max_steps, min_rule, max_rule, min_input, max_input);
     let num_rules = (max_rule - min_rule + 1) as usize;
     let num_inputs = (max_input - min_input + 1) as usize;
@@ -1571,41 +1837,56 @@ pub fn dtm_output_table_triple_parallel_f64_wl(
 
 #[wll::export]
 pub fn dtm_output_table_parallel_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let table = dtm_output_table_parallel_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 /// WL wrapper for vec-based triple parallel (returns WXF-serialized).
 #[wll::export]
 pub fn dtm_output_table_triple_parallel_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let table = dtm_output_table_triple_parallel_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_u64_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let arr = dtm_output_table_parallel_steps_u64_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1617,12 +1898,17 @@ pub fn dtm_output_table_parallel_steps_u64_vec_wl(
 /// WL wrapper for vec-based width u64.
 #[wll::export]
 pub fn dtm_output_table_parallel_width_u64_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let arr = dtm_output_table_parallel_width_u64_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1634,12 +1920,17 @@ pub fn dtm_output_table_parallel_width_u64_vec_wl(
 /// WL wrapper for vec-based steps/width u64.
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_width_u64_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let arr = dtm_output_table_parallel_steps_width_u64_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1651,12 +1942,17 @@ pub fn dtm_output_table_parallel_steps_width_u64_vec_wl(
 /// WL wrapper for vec-based f64 pairs.
 #[wll::export]
 pub fn dtm_output_table_pair_parallel_f64_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<f64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let arr = dtm_output_table_pair_parallel_f64_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1668,27 +1964,37 @@ pub fn dtm_output_table_pair_parallel_f64_vec_wl(
 /// WL wrapper for vec-based steps/value with full precision.
 #[wll::export]
 pub fn dtm_output_table_parallel_steps_value_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let table = dtm_output_table_parallel_steps_value_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table).unwrap())
 }
 
 /// WL wrapper for vec-based f64 triples.
 #[wll::export]
 pub fn dtm_output_table_triple_parallel_f64_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<f64> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let arr = dtm_output_table_triple_parallel_f64_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1700,12 +2006,17 @@ pub fn dtm_output_table_triple_parallel_f64_vec_wl(
 /// WL wrapper for vec-based history (returns WXF-serialized).
 #[wll::export]
 pub fn dtm_output_table_triple_with_history_parallel_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    max_steps: u64,
-    rules: Vec<String>,
-    inputs: Vec<String>,
+    num_states: i64,
+    num_symbols: i64,
+    max_steps: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
 ) -> wll::NumericArray<u8> {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let max_steps = max_steps as u64;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
     let rules_big: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
     let inputs_big: Vec<BigUint> = inputs.iter().map(|s| s.parse::<BigUint>().unwrap()).collect();
     let table = dtm_output_table_triple_with_history_parallel_vec(num_states, num_symbols, max_steps, &rules_big, &inputs_big);
@@ -1714,20 +2025,27 @@ pub fn dtm_output_table_triple_with_history_parallel_vec_wl(
         .into_iter()
         .map(|row| row.into_iter().map(|history| history.into_iter().map(|(s, p, v)| (s, p as u64, v)).collect()).collect())
         .collect();
-    wll::NumericArray::from_slice(&wll::wxf_poly::to_wxf_bytes(&table_u64).unwrap())
+    wll::NumericArray::from_slice(&crate::wxf::to_wxf_bytes(&table_u64).unwrap())
 }
 
 
 #[wll::export]
 pub fn collect_seen_values_tuples_wl(
-    rules: Vec<(u32, u32, u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
     terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+) -> wll::DataStore {
+    let rules = ds_quints(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: (Vec<(u64, String)>, Vec<usize>, bool) = (move || {
     let tm = match TuringMachine::from_rule_tuples(&rules, num_states, num_symbols) {
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
@@ -1736,18 +2054,27 @@ pub fn collect_seen_values_tuples_wl(
     let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
     let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+    })();
+    __ret.into_ds()
 }
 
 #[wll::export]
 pub fn collect_seen_values_triples_wl(
-    rules: Vec<(u32, u32, i32)>,
-    num_states: u32,
-    num_symbols: u32,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
+    rules: &wll::DataStore,
+    num_states: i64,
+    num_symbols: i64,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
     terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+) -> wll::DataStore {
+    let rules = ds_triples(rules);
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: (Vec<(u64, String)>, Vec<usize>, bool) = (move || {
     let tm = match TuringMachine::from_rule_triples(&rules, num_states, num_symbols) {
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
@@ -1756,16 +2083,23 @@ pub fn collect_seen_values_triples_wl(
     let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
     let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+    })();
+    __ret.into_ds()
 }
 
 #[wll::export]
 pub fn collect_seen_values_tuples_inferred_wl(
-    rules: Vec<(u32, u32, u32, u32, i32)>,
-    initials: Vec<String>,
-    targets: Vec<String>,
-    max_steps: u64,
+    rules: &wll::DataStore,
+    initials: &wll::DataStore,
+    targets: &wll::DataStore,
+    max_steps: i64,
     terminate_on_cycle: bool,
-) -> (Vec<(u64, String)>, Vec<usize>, bool) {
+) -> wll::DataStore {
+    let rules = ds_quints(rules);
+    let initials = ds_strings(initials);
+    let targets = ds_strings(targets);
+    let max_steps = max_steps as u64;
+    let __ret: (Vec<(u64, String)>, Vec<usize>, bool) = (move || {
     let tm = match TuringMachine::from_rule_tuples_inferred(&rules) {
         Ok(t) => t,
         Err(_) => return (Vec::new(), Vec::new(), false),
@@ -1774,6 +2108,8 @@ pub fn collect_seen_values_tuples_inferred_wl(
     let target_biguints: Vec<BigUint> = targets.iter().filter_map(|s| s.parse::<BigUint>().ok()).collect();
     let (vals, queue_sizes, cycle_detected) = collect_seen_values(&tm, &initial_biguints, max_steps, &target_biguints, terminate_on_cycle);
     (vals.into_iter().map(|(step, v)| (step, v.to_string())).collect(), queue_sizes, cycle_detected)
+    })();
+    __ret.into_ds()
 }
 
 /// WL wrapper for find_matching_rules_range.
@@ -1781,16 +2117,26 @@ pub fn collect_seen_values_tuples_inferred_wl(
 /// Returns matching rule numbers as strings.
 #[wll::export]
 pub fn find_matching_rules_range_wl(
-    num_states: u32,
-    num_symbols: u32,
-    min_rule: u64,
-    max_rule: u64,
-    inputs: Vec<String>,
-    max_steps_vec: Vec<u64>,
-    expected_values: Vec<String>,
-    min_errors: u32,
-    max_errors: u32,
-) -> Vec<String> {
+    num_states: i64,
+    num_symbols: i64,
+    min_rule: i64,
+    max_rule: i64,
+    inputs: &wll::DataStore,
+    max_steps_vec: &wll::DataStore,
+    expected_values: &wll::DataStore,
+    min_errors: i64,
+    max_errors: i64,
+) -> wll::DataStore {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let min_rule = min_rule as u64;
+    let max_rule = max_rule as u64;
+    let inputs = ds_strings(inputs);
+    let max_steps_vec = ds_u64s(max_steps_vec);
+    let expected_values = ds_strings(expected_values);
+    let min_errors = min_errors as u32;
+    let max_errors = max_errors as u32;
+    let __ret: Vec<String> = (move || {
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
         .zip(max_steps_vec.iter())
         .zip(expected_values.iter())
@@ -1807,6 +2153,8 @@ pub fn find_matching_rules_range_wl(
         .into_iter()
         .map(|r| r.to_string())
         .collect()
+    })();
+    __ret.into_ds()
 }
 
 /// WL wrapper for find_matching_rules_vec.
@@ -1814,15 +2162,24 @@ pub fn find_matching_rules_range_wl(
 /// Returns matching rule numbers as strings.
 #[wll::export]
 pub fn find_matching_rules_vec_wl(
-    num_states: u32,
-    num_symbols: u32,
-    rules: Vec<String>,
-    inputs: Vec<String>,
-    max_steps_vec: Vec<u64>,
-    expected_values: Vec<String>,
-    min_errors: u32,
-    max_errors: u32,
-) -> Vec<String> {
+    num_states: i64,
+    num_symbols: i64,
+    rules: &wll::DataStore,
+    inputs: &wll::DataStore,
+    max_steps_vec: &wll::DataStore,
+    expected_values: &wll::DataStore,
+    min_errors: i64,
+    max_errors: i64,
+) -> wll::DataStore {
+    let num_states = num_states as u32;
+    let num_symbols = num_symbols as u32;
+    let rules = ds_strings(rules);
+    let inputs = ds_strings(inputs);
+    let max_steps_vec = ds_u64s(max_steps_vec);
+    let expected_values = ds_strings(expected_values);
+    let min_errors = min_errors as u32;
+    let max_errors = max_errors as u32;
+    let __ret: Vec<String> = (move || {
     let rule_nums: Vec<u64> = rules.iter().map(|s| s.parse::<u64>().unwrap()).collect();
     let targets: Vec<(BigUint, u64, BigUint)> = inputs.iter()
         .zip(max_steps_vec.iter())
@@ -1840,4 +2197,6 @@ pub fn find_matching_rules_vec_wl(
         .into_iter()
         .map(|r| r.to_string())
         .collect()
+    })();
+    __ret.into_ds()
 }

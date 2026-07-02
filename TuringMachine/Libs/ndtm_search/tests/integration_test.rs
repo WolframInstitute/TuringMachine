@@ -178,14 +178,18 @@ fn test_exhaustive_search_wl() {
     let target = target_u64.to_string();
     let max_steps = 100;
 
-    let path = ndtm_search::exhaustive_search_wl(
-        rules.clone(),
-        num_states,
-        num_symbols,
-        vec![initial.clone()],
-        vec![target.clone()],
+    // Same search + index->rule mapping that the exhaustive_search_wl wrapper performs
+    // (the wrapper itself now takes DataStore arguments, which only exist in a kernel).
+    let rule_bigints: Vec<BigInt> = rules.iter().map(|s| s.parse::<BigInt>().unwrap()).collect();
+    let tm = TuringMachine::from_numbers(&rule_bigints, num_states, num_symbols).unwrap();
+    let path: Vec<String> = exhaustive_search_seq(
+        &tm,
+        &[initial.parse::<BigUint>().unwrap()],
+        &[target.parse::<BigUint>().unwrap()],
         max_steps,
-    );
+    )
+    .map(|p| p.into_iter().map(|idx| rules[idx as usize].clone()).collect())
+    .unwrap_or_default();
     println!("Found path (len={}): {:?}", path.len(), path);
     assert!(!path.is_empty(), "A path should have been found");
 

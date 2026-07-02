@@ -7,8 +7,12 @@ edition = "2024"
 bit-vec = "0.6"
 num-bigint = "0.4"
 clap = { version = "4.5.4", features = ["derive"] }
-wolfram-expr-rs = { git = "https://github.com/sw1sh/wolfram-expr-rs", branch = "feat/wxf-codec-and-integrations" }
-wolfram-library-link = { git = "https://github.com/sw1sh/wolfram-library-link-rs", branch = "feature/optional_wstp" }
+# Pinned to the last commit on feature/wxf before 3e9c6a5: that commit's
+# `docs::using_wxf_mode` module references `wolfram_serialize` while
+# wolfram-library-link's Cargo.toml never declares the dependency, so the branch
+# HEAD does not compile standalone. Bump to the branch tip once that is fixed.
+wolfram-library-link = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "1b90250338a658fc15cc649dedb1cca1af928864" }
+wolfram-serialize = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "1b90250338a658fc15cc649dedb1cca1af928864" }
 num-traits = "0.2.19"
 rayon = "1.8"
 crossbeam = "0.8"
