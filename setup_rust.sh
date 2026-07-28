@@ -27,6 +27,12 @@ rustup target add \
 # Install rustfmt
 rustup component add rustfmt
 
+# Install cargo-wl (WolframResearch/wolfram-rust-library): builds LibraryLink
+# crates and generates their WL loader packages; used by build_all_targets.sh.
+if ! command -v cargo-wl &> /dev/null; then
+    cargo install cargo-wl --locked
+fi
+
 # Configure Cargo linkers
 mkdir -p "$CARGO_HOME"
 cat > "$CARGO_HOME/config.toml" << 'EOF'

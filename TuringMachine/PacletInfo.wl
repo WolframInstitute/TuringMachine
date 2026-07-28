@@ -77,7 +77,11 @@ PacletObject[
         }
       },
       {
-        "LibraryLink"
+        "Asset",
+        "Root" -> ".",
+        "Assets" -> {
+          {"Binaries", "Binaries"}
+        }
       },
       {
         "Documentation",

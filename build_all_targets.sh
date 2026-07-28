@@ -1,15 +1,19 @@
 #!/bin/bash
 set -e
 
-# Cross-compilation build script for ndtm_search.
-# Builds release binaries for all supported platforms and installs each into the
-# paclet's LibraryResources/<WolframSystemID>/ directory, where Kernel/Functions.wl
-# loads it directly (no ExtensionCargo).
+# Cross-compilation build script.
+#
+# `cargo wl build` (cargo-wl, from WolframResearch/wolfram-rust-library)
+# compiles the ndtm_search cdylib, reads the exported-function manifest
+# embedded in the host binary, and writes each platform's library together
+# with its generated Functions.wl loader into
+# TuringMachine/Binaries/ndtm_search-<SystemID>/ (see
+# [package.metadata.wl.pacletinfo] in TuringMachine/Libs/ndtm_search/Cargo.toml).
+#
+# The host platform is built by the first invocation; each cross target gets
+# its own invocation. Re-running for the host inside the loop is a cached
+# no-op, so the host appearing in TARGETS is harmless on any machine.
 
-LIB="ndtm_search"
-PACLET_LIBRESOURCES="TuringMachine/LibraryResources"
-
-# Define targets: WolframSystemID:Rust_target
 TARGETS=(
     "MacOSX-x86-64:x86_64-apple-darwin"
     "MacOSX-ARM64:aarch64-apple-darwin"
@@ -18,31 +22,38 @@ TARGETS=(
     "Windows-x86-64:x86_64-pc-windows-gnu"
 )
 
-echo "Building $LIB for all targets..."
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+CRATE_DIR="$SCRIPT_DIR/TuringMachine/Libs/ndtm_search"
+
+if ! command -v cargo-wl &> /dev/null; then
+    echo "=== Installing cargo-wl ==="
+    cargo install cargo-wl --locked
+fi
+
+cd "$CRATE_DIR"
+
+echo "=== Building host platform ==="
+cargo wl build --release
 echo
 
 for entry in "${TARGETS[@]}"; do
     system_id="${entry%%:*}"
-    target="${entry##*:}"
-    echo "=== Building for $system_id ($target) ==="
+    echo "=== Building for $system_id ==="
 
-    if ! cargo build --release --target "$target"; then
+    if cargo wl build --release --system-id "$system_id"; then
+        echo "✓ $system_id build succeeded"
+    else
         echo "✗ $system_id build failed"
         exit 1
     fi
-
-    # Locate the produced dynamic library and its Wolfram-facing name/extension.
-    case "$target" in
-        *-windows-*) src="target/$target/release/${LIB}.dll";     ext="dll"   ;;
-        *-apple-*)   src="target/$target/release/lib${LIB}.dylib"; ext="dylib" ;;
-        *)           src="target/$target/release/lib${LIB}.so";    ext="so"    ;;
-    esac
-
-    dstdir="$PACLET_LIBRESOURCES/$system_id"
-    mkdir -p "$dstdir"
-    cp "$src" "$dstdir/${LIB}.$ext"
-    echo "✓ $system_id -> $dstdir/${LIB}.$ext"
     echo
 done
 
-echo "=== All builds completed and installed into $PACLET_LIBRESOURCES/<SystemID>/ ==="
+echo "=== All builds completed successfully ==="
+
+echo
+echo "Built library packages:"
+for entry in "${TARGETS[@]}"; do
+    system_id="${entry%%:*}"
+    echo "  $system_id: TuringMachine/Binaries/ndtm_search-$system_id/"
+done

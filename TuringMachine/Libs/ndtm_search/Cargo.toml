@@ -3,17 +3,26 @@ name = "ndtm_search"
 version = "0.1.0"
 edition = "2024"
 
+# `cargo wl build` (cargo-wl, from WolframResearch/wolfram-rust-library)
+# compiles the cdylib, reads the function manifest the #[export] macro embeds
+# in it, and writes the binary plus a generated Functions.wl loader into
+# <paclet>/Binaries/ndtm_search-<SystemID>/. The kernel Gets that Functions.wl
+# to obtain <|"name" -> function, ...|>.
+[package.metadata.wl.pacletinfo]
+name = "ndtm_search"
+output = "../../Binaries"
+named-exports = true
+
 [dependencies]
 bit-vec = "0.6"
 num-bigint = "0.4"
 clap = { version = "4.5.4", features = ["derive"] }
-# Pinned to a known-good feature/wxf commit (0.6.0-alpha.4). default-features
-# disabled to drop the `wstp` feature: the WSTP C++ stack (link-cplusplus) does
-# not cross-compile to macOS under Zig, and the paclet doesn't use WSTP (no
-# LinkObject functions). Functions are discovered via `__wolfram_manifest__`
-# (see ExtensionCargo), so the WSTP `generate_loader!` isn't needed.
-wolfram-library-link = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "cadc9fb559c92a74e4624e3a90e852b3b040f79c", default-features = false, features = ["automate-function-loading-boilerplate"] }
-wolfram-serialize = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "cadc9fb559c92a74e4624e3a90e852b3b040f79c" }
+wolfram-export = { version = "0.6.1", features = ["wxf"] }
+wolfram-expr = "0.6"
+# Direct dep only for wolfram_library_link::aborted() (kernel-abort checks in
+# the long-running searches). default-features off keeps the WSTP C++ stack
+# (link-cplusplus) out, which would not cross-compile to macOS under Zig.
+wolfram-library-link = { version = "0.6.1", default-features = false }
 num-traits = "0.2.19"
 rayon = "1.8"
 crossbeam = "0.8"

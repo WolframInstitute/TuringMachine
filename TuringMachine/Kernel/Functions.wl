@@ -66,62 +66,42 @@ NonTerminatingTuringMachineQ[{rule, numStates, numSymbols}, input, maxSteps] che
 Begin["`Private`"];
 
 
-$rustLibraryName = "ndtm_search"
+(* The Rust library is packaged by `cargo wl build` (cargo-wl, from
+   WolframResearch/wolfram-rust-library): it compiles the ndtm_search cdylib,
+   reads the function manifest the #[export] macro embeds in the binary, and
+   writes the library together with a generated Functions.wl loader into
+   Binaries/ndtm_search-<SystemID>/. Getting that Functions.wl yields
+   <|"name" -> function, ...|> with the WXF (de)serialization built in. *)
 
-$rustLibraryExtension := Replace[$OperatingSystem, {"MacOSX" -> "dylib", "Windows" -> "dll", _ -> "so"}]
-
-$rustLibraryPath := FileNameJoin[{
+libraryLoaderFile := FileNameJoin[{
 	PacletObject["WolframInstitute/TuringMachine"]["Location"],
-	"LibraryResources",
-	$SystemID,
-	$rustLibraryName <> "." <> $rustLibraryExtension
+	"Binaries", "ndtm_search-" <> $SystemID, "Functions.wl"
 }]
 
-(* Load every #[wll::export] function straight from the library, no
-   ExtensionCargo / PacletExtensions. The prebuilt library ships in
-   LibraryResources/$SystemID (installed via build_all_targets.sh); it exposes a
-   `rustlink_autodiscover_wxf` loader returning the WXF of
-   <|name -> LibraryFunctionLoad[path, name, argtypes, rettype]|>, which
-   deserializes directly into loaded LibraryFunctions. *)
-functions := functions = (
-	Block[{libPath = $rustLibraryPath, discover},
-		If[ ! FileExistsQ[libPath]
-			,
-			Function @ Function @ Failure["RustLibraryLoad", <|
-				"MessageTemplate" -> "ndtm_search library not found for ``",
-				"MessageParameters" -> {$SystemID}
-			|>]
-			,
-			discover = LibraryFunctionLoad[libPath, "rustlink_autodiscover_wxf", {"UTF8String"}, LibraryDataType[NumericArray, "UnsignedInteger8"]];
-			If[ ! MatchQ[discover, _LibraryFunction]
-				,
-				Function @ Function @ Failure["RustLibraryLoad", <|
-					"MessageTemplate" -> "ndtm_search autodiscovery loader could not be loaded",
-					"Return" -> discover
-				|>]
-				,
-				Replace[
-					BinaryDeserialize[ByteArray[Normal[discover[libPath]]]],
-					Except[_ ? AssociationQ] :> Function @ Function @ Failure["RustLibraryLoad", <|"MessageTemplate" -> "failed to deserialize the ndtm_search function table"|>]
-				]
-			]
-		]
-	]
-) // Replace[{
-	functions_ ? AssociationQ :>
+rustError[name_] := Failure["RustError", <|
+	"MessageTemplate" -> "Rust error: `` (``)",
+	"MessageParameters" -> {#1, #2},
+	"Error" -> #1, "ErrorCode" -> #2, "Function" -> name
+|>] &
+
+functions := functions = Replace[
+	If[FileExistsQ[libraryLoaderFile], Get[libraryLoaderFile], $Failed], {
+	loaded_ ? AssociationQ :>
 		Association @ KeyValueMap[
 			#1 -> Composition[
-				Replace[LibraryFunctionError[error_, code_] :>
-					Failure["RustError", <|
-						"MessageTemplate" -> "Rust error: `` (``)",
-						"MessageParameters" -> {error, code},
-					"Error" -> error, "ErrorCode" -> code, "Function" -> #1
-				|>]
-			],
-			#2
-		] &,
-		functions
-	]
+				Replace[{
+					LibraryFunctionError[error_, code_] :> rustError[#1][error, code],
+					HoldPattern[BinaryDeserialize[LibraryFunctionError[error_, code_], ___]] :> rustError[#1][error, code]
+				}],
+				#2
+			] &,
+			loaded
+		],
+	failure_ :> Function @ Function @ Failure["RustLibraryLoad", <|
+		"MessageTemplate" -> "No ndtm_search library package for ``; prebuild it with build_all_targets.sh",
+		"MessageParameters" -> {$SystemID},
+		"Return" -> failure
+	|>]
 }
 ]
 
@@ -253,34 +233,29 @@ OneSidedTuringMachineFunction[
     Enclose @ Switch[OptionValue[Method],
         "External",
         If[ MatchQ[prop, "History" | "Evolution" | "EvolutionHistory"],
-            List @@ Replace[
-                Confirm @ RunDeterministicTMWithHistoryRust[
-                    Apply[Developer`DataStore, rules, {0, 1}],
-                    numStates,
-                    numSymbols,
-                    ToString[input],
-                    maxSteps
-                ],
-                _[state_, pos_, value_] :> {state, pos, FromDigits[value]},
-                1
+            Confirm @ RunDeterministicTMWithHistoryRust[
+                rules,
+                numStates,
+                numSymbols,
+                input,
+                maxSteps
             ],
             Replace[
                 Confirm @ RunDeterministicTMRust[
-                    Apply[Developer`DataStore, rules, {0, 1}],
+                    rules,
                     numStates,
                     numSymbols,
-                    ToString[input],
+                    input,
                     maxSteps
                 ],
                 _[steps_, output_, width_] :> If[0 < steps < maxSteps,
                     Switch[prop,
                         "Steps" | "RawSteps", steps,
-                        "Value", FromDigits[output], "RawValue", output,
+                        "Value" | "RawValue", output,
                         "MaxWidth" | "Width" | "RawMaxWidth", width,
-                        "StepsValue", {steps, FromDigits[output]},
-                        "RawStepsValue", {steps, output},
+                        "StepsValue" | "RawStepsValue", {steps, output},
                         "StepsWidth" | "RawStepsWidth", {steps, width},
-                        All, {steps, FromDigits[output], width}
+                        All, {steps, output, width}
                     ],
                     Switch[prop,
                         "Steps", Infinity, "RawSteps", steps,
@@ -411,12 +386,12 @@ OneSidedTuringMachineFind[
 	sk : {_Integer, _Integer} : {2, 2},
 	defaultRules : _Integer ;; _Integer,
 	maxErrors : _Integer ;; _Integer : 0 ;; 0
-] := FromDigits /@ List @@ FindMatchingRulesRangeRust[
+] := FindMatchingRulesRangeRust[
 	sk[[1]], sk[[2]],
 	defaultRules[[1]], defaultRules[[2]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
-	Developer`DataStore @@ inputStepValues[[All, 2]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
+	inputStepValues[[All, 1]],
+	inputStepValues[[All, 2]],
+	inputStepValues[[All, 3]],
 	maxErrors[[1]], maxErrors[[2]]
 ]
 
@@ -432,12 +407,12 @@ OneSidedTuringMachineFind[
 	sk : {_Integer, _Integer} : {2, 2},
 	defaultRules : {__Integer},
 	maxErrors : _Integer ;; _Integer : 0 ;; 0
-] := FromDigits /@ List @@ FindMatchingRulesVecRust[
+] := FindMatchingRulesVecRust[
 	sk[[1]], sk[[2]],
-	Developer`DataStore @@ ToString /@ defaultRules,
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 1]],
-	Developer`DataStore @@ inputStepValues[[All, 2]],
-	Developer`DataStore @@ ToString /@ inputStepValues[[All, 3]],
+	defaultRules,
+	inputStepValues[[All, 1]],
+	inputStepValues[[All, 2]],
+	inputStepValues[[All, 3]],
 	maxErrors[[1]], maxErrors[[2]]
 ]
 
@@ -465,12 +440,12 @@ MultiwayTuringMachineSearch[
     maxSteps_Integer,
     OptionsPattern[]
 ] := Replace[
-    List @@ FromDigits /@ If[TrueQ[OptionValue["Parallel"]], MultiwayTMFunctionSearchRustParallel, MultiwayTMFunctionSearchRust][
-        Developer`DataStore @@ ToString /@ rules,
+    If[TrueQ[OptionValue["Parallel"]], MultiwayTMFunctionSearchRustParallel, MultiwayTMFunctionSearchRust][
+        rules,
         numStates,
         numSymbols,
-        Developer`DataStore @@ ToString /@ Flatten[{input}],
-        Developer`DataStore @@ ToString /@ Flatten[{output}],
+        Flatten[{input}],
+        Flatten[{output}],
         maxSteps
     ],
     {} -> Failure["PathNotFound", <|"MessageTemplate" -> "Failed to find the target."|>]
@@ -489,12 +464,12 @@ MultiwayTuringMachineFunction[
     inputs : _Integer | {__Integer},
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
-   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesRust[
-        Developer`DataStore @@ ToString /@ rules,
+   Confirm @ CollectSeenValuesRust[
+        rules,
         numStates,
         numSymbols,
-        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
-        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        Flatten[{inputs}],
+        If[MissingQ[target], {}, Flatten[{target}]],
         maxSteps,
         cycleTerminateQ
     ]
@@ -504,23 +479,20 @@ MultiwayTuringMachineFunction[
     rules : {({_Integer, _Integer} -> {{_Integer, _Integer, _Integer} ..}) ..},
     inputs : _Integer | {__Integer},
     config_Association
-] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False], 
-    tupleRules = Apply[Developer`DataStore,
-        Catenate[
-            KeyValueMap[
-                Function[{key, values}, 
-                    Map[Join[key, #] &, values]
-                ],
-                Association[rules]
-            ]
-        ],
-        {0, 1}
+] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False],
+    tupleRules = Catenate[
+        KeyValueMap[
+            Function[{key, values},
+                Map[Join[key, #] &, values]
+            ],
+            Association[rules]
+        ]
     ]
 },
-    Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesTuplesInferredRust[
+    Confirm @ CollectSeenValuesTuplesInferredRust[
         tupleRules,
-        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
-        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        Flatten[{inputs}],
+        If[MissingQ[target], {}, Flatten[{target}]],
         maxSteps,
         cycleTerminateQ
     ]
@@ -535,12 +507,12 @@ MultiwayTuringMachineFunction[
     inputs : _Integer | {__Integer},
     config_Association
 ] := Enclose @ With[{maxSteps = Lookup[config, "MaxSteps", 1000], target = Lookup[config, "Target"], cycleTerminateQ = Lookup[config, "CycleTerminate", False]},
-   Apply[List, #, {0, 2}] & @ MapAt[FromDigits, {1, All, 2}] @ Confirm @ CollectSeenValuesTriplesRust[
-        Apply[Developer`DataStore, rules, {0, 1}],
+   Confirm @ CollectSeenValuesTriplesRust[
+        rules,
         numStates,
         numSymbols,
-        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
-        If[MissingQ[target], Developer`DataStore[], Developer`DataStore @@ ToString /@ Flatten[{target}]],
+        Flatten[{inputs}],
+        If[MissingQ[target], {}, Flatten[{target}]],
         maxSteps,
         cycleTerminateQ
     ]
@@ -579,10 +551,10 @@ MultiwayNonHaltedStatesLeft[
     maxSteps_Integer
 ] :=
     MultiwayQueueSizeRust[
-        Developer`DataStore @@ ToString /@ rules,
+        rules,
         numStates,
         numSymbols,
-        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
+        Flatten[{inputs}],
         maxSteps
     ]
 
@@ -598,10 +570,10 @@ NonTerminatingTuringMachineQ[
     maxSteps_Integer
 ] :=
     DetectCycleRust[
-        Developer`DataStore @@ ToString /@ rules,
+        rules,
         numStates,
         numSymbols,
-        Developer`DataStore @@ ToString /@ Flatten[{inputs}],
+        Flatten[{inputs}],
         maxSteps
     ]
 
@@ -620,7 +592,7 @@ TuringMachineRuleCases[
     rule_Integer,
     numStates_Integer,
     numSymbols_Integer
-] := Enclose[Rule @@@ Apply[List, Confirm @ TuringMachineRulesRust[ToString[rule], numStates, numSymbols], {0, 2}]]
+] := Enclose[Rule @@@ Confirm @ TuringMachineRulesRust[rule, numStates, numSymbols]]
 
 TuringMachineRuleCases[{rule_Integer, numStates_Integer, numSymbols_Integer}] :=
     TuringMachineRuleCases[rule, numStates, numSymbols]
@@ -639,7 +611,7 @@ MultiwayTuringMachineRules[
     numStates_Integer,
     numSymbols_Integer
 ] := Enclose[
-    Rule @@@ Apply[List, Confirm @ MultiwayTuringMachineRulesRust[ToString /@ Developer`DataStore @@ rules, numStates, numSymbols], {0, 3}]
+    Rule @@@ Confirm @ MultiwayTuringMachineRulesRust[rules, numStates, numSymbols]
 ]
 
 MultiwayTuringMachineRules[rules : {__Integer}] := MultiwayTuringMachineRules[rules, 2, 2]
@@ -680,21 +652,21 @@ MapApply[Function[{f, fRust, fVecRust, import, none, subst},
 
     (* Vec-based patterns: explicit list of rules with range of inputs using Span *)
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ rules, ToString /@ Developer`DataStore @@ Range[minInput, maxInput]];
+        fVecRust[numStates, numSymbols, maxSteps, rules, Range[minInput, maxInput]];
 
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, minInput_Integer ;; maxInput_Integer, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[rules, numStates, numSymbols, maxSteps, minInput ;; maxInput, "Raw"];
 
     (* Vec-based patterns: range of rules with explicit list of inputs using Span *)
     f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ Range[minRule, maxRule], ToString /@ Developer`DataStore @@ inputs];
+        fVecRust[numStates, numSymbols, maxSteps, Range[minRule, maxRule], inputs];
 
     f[minRule_Integer ;; maxRule_Integer, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[minRule ;; maxRule, numStates, numSymbols, maxSteps, inputs, "Raw"];
 
     (* Vec-based patterns: explicit list of both rules and inputs *)
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, "Raw"] :=
-        fVecRust[numStates, numSymbols, maxSteps, ToString /@ Developer`DataStore @@ rules, ToString /@ Developer`DataStore @@ inputs];
+        fVecRust[numStates, numSymbols, maxSteps, rules, inputs];
 
     f[rules : {__Integer}, numStates_Integer, numSymbols_Integer, maxSteps_Integer, inputs : {__Integer}, ___] :=
         If[subst === Inherited, Identity, ReplaceAll[none -> subst]] @ import @ f[rules, numStates, numSymbols, maxSteps, inputs, "Raw"];
@@ -710,19 +682,19 @@ MapApply[Function[{f, fRust, fVecRust, import, none, subst},
 ]
     ,
     Unevaluated @ {
-        {TuringMachineOutput, DTMOutputTableValueRust, DTMOutputTableValueVecRust, BinaryDeserialize @* ByteArray, None, Undefined},
+        {TuringMachineOutput, DTMOutputTableValueRust, DTMOutputTableValueVecRust, Identity, None, Undefined},
         {TuringMachineSteps, DTMOutputTableStepsRust, DTMOutputTableStepsVecRust, Normal, 0, Infinity},
         {TuringMachineWidths, DTMOutputTableWidthRust, DTMOutputTableWidthVecRust, Normal, 0, Infinity},
         {TuringMachineStepsWidths, DTMOutputTableStepsWidthRust, DTMOutputTableStepsWidthVecRust, Normal, {0, _}, {Infinity, Infinity}},
-        {RawTuringMachineOutput, DTMOutputTableValueRust, DTMOutputTableValueVecRust, BinaryDeserialize @* ByteArray, None, Inherited},
+        {RawTuringMachineOutput, DTMOutputTableValueRust, DTMOutputTableValueVecRust, Identity, None, Inherited},
         {RawTuringMachineSteps, DTMOutputTableStepsRust, DTMOutputTableStepsVecRust, Normal, 0, Inherited},
         {RawTuringMachineWidths, DTMOutputTableWidthRust, DTMOutputTableWidthVecRust, Normal, 0, Inherited},
         {RawTuringMachineStepsWidths, DTMOutputTableStepsWidthRust, DTMOutputTableStepsWidthVecRust, Normal, {0, _}, Inherited},
-        {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, DTMOutputTableTripleVecRust, BinaryDeserialize @* ByteArray, None, {Infinity, Undefined, Infinity}},
-        {TuringMachineStepsValue, DTMOutputTableStepsValueRust, DTMOutputTableStepsValueVecRust, BinaryDeserialize @* ByteArray, None, {Infinity, Undefined}},
+        {TuringMachineOutputWithStepsWidths, DTMOutputTableTripleRust, DTMOutputTableTripleVecRust, Identity, None, {Infinity, Undefined, Infinity}},
+        {TuringMachineStepsValue, DTMOutputTableStepsValueRust, DTMOutputTableStepsValueVecRust, Identity, None, {Infinity, Undefined}},
         {TuringMachineOutputWithStepsFloat, DTMOutputTableFloatPairRust, DTMOutputTableFloatPairVecRust, Normal, None, Inherited},
         {TuringMachineOutputWithStepsWidthsFloat, DTMOutputTableFloatTripleRust, DTMOutputTableFloatTripleVecRust, Normal, None, Inherited},
-        {TuringMachineEvolution, DTMOutputTableTripleWithHistoryParallelRust, DTMOutputTableTripleWithHistoryVecRust, BinaryDeserialize @* ByteArray, None, Inherited}
+        {TuringMachineEvolution, DTMOutputTableTripleWithHistoryParallelRust, DTMOutputTableTripleWithHistoryVecRust, Identity, None, Inherited}
     }
 ]
 
