@@ -11,7 +11,7 @@ MainGuide: Documentation/English/Guides/TuringMachine.nb
 License: MIT
 WolframVersion: 14.3+
 Categories: [Symbolic & Numeric Computation]
-Disclosures: [PacletDependencies]
+Disclosures: [PacletDependencies, WLSystemSymbols]
 Sources: ["Stephen Wolfram, A New Kind of Science (Wolfram Media, 2002), Notes for Chapter 12, Section 8 (One-Sided Turing Machines), p. 1143"]
 SourceControlURL: https://github.com/WolframInstitute/TuringMachine
 RelatedResources: [TuringMachineFromNumber, TuringMachineToNumber, TuringMachineImport, Wolfram/Lambda]

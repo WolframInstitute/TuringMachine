@@ -2,17 +2,17 @@ PacletObject[
   <|
     "Name" -> "WolframInstitute/TuringMachine",
     "Description" -> "Tools for exploring and analyzing Turing machines",
-    "Creator" -> "Nik Murzin and Willem Nielsen",
+    "Creator" -> "Wolfram Institute",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.1.3",
+    "Version" -> "1.1.9",
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
       {
         "Kernel",
         "Root" -> "Kernel",
-        "Context" -> "WolframInstitute`TuringMachine`",
+        "Context" -> {"WolframInstitute`TuringMachine`", {"WolframInstitute`TuringMachine`InductiveProofs`", "InductiveProofs.wl"}},
         "Symbols" -> {
           "WolframInstitute`TuringMachine`MultiwayNonHaltedStatesLeft",
           "WolframInstitute`TuringMachine`MultiwayTuringMachineFunction",
@@ -66,7 +66,14 @@ PacletObject[
           "WolframInstitute`TuringMachine`InductiveProofs`multiwayCloudOverlap",
           "WolframInstitute`TuringMachine`InductiveProofs`MultiwayRuleGraph",
           "WolframInstitute`TuringMachine`InductiveProofs`MultiwayInductiveProofPanel",
-          "WolframInstitute`TuringMachine`InductiveProofs`$InductiveProofColors"
+          "WolframInstitute`TuringMachine`InductiveProofs`$InductiveProofColors",
+          "WolframInstitute`TuringMachine`InductiveProofs`transitionAxiomsFor",
+          "WolframInstitute`TuringMachine`InductiveProofs`boundaryAxiomsFor",
+          "WolframInstitute`TuringMachine`InductiveProofs`unboundAxiom",
+          "WolframInstitute`TuringMachine`InductiveProofs`onesRunDefinitions",
+          "WolframInstitute`TuringMachine`InductiveProofs`zerosRunDefinitions",
+          "WolframInstitute`TuringMachine`InductiveProofs`goalFor",
+          "WolframInstitute`TuringMachine`InductiveProofs`forAllBody"
         }
       },
       {
