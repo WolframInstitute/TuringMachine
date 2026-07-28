@@ -11,6 +11,7 @@
 (* Own subcontext, kept separate from the main WolframInstitute`TuringMachine` context so nothing
    defined here leaks into it. The parent context is declared as needed so the one symbol this file
    reads from it ($PvsNPStyles, defined in Visualizations.wl) still resolves. *)
+
 BeginPackage["WolframInstitute`TuringMachine`InductiveProofs`", {"WolframInstitute`TuringMachine`"}]
 
 DecodeTuringMachineRules::usage = "DecodeTuringMachineRules[tmNumber, s, k] decodes a Turing machine number into a list of symbolic transition rules {state, symbol} -> {newState, writeSymbol, direction}, using the qA/qB/... state symbols and s0/s1/... tape symbols."
@@ -66,19 +67,37 @@ SettingsPanel::usage = "SettingsPanel[ru, opts] renders the multiway geodesic gr
 
 RuleSpacePanel::usage = "RuleSpacePanel[ru, opts] renders the MultiwayRuleGraph (superposition/critical-pair rule space) of Turing machine ru's axioms plus induction hypothesis."
 
-inductionProofGraph
+inductionProofGraph::usage = "inductionProofGraph[p] builds the induction proof graph (states, events, axioms, and the induction edge) for a proof Association p, as consumed by proofGraph."
 
-multiwayCloudOverlap
+multiwayCloudOverlap::usage = "multiwayCloudOverlap[ru, opts] grows the per-sub-proof multiway rewrite clouds of machine ru until they share terms, returning the overlap data used by MultiwayInductiveProofPanel."
 
-MultiwayRuleGraph
+MultiwayRuleGraph::usage = "MultiwayRuleGraph[axioms] builds the superposition (critical-pair) rule-space graph of an equational axiom set: each rule is a vertex, and superposing two rules to derive a new one is an event."
 
-MultiwayInductiveProofPanel
+MultiwayInductiveProofPanel::usage = "MultiwayInductiveProofPanel[ru] draws the grafted inductive proof graph for Turing machine ru at full opacity, embedded inside the faded multiway term-space cloud of all its sub-proofs."
 
 $InductiveProofColors::usage = "$InductiveProofColors is the association of every colour used by the proof-graph and multiway renderers, keyed by role (e.g. \"AxiomBackground\", \"TheoremFrame\", \"EquationalEdge\"). Each value is a LightDarkSwitched[light, dark] pair so the graphics adapt to the notebook theme."
 
+(* Axiom / goal builders. Public so a notebook can name the exact axioms and goal that feed
+   RenderAxiomGrid / RenderUniversalGoal / FindInductiveProof, resolving to the same symbols the
+   package uses instead of undefined Global` names. *)
+
+transitionAxiomsFor::usage = "transitionAxiomsFor[ru] returns the transition axioms (ForAll-quantified equations) for Turing machine ru, as fed to RenderAxiomGrid."
+
+boundaryAxiomsFor::usage = "boundaryAxiomsFor[ru] returns the boundary axioms (ForAll-quantified equations) for Turing machine ru."
+
+unboundAxiom::usage = "unboundAxiom is the axiom ForAll[x, unbnd[seq[x, bnd]] == x] that strips the boundary marker from a tape configuration."
+
+onesRunDefinitions::usage = "onesRunDefinitions is the list of run-length definitions of the ones[n, ...] constructor, as ForAll-quantified equations."
+
+zerosRunDefinitions::usage = "zerosRunDefinitions is the list of run-length definitions of the zeros[n, ...] constructor, as ForAll-quantified equations."
+
+goalFor::usage = "goalFor[ru] returns the goal equation (the statement proved by induction) for Turing machine ru."
+
+forAllBody::usage = "forAllBody[axiom] strips the ForAll quantifiers from axiom, returning its body."
+
 (* Proof-term vocabulary: the alphabet of tape configurations and proof equations (state symbols,
-   tape-cell symbols, run/sequence constructors, boundary markers, Peano numerals, and the free
-   variables). Declared as public symbols of THIS context (not the Private one) for two reasons:
+   tape-cell symbols, run/sequence constructors, boundary markers, Peano numerals). Declared as
+   public symbols of THIS context (not the Private one) for two reasons:
    1. Cached proofs on disk bake in each symbol's full context, so pinning the vocabulary to a
       stable context (WolframInstitute`TuringMachine`InductiveProofs`) keeps old caches valid
       across reloads instead of silently mismatching a freshly-built cloud and disconnecting it.
@@ -86,18 +105,67 @@ $InductiveProofColors::usage = "$InductiveProofColors is the association of ever
       SAME symbols the package uses.
    ClearAll runs on every load so a stray notebook assignment to one of these names cannot corrupt
    the vocabulary. The Formal variables the code also uses (\[FormalA] etc.) are already System`
-   symbols, so they are stable without help. *)
+   symbols, so they are stable without help. NOTE: the free/bound variables x, y, m, n are NOT here -
+   they are declared in the Private context below (see Begin["`Private`"]), since they are internal
+   leaves rather than inspectable DSL constructors. *)
+
 ClearAll[
-    qA, qB, qC, qD, qH,
-    s0, s1, s2, s3,
-    seq, ones, zeros, onesRun, zerosRun,
-    bnd, end, unbnd, unbndMark,
-    zero, succ,
-    segVar, variableCellBox, haltConfig,
-    x, y, m, n
+    qA,
+    qB,
+    qC,
+    qD,
+    qH,
+    s0,
+    s1,
+    s2,
+    s3,
+    seq,
+    ones,
+    zeros,
+    onesRun,
+    zerosRun,
+    bnd,
+    end,
+    unbnd,
+    unbndMark,
+    zero,
+    succ,
+    segVar,
+    variableCellBox,
+    haltConfig
 ]
 
 Begin["`Private`"]
+
+(* The free/bound variables x, y, m, n are internal DSL leaves used WHILE a proof is computed, in the
+   Private context so they never collide with a notebook's own symbols. Every PUBLIC equation source
+   (goalFor, the axiom builders, the run-length definitions) then normalizes them to the FORMAL
+   System` symbols \[FormalX]/\[FormalY]/\[FormalM]/\[FormalN] via toFormalVars: formal symbols are
+   Protected, context-stable, and the canonical WL representation of bound variables, so public
+   equations are identical whether a proof was computed fresh or loaded from a cache written in any
+   context, and a notebook can rewrite them (goal /. \[FormalN] -> ...). The renderers unformalize on
+   the way to boxes (see stripRenderContexts) so the DISPLAY is a plain dotless letter. *)
+
+ClearAll[x, y, m, n]
+
+toFormalVars[expr_] := expr /. {
+    (s_Symbol /; SymbolName[s] === "x") :> \[FormalX],
+    (s_Symbol /; SymbolName[s] === "y") :> \[FormalY],
+    (s_Symbol /; SymbolName[s] === "m") :> \[FormalM],
+    (s_Symbol /; SymbolName[s] === "n") :> \[FormalN]
+}
+
+(* inverse: bring a formal-variable equation (goalFor output, a user-edited axiom) back onto the
+   package's internal Private variables, so the prover and graph internals - which run entirely on
+   the raw Private vocabulary - accept public equations as input. *)
+fromFormalVars[expr_] := expr /. {\[FormalX] :> x, \[FormalY] :> y, \[FormalM] :> m, \[FormalN] :> n}
+
+(* formalize ONLY the equation-valued fields of a proof Association. The ProofObjects
+   (BaseProof/StepProof/LemmaProofs) are opaque - rewriting symbols inside them corrupts their
+   internal consistency (and with it every graph derived from them) - so they pass through raw. *)
+$formalProofKeys = {"Goal", "Axioms", "BaseGoal", "StepGoal", "IH", "InductionVariable"}
+
+formalizeProofEquations[p_Association] := MapAt[toFormalVars, p, {#}& /@ Intersection[Keys[p], $formalProofKeys]]
 
 (* Every self-memoizing function (f[x_] := f[x] = ...) accumulates one DownValue per distinct
    argument it has ever been called with; redefining the general x_ pattern on reload does NOT
@@ -106,7 +174,8 @@ Begin["`Private`"]
    feeds inconsistent data to everything downstream. ClearAll here wipes both the memoized
    instances and the explicit cache Associations before anything below redefines them, so every
    reload of this file starts from a clean slate regardless of what a previous load left behind. *)
-ClearAll[cachedProofFor, multiwaySystemFor, stateIndicatorPrimitives]
+
+ClearAll[cachedProofFor, rawProofFor, multiwaySystemFor, rawSystemFor, stateIndicatorPrimitives]
 
 ClearAll[$rasterDimsCache, $boxBBoxCache, $z3LayoutMemo, $z3GraphicMemo]
 
@@ -117,9 +186,13 @@ $turingMachineColorRules = $PvsNPStyles["TuringMachineColorRules"]
 (* Z3Link is only needed by the layout engine's Z3Real/Z3Bool/Z3Optimize solve (the induction
    proofs themselves use the built-in FindEquationalProof, no Z3Link required), so load it lazily
    on first layout solve instead of at package-load time. *)
+
 $z3LinkLoaded = False
 
-ensureZ3Link[] := If[! TrueQ[$z3LinkLoaded], Needs["WolframInstitute`Z3Link`"]; $z3LinkLoaded = True]
+ensureZ3Link[] := If[ ! TrueQ[$z3LinkLoaded],
+    Needs["WolframInstitute`Z3Link`"];
+    $z3LinkLoaded = True
+]
 
 (* === TM decoding (machine number -> transition rules) === *)
 
@@ -157,8 +230,8 @@ flattenSequence[c_] := {c}
 
 CompressToRunLength[expr_] := Module[{
     parts = Map[
-        With[{n = Length[#], sym = First[#]},
-            If[n == 1, sym, If[sym === s1, ones[n], zeros[n]]]
+        With[{len = Length[#], sym = First[#]},
+            If[len == 1, sym, If[sym === s1, ones[len], zeros[len]]]
         ]&
         ,
         Split[flattenSequence[expr], #1 === #2 && MatchQ[#1, s0 | s1]&]
@@ -183,11 +256,17 @@ encodeTransitionAxioms[rules_] := Map[
     rules
 ]
 
-onesRunDefinitions = {ForAll[y, ones[zero, y] == y], ForAll[{m, y}, ones[succ[m], y] == seq[ones[m, y], s1]]}
+rawOnesRunDefinitions = {ForAll[y, ones[zero, y] == y], ForAll[{m, y}, ones[succ[m], y] == seq[ones[m, y], s1]]}
 
-zerosRunDefinitions = {ForAll[y, zeros[zero, y] == y], ForAll[{m, y}, zeros[succ[m], y] == seq[zeros[m, y], s0]]}
+rawZerosRunDefinitions = {ForAll[y, zeros[zero, y] == y], ForAll[{m, y}, zeros[succ[m], y] == seq[zeros[m, y], s0]]}
 
-unboundAxiom = ForAll[x, unbnd[seq[x, bnd]] == x]
+rawUnboundAxiom = ForAll[x, unbnd[seq[x, bnd]] == x]
+
+onesRunDefinitions = toFormalVars[rawOnesRunDefinitions]
+
+zerosRunDefinitions = toFormalVars[rawZerosRunDefinitions]
+
+unboundAxiom = toFormalVars[rawUnboundAxiom]
 
 trimTrailingZeros[cells_, minLength_] := NestWhile[Most, cells, Length[#] > minLength && Last[#] === s0&]
 
@@ -250,6 +329,7 @@ wellFormedQ[t_] := If[ MatchQ[t, _Equal],
    LightDarkSwitched[light, dark] so the graphics adapt to the notebook theme; the dark variant is
    derived from the light one by keeping hue and saturation and inverting brightness (backgrounds
    go from a pale panel to a muted dark one; dark strokes/text are brightened to stay legible). *)
+
 $InductiveProofColors = <|
     "CellBackground" -> LightDarkSwitched[GrayLevel[0.98], GrayLevel[0.162]],
     "CellEdge" -> LightDarkSwitched[GrayLevel[0.5, 0.4], GrayLevel[0.55, 0.4]],
@@ -289,6 +369,7 @@ $InductiveProofColors = <|
 (* apply a numeric colour-space function through a LightDarkSwitched value by mapping over both
    branches, so colour math (ColorConvert, Blend, Lighter, Darker) keeps working once a colour
    becomes theme-dependent; a plain (non-switched) colour is passed through unchanged. *)
+
 switchedColor[f_, LightDarkSwitched[l_, d_]] := LightDarkSwitched[f[l], f[d]]
 
 switchedColor[f_, c_] := f[c]
@@ -308,32 +389,59 @@ $cellFontScale = 6/7
 (* Block-scoped, one place, every graph reads these. All default to Automatic/current
    behaviour so nothing regresses. *)
 
-$textFontSize = Automatic; (* absolute equation-cell font (pt); Automatic = $cellFontScale*$cellSize *)
+$textFontSize = Automatic;(* absolute equation-cell font (pt); Automatic = $cellFontScale*$cellSize *)
 
-$traditionalForm = True; (* TraditionalForm on variables, exponents, quantifier var *)
+$traditionalForm = True;(* TraditionalForm on variables, exponents, quantifier var *)
 
-$quantifierTraditional = True; (* the forall bound variable in TraditionalForm *)
+$quantifierTraditional = True;(* the forall bound variable in TraditionalForm *)
 
-$arrowSize = Automatic; (* base arrowhead size (plot fraction); Automatic = 0.013 *)
+$arrowSize = Automatic;(* base arrowhead size (plot fraction); Automatic = 0.013 *)
 
-$arrowScalesWithThickness = True; (* arrowhead grows with edge AbsoluteThickness *)
+$arrowScalesWithThickness = True;(* arrowhead grows with edge AbsoluteThickness *)
 
-$scriptRaise = 0.42; (* run-length exponent lift (baseline shifts) *)
+$scriptRaise = 0.42;(* run-length exponent lift (baseline shifts) *)
 
-$centerOnEquals = True; (* centre the box on the main equation line so a superscript is balanced by invisible space below;
-   False = ink-centre *)
+$centerOnEquals = True;(* centre the box on the main equation line so a superscript is balanced by invisible space below;
+False = ink-centre *)
 
-$vertexScale = 1; (* multiplies the Unlabelled-mode circle diameters *)
+$vertexScale = 1;(* multiplies the Unlabelled-mode circle diameters *)
 
 (* the one form decision: a form-sensitive leaf (variable, exponent, quantifier var) in the given
    form. trad uses the equation flag; the quantifier var uses its own flag. Box-level sites
    (raised scripts, the quantifier subscript) take formBoxes; live sites take trad. *)
 
+(* A DSL leaf (the run-length exponent m, a variable) lives in
+   WolframInstitute`TuringMachine`InductiveProofs`, so ToBoxes writes its FULL context name into the
+   box whenever the short name "m" is taken - either the context isn't on the reader's $ContextPath
+   (a PacletSymbol box that never loaded the paclet onto the path), or a notebook using a bare m
+   created Global`m that owns "m". Rather than juggle $ContextPath, strip the paclet context prefixes
+   straight out of the boxed strings: every box then carries the literal SHORT name and renders the
+   same in any context. Bake trad's boxes now, not lazily at display time, for the same reason. *)
+
+$renderContexts = {"WolframInstitute`TuringMachine`InductiveProofs`Private`", "WolframInstitute`TuringMachine`InductiveProofs`", "WolframInstitute`TuringMachine`"}
+
+(* string-level UnformalizeSymbols (inlined - a paclet must not depend on the cloud
+   ResourceFunction): a formal symbol boxes to its formal CHARACTER, which displays with the
+   under-dot; map each to the plain letter so rendered variables are dotless. *)
+$formalPlainRules = Thread[
+    Characters["\[FormalA]\[FormalB]\[FormalC]\[FormalD]\[FormalE]\[FormalF]\[FormalG]\[FormalH]\[FormalI]\[FormalJ]\[FormalK]\[FormalL]\[FormalM]\[FormalN]\[FormalO]\[FormalP]\[FormalQ]\[FormalR]\[FormalS]\[FormalT]\[FormalU]\[FormalV]\[FormalW]\[FormalX]\[FormalY]\[FormalZ]"]
+    -> Characters["abcdefghijklmnopqrstuvwxyz"]
+]
+
+plainName[s_Symbol] := StringReplace[SymbolName[s], $formalPlainRules]
+
+stripRenderContexts[boxes_] := boxes /. s_String :> StringReplace[s, Join[(# -> "" &) /@ $renderContexts, $formalPlainRules]]
+
 formWrap[e_, useTrad_] := If[TrueQ[useTrad], TraditionalForm[e], e]
 
-formBoxes[e_, useTrad_] := ToBoxes[e, If[TrueQ[useTrad], TraditionalForm, StandardForm]]
+formBoxes[e_, useTrad_] := stripRenderContexts[ToBoxes[e, If[TrueQ[useTrad], TraditionalForm, StandardForm]]]
 
-trad[e_] := formWrap[e, $traditionalForm]
+trad[e_] := RawBoxes[formBoxes[e, $traditionalForm]]
+
+(* a context-free italic display glyph: a plain italic-styled string, so it carries no package
+   symbol into the graphics and renders as the bare letter (no Formal-symbol dot marker). *)
+
+mathLetter[s_String] := Style[s, Italic]
 
 arrowheadsFor[thickness_] := Arrowheads[
     Replace[$arrowSize, Automatic :> 0.013]
@@ -381,13 +489,13 @@ withRenderStyle[defCell_, opts_, body_] := Module[{o = opts, gv2, tfs, cs, ag},
     gv2[name_] := OptionValue[$renderStyleOptions, o, name];
     tfs = Replace[gv2["FontSize"], Automatic :> $textFontSize];
     cs = Replace[gv2["CellSize"], Automatic :> If[NumberQ[tfs], Round[tfs / $cellFontScale], defCell]];
-    ag = Replace[gv2["ArrowGap"], Automatic :> $arrowGap]; (* the fallback gap for both ends *)
+    ag = Replace[gv2["ArrowGap"], Automatic :> $arrowGap];(* the fallback gap for both ends *)
     Block[{
         $cellSize = cs,
         $graphCellSize = cs,
         $textFontSize = tfs,
         $cellFontScale = Replace[gv2["FontScale"], Automatic :> $cellFontScale],
-        $boxPadding = Replace[gv2["BoxPadding"], {Automatic :> $boxPadding, n_ ? NumericQ :> {n, n}}],
+        $boxPadding = Replace[gv2["BoxPadding"], {Automatic :> $boxPadding, pad_ ? NumericQ :> {pad, pad}}],
         $quantifierSize = Replace[gv2["QuantifierSize"], Automatic :> $quantifierSize],
         $traditionalForm = Replace[gv2["TraditionalForm"], Automatic :> $traditionalForm],
         $quantifierTraditional = Replace[gv2["QuantifierTraditional"], Automatic :> $quantifierTraditional],
@@ -416,11 +524,11 @@ withRenderStyle[defCell_, opts_, body_] := Module[{o = opts, gv2, tfs, cs, ag},
     ]
 ]
 
-$cellEdgeColor = $InductiveProofColors["CellEdge"]; (* matches ArrayPlot's default Mesh style *)
+$cellEdgeColor = $InductiveProofColors["CellEdge"];(* matches ArrayPlot's default Mesh style *)
 
-$cellEdgeThickness = 0.1; (* the s0/s1 tape-cell square borders; independent of the vertex box *)
+$cellEdgeThickness = 0.1;(* the s0/s1 tape-cell square borders; independent of the vertex box *)
 
-$quantifierNudge = 0; (* vertical shift of the forall glyph (pt), + raises *)
+$quantifierNudge = 0;(* vertical shift of the forall glyph (pt), + raises *)
 
 cellEdge[] := EdgeForm[{$cellEdgeColor, AbsoluteThickness[$cellEdgeThickness]}]
 
@@ -433,23 +541,27 @@ squareCell[fill_] := Graphics[
 
 cellBox[1] := squareCell[1 /. $turingMachineColorRules]
 
-cellBox[0] := squareCell[FaceForm[$cellBackground]]
+(* A tape symbol is DATA, not chrome: the blank (s0) cell is a fixed WHITE square (as in the
+   original, and matching OneSidedTuringMachinePlot's 0 -> white), NOT the theme-switched
+   $cellBackground - otherwise the 0-cells go grey in light mode and near-black in dark mode
+   while the fixed-colour 1-cells stay red. *)
+cellBox[0] := squareCell[FaceForm[White]]
 
 grayCellBox[g_] := squareCell[GrayLevel[g]]
 
-drawnStateIndicator[i_, n_] := {
+drawnStateIndicator[i_, ns_] := {
     {$InductiveProofColors["StateIndicatorBackground"], Disk[{0, 0}, 0.46]},
-    {$InductiveProofColors["StateIndicatorFill"], Disk[{0, 0}, 0.46, Pi / 2 - 2 Pi {i, i - 1} / n]},
+    {$InductiveProofColors["StateIndicatorFill"], Disk[{0, 0}, 0.46, Pi / 2 - 2 Pi {i, i - 1} / ns]},
     {$InductiveProofColors["StateIndicatorEdge"], AbsoluteThickness[0.6], Circle[{0, 0}, 0.46]}
 }
 
 (* the head-state dial: the FiniteStateIndicatorIcon resource when it resolves to real primitives,
    else a self-contained dial, so a head cell always renders. *)
 
-stateIndicatorPrimitives[i_, n_] := stateIndicatorPrimitives[i, n] = Module[{r = Quiet @ Check[ResourceFunction["FiniteStateIndicatorIcon"][{0, 0}, {i, n}], $Failed]},
+stateIndicatorPrimitives[i_, ns_] := stateIndicatorPrimitives[i, ns] = Module[{r = Quiet @ Check[ResourceFunction["FiniteStateIndicatorIcon"][{0, 0}, {i, ns}], $Failed]},
     Which[ 
         r === $Failed || StringContainsQ[ToString[r, InputForm], "FiniteStateIndicatorIcon"],
-            drawnStateIndicator[i, n]
+            drawnStateIndicator[i, ns]
         ,
         MatchQ[r, _Graphics],
             First[r]
@@ -472,9 +584,15 @@ renderPeanoNumeral[s_succ] := With[{k = Count[s, succ, {0, Infinity}, Heads -> T
     If[e === zero, k, renderPeanoNumeral[e] + k]
 ]
 
-renderPeanoNumeral[n] := m
+(* match the run-length variable by NAME (formal \[FormalN]/\[FormalM] from the public equations,
+   Global`n from a user rewrite, a stale cache's public n, Private`n) so it always renders as the
+   single letter m. *)
+$runVarNames = {"n", "m", "\[FormalN]", "\[FormalM]"}
 
-renderPeanoNumeral[m] := m
+runVarQ[s_Symbol] := MemberQ[$runVarNames, SymbolName[s]]
+runVarQ[_] := False
+
+renderPeanoNumeral[s_Symbol /; runVarQ[s]] := m
 
 renderPeanoNumeral[] := m
 
@@ -516,9 +634,9 @@ renderCell[onesRun[k_]] := runCell[cellBox[1], k]
 
 renderCell[zerosRun[k_]] := runCell[cellBox[0], k]
 
-renderCell[] := trad[x]
+renderCell[] := mathLetter["x"]
 
-renderCell[] := trad[y]
+renderCell[] := mathLetter["y"]
 
 renderCell[] := renderCell[]; renderCell[] := renderCell[]
 
@@ -528,9 +646,13 @@ renderCell[] := renderCell[]
 
 renderCell[x] := renderCell[]; renderCell[y] := renderCell[]
 
-renderCell[n] := renderPeanoNumeral[n]
+renderCell[s_Symbol /; runVarQ[s]] := renderPeanoNumeral[s]
 
-renderCell[m] := renderPeanoNumeral[m]
+(* any bare symbol that reaches a cell slot from an unexpected context (public InductiveProofs`x /
+   Global`x vs the code's Private`x, e.g. from a cached proof) renders as its SHORT plain name -
+   never its full context, never a dotted formal glyph - so a symbol-identity miss above degrades to
+   a clean letter, not a leaked name. *)
+renderCell[c_Symbol] := mathLetter[plainName[c]]
 
 renderCell[c_] := c
 
@@ -556,9 +678,9 @@ renderCell[unbndMark] := "⊳"
    from the graphic cells (so it reads too high there); a disc shares the cells' exact baseline.
    The graphic's width sets the horizontal spacing, in cell-size units, independent of the font. *)
 
-$cellSeparatorGap = 0.62; (* total separator width, as a fraction of the cell size *)
+$cellSeparatorGap = 0.62;(* total separator width, as a fraction of the cell size *)
 
-$dotRadius = 0.07; (* centre-dot radius, as a fraction of the cell size *)
+$dotRadius = 0.07;(* centre-dot radius, as a fraction of the cell size *)
 
 cellSeparator[] := With[{hw = $cellSeparatorGap 1.1 / 2},
     Graphics[
@@ -571,16 +693,16 @@ cellSeparator[] := With[{hw = $cellSeparatorGap 1.1 / 2},
 
 $headStateSymbols = {qA, qB, qC, qD}
 
-$tapeVariables = {x, y, , , , , , , }
+$tapeVariables = {x, y, \[FormalX], \[FormalY], , , , , , , }
 
-renderCell[segVar] := trad[s]
+renderCell[segVar] := mathLetter["s"]
 
 variableCellBox /: renderCell[variableCellBox[_]] := Graphics[
     {
-        FaceForm[$cellBackground],
+        FaceForm[White],
         EdgeForm[$InductiveProofColors["VariableCellEdge"]],
         Rectangle[{-0.5, -0.5}, {0.5, 0.5}],
-        Inset[trad[i], {0, 0.02}, Center, 0.85]
+        Inset[mathLetter["i"], {0, 0.02}, Center, 0.85]
     }
     ,
     PlotRange -> {{-0.55, 0.55}, {-0.55, 0.55}}
@@ -590,9 +712,15 @@ variableCellBox /: renderCell[variableCellBox[_]] := Graphics[
     ImageSize -> $cellSize
 ]
 
+(* Match a tape variable by NAME, not symbol identity: a cached proof or a notebook may carry an x
+   from a different context (public InductiveProofs`x, Global`x) than the code's Private`x, and an
+   identity test would miss it and fall through to a raw-symbol render (leaking the full name). *)
+tapeVarQ[s_Symbol] := MemberQ[SymbolName /@ $tapeVariables, SymbolName[s]]
+tapeVarQ[_] := False
+
 markTapeVariables[cells_List] := MapIndexed[
-    Which[ 
-        ! MemberQ[$tapeVariables, #1],
+    Which[
+        ! tapeVarQ[#1],
             #1
         ,
         #2[[1]] == 1,
@@ -691,7 +819,11 @@ Protect[ForAll]
 
 Options[RenderUniversalGoal] = $renderStyleOptions
 
-RenderUniversalGoal[var_, eqn_, opts : OptionsPattern[]] := withRenderStyle[$cellSize, {opts}, RawBoxes[ToBoxes[ForAll[var, tapeForm[eqn]]]]]
+(* build the quantifier grid DIRECTLY: routing through ForAll[var, tapeForm[eqn]] loses the
+   quantifier whenever var does not literally occur in eqn (System`ForAll auto-drops a vacuous
+   quantifier on evaluation, before MakeBoxes can see it) - e.g. rendering a goal whose bound
+   variable is the formal \[FormalN] under a display name m. *)
+RenderUniversalGoal[var_, eqn_, opts : OptionsPattern[]] := withRenderStyle[$cellSize, {opts}, RawBoxes[ToBoxes[universalGoalGrid[var, eqn]]]]
 
 renderGraphEquation[eqn_] := Block[{$cellSize = $graphCellSize},
     RenderEquation[eqn]
@@ -724,7 +856,10 @@ ShowTapeConfiguration[config_seq, opts : OptionsPattern[]] := RenderConfiguratio
 
 (* === Induction prover === *)
 
-FindInductiveProof[goal_Equal, axioms_List, t_ : 30] := Module[{base, step},
+(* accept the goal/axioms in either the public formal form (goalFor / transitionAxiomsFor output)
+   or the internal Private form: everything is brought onto the Private variables the prover and
+   the n -> zero / n -> succ[n] induction substitutions run on. *)
+FindInductiveProof[goalIn_Equal, axiomsIn_List, t_ : 30] := Module[{goal = fromFormalVars[goalIn], axioms = fromFormalVars[axiomsIn], base, step},
     base = Quiet[TimeConstrained[FindEquationalProof[goal /. n -> zero, axioms], t, $TimedOut]];
     step = Quiet[TimeConstrained[FindEquationalProof[goal /. n -> succ[n], Join[axioms, {goal}]], t, $TimedOut]];
     <|
@@ -789,7 +924,7 @@ sweepProofFor[ru_] := Module[
     withLemmas[
         FindInductiveProof[
             seq[ones[n, seq[x, s0]], qA] == zeros[n, seq[seq[x, qH], s1]],
-            Join[{car["Axiom"], abs}, onesRunDefinitions, zerosRunDefinitions],
+            Join[{car["Axiom"], abs}, rawOnesRunDefinitions, rawZerosRunDefinitions],
             30
         ]
         ,
@@ -817,7 +952,7 @@ boundaryProofFor[ru_] := Module[{
     withLemmas[
         FindInductiveProof[
             seq[seq[ones[n, seq[x, s0]], qA], bnd] == seq[zeros[n, seq[x, s1]], bnd],
-            Join[{car["Axiom"], abs}, onesRunDefinitions, zerosRunDefinitions, {unboundAxiom}],
+            Join[{car["Axiom"], abs}, rawOnesRunDefinitions, rawZerosRunDefinitions, {rawUnboundAxiom}],
             60
         ]
         ,
@@ -844,16 +979,27 @@ scanFlipProofFor[ru_] := Module[{
     goalD = ones[succ[n], y] == ones[n, seq[y, s1]];
     goalL1 = seq[ones[n, x], qA] == ones[n, seq[x, qA]];
     goalG = ones[n, seq[seq[x, s1], qB]] == seq[seq[zeros[n, x], s1], qB];
-    pD = FindInductiveProof[goalD, onesRunDefinitions, 30];
-    pL1 = FindInductiveProof[goalL1, Join[tmAx, onesRunDefinitions], 30];
-    pG = FindInductiveProof[goalG, Join[tmAx, onesRunDefinitions, zerosRunDefinitions], 30];
+    pD = FindInductiveProof[goalD, rawOnesRunDefinitions, 30];
+    pL1 = FindInductiveProof[goalL1, Join[tmAx, rawOnesRunDefinitions], 30];
+    pG = FindInductiveProof[goalG, Join[tmAx, rawOnesRunDefinitions, rawZerosRunDefinitions], 30];
     If[! (TrueQ[pD["Valid"]] && TrueQ[pL1["Valid"]] && TrueQ[pG["Valid"]]), Return[$Failed]];
     pMain = FindInductiveProof[
         seq[seq[ones[n, seq[x, s0]], qA], bnd] == seq[zeros[n, seq[x, s1]], bnd]
         ,
         Join[
-            {ForAll[{n, y}, Evaluate[goalD]], ForAll[{n, x}, Evaluate[goalL1]], ForAll[{n, x}, Evaluate[goalG]]},
-            tmAx, boundaryAxioms, onesRunDefinitions, zerosRunDefinitions, {unboundAxiom}
+            {
+                ForAll[{n, y}, Evaluate[goalD]], ForAll[{n, x}, Evaluate[goalL1]], ForAll[{n, x}, Evaluate[goalG]]
+            }
+            ,
+            tmAx
+            ,
+            boundaryAxioms
+            ,
+            rawOnesRunDefinitions
+            ,
+            rawZerosRunDefinitions
+            ,
+            {rawUnboundAxiom}
         ]
         ,
         120
@@ -882,7 +1028,13 @@ $proofCacheDir = Which[
         Directory[]
 ]
 
-cachedProofFor[ru_] := cachedProofFor[ru] = Module[{f = FileNameJoin[{$proofCacheDir, "proofcache_" <> ToString[ru] <> ".mx"}], p},
+(* rawProofFor: the proof exactly as computed/cached (Private variables, live ProofObjects) - the
+   ONLY form the graph and multiway internals consume, so every internal identity comparison stays
+   within one vocabulary. cachedProofFor is the PUBLIC view: same association with the
+   equation-valued fields normalized to formal variables (ProofObjects untouched), so goalFor and
+   notebook code see stable formal equations regardless of which context a disk cache was written
+   in. *)
+rawProofFor[ru_] := rawProofFor[ru] = Module[{f = FileNameJoin[{$proofCacheDir, "proofcache_" <> ToString[ru] <> ".mx"}], p},
     If[ FileExistsQ[f],
         Import[f]
         ,
@@ -892,11 +1044,13 @@ cachedProofFor[ru_] := cachedProofFor[ru] = Module[{f = FileNameJoin[{$proofCach
     ]
 ]
 
+cachedProofFor[ru_] := formalizeProofEquations[rawProofFor[ru]]
+
 (* === Per-machine axiom and proof accessors (proofs come from the cache) === *)
 
-transitionAxiomsFor[ru_] := encodeTransitionAxioms[DecodeTuringMachineRules[ru, 2, 2]]
+transitionAxiomsFor[ru_] := toFormalVars @ encodeTransitionAxioms[DecodeTuringMachineRules[ru, 2, 2]]
 
-boundaryAxiomsFor[ru_] := Map[
+boundaryAxiomsFor[ru_] := toFormalVars @ Map[
     ForAll[x, seq[seq[x, bnd], #] == seq[x, bnd]]&,
     DeleteDuplicates[DecodeTuringMachineRules[ru, 2, 2][[All, 1, 1]]]
 ]
@@ -960,7 +1114,7 @@ $eventCircleSize = 9
 
 $vertexBoxRounding = 3
 
-$boxPadding = {4, 4}; (* {horizontal, vertical} clear space inside a vertex label box *)
+$boxPadding = {4, 4};(* {horizontal, vertical} clear space inside a vertex label box *)
 
 $proofLayoutScale = 0.55
 
@@ -988,7 +1142,12 @@ discVertex[fill_, stroke_, px_, thick_ : 0.8] := (
    keeping the shared multiway colours. *)
 
 styleFillStroke[dir_] := {
-    FirstCase[dir, c : (_Hue | _RGBColor | _GrayLevel | _LightDarkSwitched) :> c, $InductiveProofColors["FallbackFrame"], Infinity]
+    FirstCase[
+        dir,
+        c : (_Hue | _RGBColor | _GrayLevel | _LightDarkSwitched) :> c,
+        $InductiveProofColors["FallbackFrame"],
+        Infinity
+    ]
     ,
     FirstCase[
         {FirstCase[dir, HoldPattern[EdgeForm[e_]] :> e, $InductiveProofColors["FallbackFrame"], Infinity]},
@@ -1051,7 +1210,7 @@ equationVertexShape[content_, isAx_, rounding_ : $vertexBoxRounding] := labelBox
     TrueQ[$centerOnEquals]
 ]
 
-whiteVertexShape[content_] := labelBox[content, $cellBackground]
+whiteVertexShape[content_] := labelBox[content, White]
 
 $defaultEventFill = $InductiveProofColors["DefaultEventFill"]
 
@@ -1103,12 +1262,16 @@ edgeStyleFor[tag_, inductionThickness_ : Automatic] := If[ MemberQ[{"Induction",
 
 $inductionRuleBackground = $InductiveProofColors["InductionRuleBackground"]
 
-$identityGlyph = TraditionalForm[t == t]
+$identityGlyph = Row[{mathLetter["t"], " = ", mathLetter["t"]}]
 
 $qedSymbol = "■"
 
 frameColorFor[c_] := switchedColor[
-    Function[cc, Module[{h = ColorConvert[cc, Hue]}, Hue[h[[1]], Min[1, h[[2]] * 2.2 + 0.06], Max[0, h[[3]] * 0.8]]]]
+    Function[cc,
+        Module[{h = ColorConvert[cc, Hue]},
+            Hue[h[[1]], Min[1, h[[2]] * 2.2 + 0.06], Max[0, h[[3]] * 0.8]]
+        ]
+    ]
     ,
     c
 ]
@@ -1285,11 +1448,17 @@ graftTargetChain[tgt_, ctr_, chain_] := Module[{pfx = tgt[[1]], refl, init},
                     <|
                         "prev" -> outKey
                         ,
-                        "verts" -> Join[state["verts"], {ev[[1]]}, Map[#[[1]]&, axRecords], If[outRecord === None, {}, {outRecord[[1]]}]]
+                        "verts"
+                        ->
+                        Join[state["verts"], {ev[[1]]}, Map[#[[1]]&, axRecords], If[outRecord === None, {}, {outRecord[[1]]}]]
                         ,
-                        "shapes" -> Join[state["shapes"], {ev[[2]]}, Map[#[[2]]&, axRecords], If[outRecord === None, {}, {outRecord[[2]]}]]
+                        "shapes"
+                        ->
+                        Join[state["shapes"], {ev[[2]]}, Map[#[[2]]&, axRecords], If[outRecord === None, {}, {outRecord[[2]]}]]
                         ,
-                        "styles" -> Join[state["styles"], {ev[[3]]}, Map[#[[3]]&, axRecords], If[outRecord === None, {}, {outRecord[[3]]}]]
+                        "styles"
+                        ->
+                        Join[state["styles"], {ev[[3]]}, Map[#[[3]]&, axRecords], If[outRecord === None, {}, {outRecord[[3]]}]]
                         ,
                         "edges" -> Join[state["edges"], edgesAdd]
                     |>
@@ -1337,9 +1506,10 @@ graftLemma[g_Graph, lemmaProof_ProofObject, mergeAsAxiom_ : False] := Module[{
             ,
             "StmtH" -> Normal[ds[i]]["Statement"]
             ,
-            "Proof" -> With[{pr = Normal[ds[i]]["Proof"]},
-                If[AssociationQ[pr], pr, <||>]
-            ]
+            "Proof" ->
+                With[{pr = Normal[ds[i]]["Proof"]},
+                    If[AssociationQ[pr], pr, <||>]
+                ]
         |>
         ,
         {i, Length[keys]}
@@ -1358,12 +1528,12 @@ graftLemma[g_Graph, lemmaProof_ProofObject, mergeAsAxiom_ : False] := Module[{
     targets = Select[
         verts
         ,
-        With[{s2 = sOf[#]},
-            s2 =!= None && MatchQ[s2, _Equal] &&
+        With[{stmt = sOf[#]},
+            stmt =!= None && MatchQ[stmt, _Equal] &&
                 (
-                    canonicalizeVariables[s2] === canonicalizeVariables[thm]
+                    canonicalizeVariables[stmt] === canonicalizeVariables[thm]
                     ||
-                    canonicalizeVariables[s2] === canonicalizeVariables[thm[[2]] == thm[[1]]]
+                    canonicalizeVariables[stmt] === canonicalizeVariables[thm[[2]] == thm[[1]]]
                 )
         ]&
     ];
@@ -1523,7 +1693,8 @@ graftInductiveLemma[
         ,
         noVertexLabels[allVerts]
         ,
-        EdgeStyle -> Join[
+        EdgeStyle ->
+            Join[
                 graphOption[g, EdgeStyle],
                 Map[(# /. Normal[nsOf]) -> edgeStyleFor[edgeTag[#]]&, lemEdges],
                 Map[# -> Directive[$equationalEdgeColor]&, instEdges]
@@ -1536,17 +1707,33 @@ graftInductiveLemma[
 (* === Token-event proof graphs === *)
 
 $rtepg = ResourceFunction[
-    ResourceObject[<|
-        "Name" -> "ReverseTokenEventProofGraph",
-        "UUID" -> "3b469989-6d05-48b2-ba5a-fd8b427c757c",
-        "ResourceType" -> "Function",
-        "ResourceLocations" -> {
-            CloudObject["https://www.wolframcloud.com/obj/wolframphysics/Resources/3b4/3b469989-6d05-48b2-ba5a-fd8b427c757c"]
-        },
-        "FunctionLocation" -> CloudObject["https://www.wolframcloud.com/obj/wolframphysics/Resources/3b4/3b469989-6d05-48b2-ba5a-fd8b427c757c/download/DefinitionData"],
-        "ShortName" -> "ReverseTokenEventProofGraph",
-        "SymbolName" -> "FunctionRepository`$3b4699896d0548b2ba5afd8b427c757c`ReverseTokenEventProofGraph"
-    |>]
+    ResourceObject[
+        <|
+            "Name" -> "ReverseTokenEventProofGraph"
+            ,
+            "UUID" -> "3b469989-6d05-48b2-ba5a-fd8b427c757c"
+            ,
+            "ResourceType" -> "Function"
+            ,
+            "ResourceLocations"
+            ->
+            {
+                CloudObject[
+                    "https://www.wolframcloud.com/obj/wolframphysics/Resources/3b4/3b469989-6d05-48b2-ba5a-fd8b427c757c"
+                ]
+            }
+            ,
+            "FunctionLocation"
+            ->
+            CloudObject[
+                "https://www.wolframcloud.com/obj/wolframphysics/Resources/3b4/3b469989-6d05-48b2-ba5a-fd8b427c757c/download/DefinitionData"
+            ]
+            ,
+            "ShortName" -> "ReverseTokenEventProofGraph"
+            ,
+            "SymbolName" -> "FunctionRepository`$3b4699896d0548b2ba5afd8b427c757c`ReverseTokenEventProofGraph"
+        |>
+    ]
 ]
 
 revCaseDropVertices[v_, edges_, axStmts_, trueQ_, instQ_] := If[ ! MatchQ[v, {"Event", _}],
@@ -1554,11 +1741,11 @@ revCaseDropVertices[v_, edges_, axStmts_, trueQ_, instQ_] := If[ ! MatchQ[v, {"E
     ,
     Module[{ins, outs, realIns, seedFree},
         ins = DeleteDuplicates[Cases[edges, DirectedEdge[s_, t_, ___] /; t === v :> s]];
-        outs = DeleteDuplicates[Cases[edges, DirectedEdge[x_, t_, ___] /; x === v :> t]];
+        outs = DeleteDuplicates[Cases[edges, DirectedEdge[xe_, t_, ___] /; xe === v :> t]];
         realIns = Select[ins, ! trueQ[#]&];
-        seedFree[p_] := DeleteDuplicates[Cases[edges, DirectedEdge[x_, t_, ___] /; x === p :> t]] === {v}
+        seedFree[p_] := DeleteDuplicates[Cases[edges, DirectedEdge[xe_, t_, ___] /; xe === p :> t]] === {v}
         &&
-        Cases[edges, DirectedEdge[s_, x_, ___] /; x === p :> s] === {};
+        Cases[edges, DirectedEdge[s_, xe_, ___] /; xe === p :> s] === {};
         Which[ 
             Length[ins] < 2,
                 Join[{v}, Select[ins, seedFree]]
@@ -1630,7 +1817,7 @@ revCase[pobj_ProofObject, goalStmt_] := Module[{g, edges, dropV, keepV, keepE, r
     Graph[keepV /. ren, keepE /. ren]
 ]
 
-revBox[content_, fc_ : Automatic, bg_ : $cellBackground, frame_ : Automatic] := labelBox[content, bg]
+revBox[content_, fc_ : Automatic, bg_ : White, frame_ : Automatic] := labelBox[content, bg]
 
 proofDatasetInfo[pobj_, ourAx_] := Module[{ds = pobj["ProofDataset"], keys, statements, axiomStatements, flips, bare},
     bare = ourAx /. ForAll[_, b_] :> b;
@@ -1653,7 +1840,9 @@ proofDatasetInfo[pobj_, ourAx_] := Module[{ds = pobj["ProofDataset"], keys, stat
         ,
         "Flips" -> DeleteDuplicates[flips]
         ,
-        "AxPat" -> Map[
+        "AxPat"
+        ->
+        Map[
             Function[st,
                 Module[
                     {vars = DeleteDuplicates[Cases[st, s_Symbol /; MemberQ[$formalVariables, s], {0, Infinity}]]},
@@ -1727,44 +1916,55 @@ fepStmtRecord[k_, dispStmt_, cls_, pos_, xoff_] := <|
     ,
     "coord" -> pos + {xoff, 0}
     ,
-    "shape" -> (k -> revBox[
-        renderGraphEquation[If[MatchQ[dispStmt, _HoldForm], dispStmt, HoldForm @@ {dispStmt}]]
-        ,
-        If[cls === "derived", $theoremTextColor, $axiomTextColor]
-        ,
-        Switch[ cls,
-            "goal",
-                $theoremBackground
-            ,
-            "axiom",
-                $axiomBackground
-            ,
-            _,
-                $theoremBackground
-        ]
-        ,
-        Switch[ cls,
-            "goal",
-                $theoremFrameColor
-            ,
-            "axiom",
-                $axiomFrameColor
-            ,
-            _,
-                $theoremFrameColor
-        ]
-    ])
+    "shape"
+    ->
+    (
+        k ->
+            revBox[
+                renderGraphEquation[If[MatchQ[dispStmt, _HoldForm], dispStmt, HoldForm @@ {dispStmt}]]
+                ,
+                If[cls === "derived", $theoremTextColor, $axiomTextColor]
+                ,
+                Switch[ cls,
+                    "goal",
+                        $theoremBackground
+                    ,
+                    "axiom",
+                        $axiomBackground
+                    ,
+                    _,
+                        $theoremBackground
+                ]
+                ,
+                Switch[ cls,
+                    "goal",
+                        $theoremFrameColor
+                    ,
+                    "axiom",
+                        $axiomFrameColor
+                    ,
+                    _,
+                        $theoremFrameColor
+                ]
+            ]
+    )
     ,
-    "style" -> (k -> Switch[ cls,
-        "goal",
-            Directive[Opacity[0.7], $theoremHue, EdgeForm[$theoremFrameColor]]
-        ,
-        "axiom",
-            Directive[Opacity[0.7], $InductiveProofColors["TokenEventAxiomHue"], EdgeForm[$axiomFrameColor]]
-        ,
-        _,
-            Directive[Opacity[0.7], EdgeForm[$theoremFrameColor], $theoremHue]
-    ])
+    "style"
+    ->
+    (
+        k
+        ->
+        Switch[ cls,
+            "goal",
+                Directive[Opacity[0.7], $theoremHue, EdgeForm[$theoremFrameColor]]
+            ,
+            "axiom",
+                Directive[Opacity[0.7], $InductiveProofColors["TokenEventAxiomHue"], EdgeForm[$axiomFrameColor]]
+            ,
+            _,
+                Directive[Opacity[0.7], EdgeForm[$theoremFrameColor], $theoremHue]
+        ]
+    )
 |>
 
 fepEventRecord[k_, lab_, pos_, xoff_] := <|
@@ -1922,14 +2122,17 @@ attachInductionApparatus[verts_, coords_, baseThmV_, stepThmV_, ihV_, data_] := 
         ,
         "coords" -> {mid + {0, -6}, mid + {0, -11}}
         ,
-        "shapes" -> {
+        "shapes" ->
+            {
                 inductionNode -> inductionNodeShape,
-                goalNode -> labelBox[renderGraphUniversalGoal[m, data["IH"] /. n -> m], $theoremBackground]
+                goalNode -> labelBox[renderGraphUniversalGoal[m, data["IH"] /. s_Symbol /; runVarQ[s] :> m], $theoremBackground]
             }
         ,
         "styles" -> {inductionNode -> $inductionVertexStyle, goalNode -> $goalVertexStyle}
         ,
-        "edges" -> Join[
+        "edges"
+        ->
+        Join[
             {DirectedEdge[baseThmV, inductionNode, "IndIn"], DirectedEdge[stepThmV, inductionNode, "IndIn"]},
             If[ihV === None, {}, {DirectedEdge[ihV, inductionNode, "IndIn"]}],
             {DirectedEdge[inductionNode, goalNode, "IndIn"]}
@@ -2016,7 +2219,8 @@ fepGraphFromRecords[r_Association] := Graph[
     ,
     noVertexLabels[r["verts"]]
     ,
-    EdgeStyle -> Map[
+    EdgeStyle ->
+        Map[
             Function[e,
                 e -> edgeStyleFor[edgeTag[e]]
             ]
@@ -2039,18 +2243,28 @@ runUnfoldWeight[e_] := LeafCount[e] + 4 * Count[e, succ, {0, Infinity}, Heads ->
 
 orientByWeight[{lhs_, rhs_}, weight_] := If[weight[rhs] > weight[lhs], {rhs, lhs}, {lhs, rhs}]
 
-axiomToOrientedRules[ax_, wfn_ : LeafCount] := Module[{vars = forAllVariables[ax], eq = forAllBody[ax], pattRules, l, r},
+(* the axiom variables (x, y, m, n) are public term-vocabulary symbols; using them directly as the
+   rule's pattern variables makes Replace rename them to x$/y$/... in this public context on every
+   match, so map them to fresh (Temporary) symbols first, exactly as generateCriticalPairs does. *)
+
+freshVarSub[vars_] := Thread[vars -> Table[Unique["mwv"], Length[vars]]]
+
+axiomToOrientedRules[ax_, wfn_ : LeafCount] := Module[{vars = forAllVariables[ax], eq = forAllBody[ax], sub, pattRules, l, r},
     If[! MatchQ[eq, _Equal], Return[{}]];
-    pattRules = Map[# -> Pattern[Evaluate[#], _]&, vars];
+    sub = freshVarSub[vars];
+    eq = eq /. sub;
+    pattRules = Map[# -> Pattern[Evaluate[#], _]&, sub[[All, 2]]];
     {l, r} = orientByWeight[{eq[[1]], eq[[2]]}, wfn];
     With[{lp = l /. pattRules, rr = r},
         If[MatchQ[lp, _Pattern], {}, {lp :> rr}]
     ]
 ]
 
-axiomToMultiwayRules[ax_] := Module[{vars = forAllVariables[ax], eq = forAllBody[ax], pattRules},
+axiomToMultiwayRules[ax_] := Module[{vars = forAllVariables[ax], eq = forAllBody[ax], sub, pattRules},
     If[! MatchQ[eq, _Equal], Return[{}]];
-    pattRules = Map[# -> Pattern[Evaluate[#], _]&, vars];
+    sub = freshVarSub[vars];
+    eq = eq /. sub;
+    pattRules = Map[# -> Pattern[Evaluate[#], _]&, sub[[All, 2]]];
     With[{lhsP = eq[[1]] /. pattRules, rhsP = eq[[2]] /. pattRules, lhs = eq[[1]], rhs = eq[[2]]},
         Select[{lhsP :> rhs, rhsP :> lhs}, ! MatchQ[#[[1]], _Pattern]&]
     ]
@@ -2226,7 +2440,9 @@ equationalProofPath[vertices_, allEdges_, initExprs_] := Module[{meetPoints = {}
 
 equationalVertexStyles[vertices_, initExprs_, proofPath_] := Map[
     Function[v,
-        v -> Which[
+        v
+        ->
+        Which[ 
             v === True,
                 Directive[$InductiveProofColors["IdentityFill"], EdgeForm[$InductiveProofColors["IdentityStroke"]]]
             ,
@@ -2271,8 +2487,9 @@ equationalVertexLabels[vertices_, vertexLabelsOption_] := Switch[ vertexLabelsOp
 
 equationalVertexShapes[vertices_, initExprs_, proofPath_] := Map[
     With[{v = #},
-        # -> With[{
-                background = Which[
+        # ->
+            With[{
+                background = Which[ 
                     MemberQ[initExprs, v],
                         $axiomBackground
                     ,
@@ -2320,7 +2537,9 @@ equationalGraphResult[
         ,
         EdgeStyle -> equationalEdgeStyles[allEdges, proofEdges]
         ,
-        EdgeShapeFunction -> With[{markedEdges = proofEdges, setback = 0.45 vertexSize, head = arrowSize},
+        EdgeShapeFunction
+        ->
+        With[{markedEdges = proofEdges, setback = 0.45 vertexSize, head = arrowSize},
             Function[{pts, e},
                 Join[
                     If[MemberQ[markedEdges, e], {Red, AbsoluteThickness[2], Arrowheads[1.6 head]}, {Arrowheads[head]}],
@@ -2556,8 +2775,8 @@ rawAxiomsForMachine[ru_, st_ : 2] := Module[{rules = DecodeTuringMachineRules[ru
     Join[
         encodeTransitionAxioms[rules],
         Map[ForAll[x, seq[seq[x, bnd], #] == seq[x, bnd]]&, DeleteDuplicates[rules[[All, 1, 1]]]],
-        onesRunDefinitions,
-        zerosRunDefinitions
+        rawOnesRunDefinitions,
+        rawZerosRunDefinitions
     ]
 ]
 
@@ -2603,7 +2822,9 @@ $buggyMachines = {
     1505
 }
 
-multiwaySystemFor[ru_] := multiwaySystemFor[ru] = Module[{st = tmStatesFor[ru], p, eq},
+(* rawSystemFor: internal (Private-variable) form consumed by the panels and cone builders;
+   multiwaySystemFor is its public formal view. *)
+rawSystemFor[ru_] := rawSystemFor[ru] = Module[{st = tmStatesFor[ru], p, eq},
     If[ MemberQ[$buggyMachines, ru],
         eq = seq[seq[ones[succ[n], seq[x, s0]], qA], bnd] == seq[zeros[succ[n], seq[x, s1]], bnd];
         <|
@@ -2616,7 +2837,7 @@ multiwaySystemFor[ru_] := multiwaySystemFor[ru] = Module[{st = tmStatesFor[ru], 
             "RawAxioms" -> rawAxiomsForMachine[ru, st]
         |>
         ,
-        p = cachedProofFor[ru];
+        p = rawProofFor[ru];
         <|
             "Axioms" -> p["Axioms"],
             "IH" -> {p["IH"]},
@@ -2628,6 +2849,8 @@ multiwaySystemFor[ru_] := multiwaySystemFor[ru] = Module[{st = tmStatesFor[ru], 
         |>
     ]
 ]
+
+multiwaySystemFor[ru_] := toFormalVars[rawSystemFor[ru]]
 
 multiwayRulesFromAxioms[axioms_, oriented_, ordering_, criticalPairs_] := Module[{weight = If[ordering === "RunUnfold", runUnfoldWeight, LeafCount], rules},
     rules = If[ oriented,
@@ -2711,16 +2934,17 @@ geodesicVertexSize[allExprs_, allEdges_] := Module[{
 
 geodesicVertexStyles[allExprs_, initExprs_, path_] := Map[
     Function[v,
-        v -> Which[
-            MemberQ[initExprs, v],
-                $axiomVertexStyle
-            ,
-            MemberQ[path, v],
-                Directive[Opacity[0.7], $pathHighlight, EdgeForm[frameColorFor[$pathHighlight]]]
-            ,
-            True,
-                Directive[Opacity[0.5], $theoremHue, EdgeForm[$theoremFrameColor]]
-        ]
+        v ->
+            Which[ 
+                MemberQ[initExprs, v],
+                    $axiomVertexStyle
+                ,
+                MemberQ[path, v],
+                    Directive[Opacity[0.7], $pathHighlight, EdgeForm[frameColorFor[$pathHighlight]]]
+                ,
+                True,
+                    Directive[Opacity[0.5], $theoremHue, EdgeForm[$theoremFrameColor]]
+            ]
     ]
     ,
     allExprs
@@ -2728,7 +2952,8 @@ geodesicVertexStyles[allExprs_, initExprs_, path_] := Map[
 
 geodesicEdgeStyles[allEdges_, pathPairs_, arrowSizeCloud_] := Map[
     Function[e,
-        e -> If[ MemberQ[pathPairs, Sort[{e[[1]], e[[2]]}]],
+        e ->
+            If[ MemberQ[pathPairs, Sort[{e[[1]], e[[2]]}]],
                 Directive[Red, AbsoluteThickness[2], Arrowheads[1.6 arrowSizeCloud]]
                 ,
                 Directive[$equationalEdgeColor, Arrowheads[1.6 arrowSizeCloud]]
@@ -2744,7 +2969,8 @@ cloudEdgeShapes[allEdges_, path_, pathPairs_, arrowSizeProof_, arrowSizeCloud_, 
 },
     Map[
         Function[e,
-            e -> Which[ 
+            e ->
+                Which[ 
                     MemberQ[directedPath, {e[[1]], e[[2]]}],
                         With[{a = arrowSizeProof, sb = 0.45 vertexSize},
                             ({Arrowheads[a], Arrow[#1, sb]}&)
@@ -2769,9 +2995,10 @@ cloudEdgeShapes[allEdges_, path_, pathPairs_, arrowSizeProof_, arrowSizeCloud_, 
 
 geodesicBoxedVertexShapes[allExprs_, initExprs_, path_] := Map[
     With[{v = #},
-        v -> (
+        v ->
+            (
                 With[{
-                    background = Which[
+                    background = Which[ 
                         MemberQ[initExprs, v],
                             $axiomBackground
                         ,
@@ -2811,7 +3038,8 @@ attachGeodesicCallouts[g_, initExprs_, allExprs_, calloutMaxWidth_] := Module[{s
     second = If[Length[initExprs] >= 2, initExprs[[2]], If[MemberQ[allExprs, True], True, None]];
     specs = Join[
         {
-            initExprs[[1]] -> {
+            initExprs[[1]] ->
+                {
                     If[ MatchQ[initExprs[[1]], _Equal],
                         renderGraphEquation[HoldForm @@ {initExprs[[1]]}]
                         ,
@@ -2826,7 +3054,8 @@ attachGeodesicCallouts[g_, initExprs_, allExprs_, calloutMaxWidth_] := Module[{s
             {}
             ,
             {
-                second -> If[ second === True,
+                second ->
+                    If[ second === True,
                         {$qedSymbol, $InductiveProofColors["IdentityBackground"]}
                         ,
                         {renderGraphEquation[HoldForm @@ {second}], $theoremBackground}
@@ -2886,7 +3115,9 @@ MultiwayGeodesicGraph[axioms_List, initExprsRaw_List, steps_Integer, opts : Opti
         allEdges
         ,
         If[ TrueQ[OptionValue["CloudUndirected"]],
-            EdgeShapeFunction -> cloudEdgeShapes[allEdges, path, pathPairs, arrowSizeProof, arrowSizeCloud, vertexSize]
+            EdgeShapeFunction
+            ->
+            cloudEdgeShapes[allEdges, path, pathPairs, arrowSizeProof, arrowSizeCloud, vertexSize]
             ,
             Unevaluated[Sequence[]]
         ]
@@ -3049,46 +3280,47 @@ tokenEventProofPath[initExprs_, allExprs_, trips_] := Module[{path, pathPairs, p
 
 tokenEventStateColors[allExprs_, initExprs_, path_, hl_, fadeOp_, washOpacity_] := Map[
     Function[v,
-        {"MWState", v} -> Module[{onPath = MemberQ[path, v], baseColor},
-            baseColor = Which[
-                v === True,
-                    $theoremHue
-                ,
-                Length[initExprs] >= 2 && v === initExprs[[2]],
-                    $theoremHue
-                ,
-                MemberQ[initExprs, v],
-                    $axiomHue
-                ,
-                True,
-                    $theoremHue
-            ];
-            Which[
-                hl === "Fade",
-                    {
-                        Directive[Opacity[If[onPath, 1, fadeOp]], baseColor],
-                        If[onPath, frameColorFor[baseColor], Opacity[fadeOp, frameColorFor[baseColor]]]
-                    }
-                ,
-                onPath && hl === "Wash",
-                    {
-                        Directive[Opacity[0.85], washColor[baseColor, washOpacity]],
-                        frameColorFor[washColor[baseColor, washOpacity]]
-                    }
-                ,
-                onPath && v =!= True && ! MemberQ[initExprs, v],
-                    {Directive[Opacity[0.7], $pathHighlight], frameColorFor[$pathHighlight]}
-                ,
-                v === True || (Length[initExprs] >= 2 && v === initExprs[[2]]),
-                    {Directive[Opacity[0.85], baseColor], $theoremFrameColor}
-                ,
-                MemberQ[initExprs, v],
-                    {Directive[Opacity[0.7], baseColor], $axiomVertexEdge}
-                ,
-                True,
-                    {Directive[Opacity[0.7], baseColor], $theoremFrameColor}
+        {"MWState", v} ->
+            Module[{onPath = MemberQ[path, v], baseColor},
+                baseColor = Which[ 
+                    v === True,
+                        $theoremHue
+                    ,
+                    Length[initExprs] >= 2 && v === initExprs[[2]],
+                        $theoremHue
+                    ,
+                    MemberQ[initExprs, v],
+                        $axiomHue
+                    ,
+                    True,
+                        $theoremHue
+                ];
+                Which[ 
+                    hl === "Fade",
+                        {
+                            Directive[Opacity[If[onPath, 1, fadeOp]], baseColor],
+                            If[onPath, frameColorFor[baseColor], Opacity[fadeOp, frameColorFor[baseColor]]]
+                        }
+                    ,
+                    onPath && hl === "Wash",
+                        {
+                            Directive[Opacity[0.85], washColor[baseColor, washOpacity]],
+                            frameColorFor[washColor[baseColor, washOpacity]]
+                        }
+                    ,
+                    onPath && v =!= True && ! MemberQ[initExprs, v],
+                        {Directive[Opacity[0.7], $pathHighlight], frameColorFor[$pathHighlight]}
+                    ,
+                    v === True || (Length[initExprs] >= 2 && v === initExprs[[2]]),
+                        {Directive[Opacity[0.85], baseColor], $theoremFrameColor}
+                    ,
+                    MemberQ[initExprs, v],
+                        {Directive[Opacity[0.7], baseColor], $axiomVertexEdge}
+                    ,
+                    True,
+                        {Directive[Opacity[0.7], baseColor], $theoremFrameColor}
+                ]
             ]
-        ]
     ]
     ,
     allExprs
@@ -3096,7 +3328,9 @@ tokenEventStateColors[allExprs_, initExprs_, path_, hl_, fadeOp_, washOpacity_] 
 
 tokenEventEventColors[evs_, pathTrips_, hl_, fadeOp_, washOpacity_] := Map[
     Function[ev,
-        ev -> Which[ 
+        ev
+        ->
+        Which[ 
             hl === "Fade",
                 {
                     Directive[Opacity[If[MemberQ[pathTrips, ev[[2]]], 1, fadeOp]], $defaultEventFill],
@@ -3118,12 +3352,10 @@ tokenEventEventColors[evs_, pathTrips_, hl_, fadeOp_, washOpacity_] := Map[
 
 tokenEventAxiomColors[axVs_, pathAxVs_, hl_, fadeOp_, washOpacity_] := Map[
     Function[av,
-        av -> Which[
+        av ->
+            Which[ 
                 hl === "Fade",
-                    {
-                        Directive[Opacity[If[MemberQ[pathAxVs, av], 1, fadeOp]], $axiomHue],
-                        $axiomVertexEdge
-                    }
+                    {Directive[Opacity[If[MemberQ[pathAxVs, av], 1, fadeOp]], $axiomHue], $axiomVertexEdge}
                 ,
                 hl === "Wash" && MemberQ[pathAxVs, av],
                     {
@@ -3141,7 +3373,9 @@ tokenEventAxiomColors[axVs_, pathAxVs_, hl_, fadeOp_, washOpacity_] := Map[
 
 tokenEventEdgeStyles[edges_, redEdges_, washAxE_, hl_, asz_, fadeOp_, washOpacity_] := Map[
     Function[e,
-        e -> Which[ 
+        e
+        ->
+        Which[ 
             hl === "Fade" && MemberQ[redEdges, e],
                 Directive[$equationalEdgeColor, AbsoluteThickness[2], Arrowheads[1.6 asz]]
             ,
@@ -3168,27 +3402,25 @@ tokenEventEdgeStyles[edges_, redEdges_, washAxE_, hl_, asz_, fadeOp_, washOpacit
 tokenEventLabeledShapes[allExprs_, axVs_, evs_, initExprs_, path_, hl_, washOpacity_, axioms_, collapse_] := Join[
     Map[
         Function[v,
-            {"MWState", v} -> Which[ 
-                    v === True,
-                        equationVertexShape[$qedSymbol, False, 3]
-                    ,
-                    MemberQ[initExprs, v],
-                        equationVertexShape[renderGraphEquation[HoldForm @@ {v}], True, 3]
-                    ,
-                    MemberQ[path, v],
-                        With[{
-                            background = If[ hl === "Wash",
-                                washColor[$theoremBackground, 0.6 washOpacity]
-                                ,
-                                $pathHighlightBackground
-                            ]
-                        },
-                            (Inset[styledBox[renderGraphEquation[HoldForm @@ {v}], background], #1]&)
-                        ]
-                    ,
-                    True,
-                        equationVertexShape[renderGraphEquation[HoldForm @@ {v}], False, 3]
-                ]
+            {"MWState", v}
+            ->
+            Which[ 
+                v === True,
+                    equationVertexShape[$qedSymbol, False, 3]
+                ,
+                MemberQ[initExprs, v],
+                    equationVertexShape[renderGraphEquation[HoldForm @@ {v}], True, 3]
+                ,
+                MemberQ[path, v],
+                    With[{
+                        background = If[hl === "Wash", washColor[$theoremBackground, 0.6 washOpacity], $pathHighlightBackground]
+                    },
+                        (Inset[styledBox[renderGraphEquation[HoldForm @@ {v}], background], #1]&)
+                    ]
+                ,
+                True,
+                    equationVertexShape[renderGraphEquation[HoldForm @@ {v}], False, 3]
+            ]
         ]
         ,
         allExprs
@@ -3196,7 +3428,9 @@ tokenEventLabeledShapes[allExprs_, axVs_, evs_, initExprs_, path_, hl_, washOpac
     ,
     Map[
         Function[av,
-            av -> equationVertexShape[renderGraphEquation[HoldForm @@ {forAllBody[axioms[[If[collapse, av[[2]], av[[2, 2]]]]]]}], True]
+            av
+            ->
+            equationVertexShape[renderGraphEquation[HoldForm @@ {forAllBody[axioms[[If[collapse, av[[2]], av[[2, 2]]]]]]}], True]
         ]
         ,
         axVs
@@ -3385,9 +3619,13 @@ MultiwayTokenEventGraph[axioms_List, initExprsRaw_List, steps_Integer, OptionsPa
         VertexCoordinates -> coords
         ,
         If[ TrueQ[OptionValue["Labeled"]],
-            VertexShapeFunction -> tokenEventLabeledShapes[allExprs, axVs, evs, initExprs, path, hl, washOpacity, expandedAxioms, collapse]
+            VertexShapeFunction
+            ->
+            tokenEventLabeledShapes[allExprs, axVs, evs, initExprs, path, hl, washOpacity, expandedAxioms, collapse]
             ,
-            VertexShapeFunction -> tokenEventDiskShapes[verts, vcols, OptionValue["VertexScale"], OptionValue["SizeByLeafCount"]]
+            VertexShapeFunction
+            ->
+            tokenEventDiskShapes[verts, vcols, OptionValue["VertexScale"], OptionValue["SizeByLeafCount"]]
         ]
         ,
         PerformanceGoal -> "Quality"
@@ -3415,7 +3653,8 @@ $multiwayPanelOptions = {
 multiwayPanelShow[g_, h_, w_, ar_, defH_, defW_ : None] := Show[
     g
     ,
-    ImageSize -> Which[ 
+    ImageSize ->
+        Which[ 
             NumberQ[w],
                 w
             ,
@@ -3450,7 +3689,7 @@ multiwayPinnedLayeredCoordinates[verts_, edges_, bottomV_, topV_] := Module[{g0,
 
 Options[IslandsPanel] = $multiwayPanelOptions
 
-IslandsPanel[ru_, case_String : "Step", OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], base, axs, seeds, steps, cp, g},
+IslandsPanel[ru_, case_String : "Step", OptionsPattern[]] := Module[{s = rawSystemFor[ru], base, axs, seeds, steps, cp, g},
     base = If[OptionValue["Axioms"] === "Raw", s["RawAxioms"], s["Axioms"]];
     {axs, seeds, steps, cp} = Switch[ case,
         "Base",
@@ -3486,7 +3725,9 @@ IslandsPanel[ru_, case_String : "Step", OptionsPattern[]] := Module[{s = multiwa
         ,
         "VertexLabels" -> If[TrueQ[OptionValue["Labeled"]], True, None]
         ,
-        "ArrowSize" -> (
+        "ArrowSize"
+        ->
+        (
             OptionValue["ArrowSize"]
             /.
             Automatic -> If[NumberQ[OptionValue["Height"]] && OptionValue["Height"] < 280, 0.028, Automatic]
@@ -3497,7 +3738,7 @@ IslandsPanel[ru_, case_String : "Step", OptionsPattern[]] := Module[{s = multiwa
 
 Options[StatementPanel] = Join[$multiwayPanelOptions, {"Seeds" -> "Equation"}]
 
-StatementPanel[ru_, k_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], base, kk, lab, two, caseB, or, seeds, g},
+StatementPanel[ru_, k_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], base, kk, lab, two, caseB, or, seeds, g},
     lab = TrueQ[OptionValue["Labeled"]];
     two = OptionValue["Seeds"] === "Pair";
     caseB = OptionValue["Case"] === "Base";
@@ -3546,7 +3787,7 @@ Options[TokenEventPanel] = Join[
     }
 ]
 
-TokenEventPanel[ru_, k_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], base, provided, pa, kk, caseB, seeds, g, pinco},
+TokenEventPanel[ru_, k_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], base, provided, pa, kk, caseB, seeds, g, pinco},
     caseB = OptionValue["Case"] === "Base";
     base = If[OptionValue["Axioms"] === "Raw", s["RawAxioms"], s["Axioms"]];
     kk = Min[k, Length[s["Rows"]]];
@@ -3558,7 +3799,7 @@ TokenEventPanel[ru_, k_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru],
         If[caseB, {s["BaseSeeds"][[1]] == s["BaseSeeds"][[2]]}, {s["StepEq"]}]
     ];
     pinco = If[ TrueQ[OptionValue["PinProof"]] && ! caseB,
-        Module[{p = cachedProofFor[ru], pgc},
+        Module[{p = rawProofFor[ru], pgc},
             pgc = Normal[z3LayoutCoords[inductionProofGraph[p], "Unlabelled"]];
             Cases[
                 pgc,
@@ -3628,7 +3869,7 @@ Options[MultiwayBothPanel] = {
     "Height" -> 340
 }
 
-MultiwayBothPanel[ru_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], baseAx, stepAx, cone, gB, gS},
+MultiwayBothPanel[ru_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], baseAx, stepAx, cone, gB, gS},
     baseAx = If[OptionValue["Axioms"] === "Raw", s["RawAxioms"], s["Axioms"]];
     stepAx = Join[baseAx, s["IH"], s["Rows"]];
     cone[ax_, seed_, steps_] := Show[
@@ -3752,7 +3993,7 @@ leanCloud[
             ,
             1
         ];
-        candidates = DeleteCases[candidates, {x_, x_}];
+        candidates = DeleteCases[candidates, {xe_, xe_}];
         newEdges = Map[DirectedEdge[{"MWState", #[[1]]}, {"MWState", #[[2]]}]&, candidates];
         allFresh = DeleteDuplicates[Select[Map[Last, candidates], ! KeyExistsQ[state["seen"], #]&]];
         <|
@@ -3871,7 +4112,7 @@ Options[multiwaySubProofCones] = {
     "InductionEdgeThickness" -> 1
 }
 
-multiwaySubProofCones[ru_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], p = cachedProofFor[ru], pg, baseAx, stepAx, mkCone, caseList},
+multiwaySubProofCones[ru_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], p = rawProofFor[ru], pg, baseAx, stepAx, mkCone, caseList},
     pg = inductionProofGraph[p, "GraftDerived" -> OptionValue["GraftDerived"]];
     baseAx = If[OptionValue["Axioms"] === "Raw", s["RawAxioms"], s["Axioms"]];
     stepAx = Join[baseAx, s["IH"], s["Rows"]];
@@ -3970,6 +4211,7 @@ multiwayCloudOverlap[ru_, opts : OptionsPattern[]] := cloudOverlapMeasure[multiw
 
 (* mirrors the growth-loop options of MultiwayInductiveProofPanel, on whose behalf this helper runs
    (it is handed the panel's option sequence). *)
+
 Options[directOverlapGrow] = Join[
     {"MaxStates" -> 500, "DirectOverlapCap" -> 4000, "DirectOverlapStep" -> 500},
     Options[multiwaySubProofCones]
@@ -3978,7 +4220,7 @@ Options[directOverlapGrow] = Join[
 directOverlapGrow[ru_, opts : OptionsPattern[]] := Module[{
     cap = OptionValue["DirectOverlapCap"],
     step = OptionValue["DirectOverlapStep"],
-    m = OptionValue["MaxStates"],
+    maxSt = OptionValue["MaxStates"],
     coneOpts = FilterRules[{opts}, Options[multiwaySubProofCones]],
     data,
     measure
@@ -3986,13 +4228,13 @@ directOverlapGrow[ru_, opts : OptionsPattern[]] := Module[{
     data = multiwaySubProofCones[ru, coneOpts];
     measure = cloudOverlapMeasure[data["Cones"]];
     While[
-        ! measure["Connected"] && m < cap
+        ! measure["Connected"] && maxSt < cap
         ,
-        m = Min[cap, m + step];
-        data = multiwaySubProofCones[ru, "MaxStates" -> m, coneOpts];
+        maxSt = Min[cap, maxSt + step];
+        data = multiwaySubProofCones[ru, "MaxStates" -> maxSt, coneOpts];
         measure = cloudOverlapMeasure[data["Cones"]]
     ];
-    <|"MaxStates" -> m, "Data" -> data, "Measure" -> measure|>
+    <|"MaxStates" -> maxSt, "Data" -> data, "Measure" -> measure|>
 ]
 
 (* Conclusion pin: a deliberate post-layout nudge of just the goal vertex to the bottom centre, for
@@ -4036,7 +4278,7 @@ cloudKCore[cloudVerts_, cloudEdges_, proofVerts_, k_] := If[ ! IntegerQ[k] || k 
         deg,
         low
     },
-        present[x_] := TrueQ[keptA[x]] || KeyExistsQ[proofSet, x];
+        present[v_] := TrueQ[keptA[v]] || KeyExistsQ[proofSet, v];
         While[
             True
             ,
@@ -4160,7 +4402,7 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
         {r /@ cone[[1]], cone[[2]] /. DirectedEdge[a_, b_] :> DirectedEdge[r[a], r[b]]}
     ];
     caseResults = Map[processCase[{#[[3]], #[[4]]}]&, caseList];
-    multiwayEdges = DeleteCases[DeleteDuplicates[Flatten[caseResults[[All, 2]], 1]], DirectedEdge[x_, x_]];
+    multiwayEdges = DeleteCases[DeleteDuplicates[Flatten[caseResults[[All, 2]], 1]], DirectedEdge[xe_, xe_]];
 (* Keep the axioms TRUE sources: drop every directed cloud edge that feeds INTO an axiom seed (a
    cloud state rewriting to an axiom). The axioms then have in-degree 0, so a layered layout
    ranks them on the top row and is free to optimise their order within that row – a real rank
@@ -4213,7 +4455,9 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
         Map[
             Function[e,
                 With[{ind = MemberQ[{"Induction", "IndApp", "IndIn"}, ToString[edgeTag[e]]]},
-                    e -> With[{thick = If[ind, ieT, peT]},
+                    e
+                    ->
+                    With[{thick = If[ind, ieT, peT]},
                         If[ thick <= 0,
                             Opacity[0]
                             ,
@@ -4228,7 +4472,8 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
     ];
     cloudEStyle = With[{cet = OptionValue["CloudEdgeThickness"], asz = OptionValue["ArrowSize"]},
         Map[
-            # -> If[ cet <= 0,
+            # ->
+                If[ cet <= 0,
                     Opacity[0]
                     ,
                     Directive[Opacity[op], $equationalEdgeColor, AbsoluteThickness[cet], Arrowheads[asz]]
@@ -4271,20 +4516,14 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
             ];
             coordsAll = pinExtremes[AssociationThread[VertexList[G] -> GraphEmbedding[G]], conclusionV, OptionValue["PinConclusion"]];
             rng = MinMax /@ Transpose[Values[coordsAll]];
-            Graph[
-                allV,
-                allE,
-                VertexCoordinates -> Normal[KeyTake[coordsAll, allV]],
-                PlotRange -> rng,
-                styleOpts
-            ]
+            Graph[allV, allE, VertexCoordinates -> Normal[KeyTake[coordsAll, allV]], PlotRange -> rng, styleOpts]
         ]
     ]
 ]
 
 Options[SettingsPanel] = $multiwayPanelOptions
 
-SettingsPanel[ru_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], or},
+SettingsPanel[ru_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], or},
     or = OptionValue["Oriented"] /. Automatic -> False;
     multiwayPanelShow[
         MultiwayGeodesicGraph[
@@ -4313,22 +4552,22 @@ SettingsPanel[ru_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru], or},
 
 ruleVariableQ[term_] := MatchQ[term, _Symbol] && StringMatchQ[ToString[term], ("rv" | "cpv") ~~ ___]
 
-unifyTerms[a_, b_, substitution_, variableQ_] := Module[{x = a //. substitution, y = b //. substitution},
+unifyTerms[a_, b_, substitution_, variableQ_] := Module[{ua = a //. substitution, ub = b //. substitution},
     Which[ 
-        x === y,
+        ua === ub,
             substitution
         ,
-        variableQ[x],
-            If[FreeQ[y, x], Append[substitution, x -> y], $Failed]
+        variableQ[ua],
+            If[FreeQ[ub, ua], Append[substitution, ua -> ub], $Failed]
         ,
-        variableQ[y],
-            If[FreeQ[x, y], Append[substitution, y -> x], $Failed]
+        variableQ[ub],
+            If[FreeQ[ua, ub], Append[substitution, ub -> ua], $Failed]
         ,
-        ! AtomQ[x] && ! AtomQ[y] && Head[x] === Head[y] && Length[x] === Length[y],
+        ! AtomQ[ua] && ! AtomQ[ub] && Head[ua] === Head[ub] && Length[ua] === Length[ub],
             Fold[
-                If[#1 === $Failed, $Failed, unifyTerms[x[[#2]], y[[#2]], #1, variableQ]]&,
+                If[#1 === $Failed, $Failed, unifyTerms[ua[[#2]], ub[[#2]], #1, variableQ]]&,
                 substitution,
-                Range[Length[x]]
+                Range[Length[ua]]
             ]
         ,
         True,
@@ -4451,7 +4690,8 @@ addCriticalPair[
                 ,
                 "events" -> Append[accumulated["events"], {"MWOv", equation}]
                 ,
-                "edges" -> Join[
+                "edges" ->
+                    Join[
                         accumulated["edges"]
                         ,
                         {
@@ -4463,7 +4703,8 @@ addCriticalPair[
                 ,
                 "genOf" -> Append[accumulated["genOf"], equation -> generation]
                 ,
-                "fresh" -> Append[
+                "fresh" ->
+                    Append[
                         accumulated["fresh"],
                         equationToFreshRule[equation, baseRuleCount + Length[accumulated["fresh"]] + 1, weight]
                     ]
@@ -4545,15 +4786,15 @@ ruleVertexLayout[nodes_, events_, edges_, genOf_, labeled_] := Module[{dx = If[l
     Normal[Fold[placeRuleLayer[#1, #2, edges, yOf, dx]&, <||>, layers]]
 ]
 
-ruleVertexScaleFactor[method_, n_] := Switch[ method,
+ruleVertexScaleFactor[method_, cnt_] := Switch[ method,
     "Fixed" | "None",
         1.
     ,
     "Linear",
-        100. / Max[100, n]
+        100. / Max[100, cnt]
     ,
     _,
-        Sqrt[100. / Max[100, n]]
+        Sqrt[100. / Max[100, cnt]]
 ]
 
 ruleSpaceGraph[state_, labeled_, arrowSize_, scalingMethod_ : "Density", vertexScale_ : 1] := Module[{
@@ -4571,16 +4812,21 @@ ruleSpaceGraph[state_, labeled_, arrowSize_, scalingMethod_ : "Density", vertexS
         ,
         edges
         ,
-        VertexStyle -> Join[
+        VertexStyle ->
+            Join[
                 Map[{"MWRuleV", #} -> multiwayStateStyle[genOf[#] === 0]&, nodes],
                 Map[# -> eventVertexStyle["CriticalPairLemma"]&, events]
             ]
         ,
         If[ labeled,
-            VertexShapeFunction -> Join[
+            VertexShapeFunction
+            ->
+            Join[
                 Map[
                     Function[c,
-                        {"MWRuleV", c} -> equationVertexShape[renderGraphEquation[HoldForm @@ {c[[1]] == c[[2]]}], genOf[c] === 0, 3]
+                        {"MWRuleV", c}
+                        ->
+                        equationVertexShape[renderGraphEquation[HoldForm @@ {c[[1]] == c[[2]]}], genOf[c] === 0, 3]
                     ]
                     ,
                     nodes
@@ -4589,7 +4835,9 @@ ruleSpaceGraph[state_, labeled_, arrowSize_, scalingMethod_ : "Density", vertexS
                 Map[# -> eventVertexShape[8, "CriticalPairLemma"]&, events]
             ]
             ,
-            VertexSize -> Join[Map[{"MWRuleV", #} -> {"Scaled", 0.018 scale}&, nodes], Map[# -> {"Scaled", 0.008 scale}&, events]]
+            VertexSize
+            ->
+            Join[Map[{"MWRuleV", #} -> {"Scaled", 0.018 scale}&, nodes], Map[# -> {"Scaled", 0.008 scale}&, events]]
         ]
         ,
         VertexLabels -> None
@@ -4662,7 +4910,7 @@ MultiwayRuleGraph[axioms_List, OptionsPattern[]] := Module[{
 
 Options[RuleSpacePanel] = Join[$multiwayPanelOptions, {"Generations" -> 1, "MaxNew" -> 25}]
 
-RuleSpacePanel[ru_, OptionsPattern[]] := Module[{s = multiwaySystemFor[ru]},
+RuleSpacePanel[ru_, OptionsPattern[]] := Module[{s = rawSystemFor[ru]},
     multiwayPanelShow[
         MultiwayRuleGraph[
             Join[s["Axioms"], s["IH"]],
@@ -4705,7 +4953,7 @@ $spineForkWeight = 6; $axiomWeight = 2; $indWeight = 9; $goalWeight = 7; $channe
 
 $primaryAlignWeight = 40
 
-$ihAlignWeight = 60; (* IHAboveCircle: strength of the soft pull of the hyp column onto the induction node's x *)
+$ihAlignWeight = 60;(* IHAboveCircle: strength of the soft pull of the hyp column onto the induction node's x *)
 
 (* crossing minimisation: weight on each crossing indicator in the Z3 objective, and the cap on how
    many candidate crossing pairs are encoded (the weighted MaxSAT stops returning a model past a
@@ -4748,14 +4996,28 @@ gv[a_, k_] := Lookup[a, Key[k]]
 
 z3ColorOf[g_] := Association[
     Map[
-        #[[1]] -> FirstCase[#[[2]], _Hue | _RGBColor | _GrayLevel | _LightDarkSwitched, $InductiveProofColors["FallbackFrame"], Infinity]&,
+        #[[1]] ->
+            FirstCase[
+                #[[2]],
+                _Hue | _RGBColor | _GrayLevel | _LightDarkSwitched,
+                $InductiveProofColors["FallbackFrame"],
+                Infinity
+            ]&
+        ,
         graphOption[g, VertexStyle]
     ]
 ]
 
 (* the induction-hypothesis vertices are filled with $inductionFill; z3RoleOf detects the "hyp"
-   role by this colour, so it must equal $inductionFill, not a copy of it *)
+   role by this colour. $inductionFill is a LightDarkSwitched pair, but the colour read back off the
+   built graph is the resolved variant (light or dark), so an exact === against the pair misses.
+   $hypColorVariants holds the pair AND both resolved variants, matched with MemberQ below. *)
+
 $indHypColor = $inductionFill
+
+$hypColorVariants = DeleteDuplicates[
+    Replace[$indHypColor, {LightDarkSwitched[a_, b_] :> {LightDarkSwitched[a, b], a, b}, c_ :> {c}}]
+]
 
 z3AxiomColorQ[c_] := MatchQ[c, (Hue[h_, _, _] | LightDarkSwitched[Hue[h_, _, _], _]) /; h < 0.4]
 
@@ -4772,7 +5034,7 @@ z3RoleOf[v_, colA_] := Which[
     z3AxiomColorQ[gv[colA, v]],
         "axiom"
     ,
-    gv[colA, v] === $indHypColor,
+    MemberQ[$hypColorVariants, gv[colA, v]],
         "hyp"
     ,
     True,
@@ -4805,7 +5067,8 @@ z3LabelledSizes[g_] := Module[{boxR, sa},
         ,
         Association[
             Map[
-                # -> Which[ 
+                # ->
+                    Which[ 
                         eventVertexQ[#],
                             {$eventDiam, $eventDiam}
                         ,
@@ -4824,17 +5087,19 @@ z3LabelledSizes[g_] := Module[{boxR, sa},
 
 z3UnlabelledSizes[g_] := Association[
     Map[
-        # -> $vertexScale If[inductionNodeQ[#], {$indCircleDiam, $indCircleDiam}, {$circleDiam, $circleDiam}]&
+        #
+        ->
+        $vertexScale If[inductionNodeQ[#], {$indCircleDiam, $indCircleDiam}, {$circleDiam, $circleDiam}]&
         ,
         VertexList[g]
     ]
 ]
 
-z3LayerAssign[g_, idx_] := Module[{n = VertexCount[g], pairs, L, ch = True, p = 0},
+z3LayerAssign[g_, idx_] := Module[{nv = VertexCount[g], pairs, L, ch = True, p = 0},
     pairs = Map[{idx[#[[1]]], idx[#[[2]]]}&, EdgeList[g]];
-    L = ConstantArray[0, n];
+    L = ConstantArray[0, nv];
     While[
-        ch && p < n + 2
+        ch && p < nv + 2
         ,
         ch = False;
         p++;
@@ -4892,7 +5157,9 @@ z3Info[g_, sizeA_, ranksep_] := Module[{vs, ed, idx, colA, ctag, prefixes, role,
         ,
         "role" -> role
         ,
-        "cluster" -> AssociationMap[(3 (First[FirstPosition[prefixes, z3Prefix[gv[ctag, #]]]] - 1) + z3SuffixRank[gv[ctag, #]])&, vs]
+        "cluster"
+        ->
+        AssociationMap[(3 (First[FirstPosition[prefixes, z3Prefix[gv[ctag, #]]]] - 1) + z3SuffixRank[gv[ctag, #]])&, vs]
         ,
         "in" -> Merge[Map[#[[2]] -> #[[1]]&, ed], Identity]
         ,
@@ -4931,7 +5198,9 @@ z3HypRoutes[info_] := Module[{idx = info["idx"], layer = info["layer"], role = i
     Association[
         Map[
             Function[e,
-                e -> Join[
+                e
+                ->
+                Join[
                     {e[[1]]},
                     {"dum", idx[e[[1]]], idx[e[[2]]], #}& /@ Range[gv[layer, e[[1]]] - 1, gv[layer, e[[2]]] + 1, -1],
                     {e[[2]]}
@@ -4956,9 +5225,11 @@ z3NodeData[info_, routes_] := Module[{vs = info["vs"], dummies, nodes, isDummy},
         ,
         "cluster" -> Association[Map[# -> gv[info["cluster"], If[isDummy[#], vs[[#[[3]]]], #]]&, nodes]]
         ,
-        "class" -> Association[
+        "class" ->
+            Association[
                 Map[
-                    # -> Which[ 
+                    # ->
+                        Which[ 
                             isDummy[#],
                                 2
                             ,
@@ -4978,10 +5249,10 @@ z3NodeData[info_, routes_] := Module[{vs = info["vs"], dummies, nodes, isDummy},
 ]
 
 z3OrderSweep[nd_, nbrs_, passes_ : 6] := Module[{nodes = nd["nodes"], layerF, clusterF, classF, idxF, layers, ordL, posOf},
-    layerF[x_] := gv[nd["layer"], x];
-    clusterF[x_] := gv[nd["cluster"], x];
-    classF[x_] := gv[nd["class"], x];
-    idxF[x_] := gv[nd["idx"], x];
+    layerF[v_] := gv[nd["layer"], v];
+    clusterF[v_] := gv[nd["cluster"], v];
+    classF[v_] := gv[nd["class"], v];
+    idxF[v_] := gv[nd["idx"], v];
     layers = Sort[DeleteDuplicates[layerF /@ nodes]];
     ordL = Map[SortBy[#, {clusterF[#]&, classF[#]&, idxF[#]&}]&, GroupBy[nodes, layerF]];
     posOf = Association[
@@ -5003,17 +5274,17 @@ z3OrderSweep[nd_, nbrs_, passes_ : 6] := Module[{nodes = nd["nodes"], layerF, cl
                     ordL[L] = SortBy[
                         ordL[L]
                         ,
-                        Function[x,
+                        Function[node,
                             {
-                                clusterF[x]
+                                clusterF[node]
                                 ,
-                                classF[x]
+                                classF[node]
                                 ,
-                                With[{ns = Select[Lookup[nbrs, Key[x], {}], layerF[#] == ref&]},
-                                    If[ns === {}, gv[posOf, x], Mean[N[gv[posOf, #]& /@ ns]]]
+                                With[{ns = Select[Lookup[nbrs, Key[node], {}], layerF[#] == ref&]},
+                                    If[ns === {}, gv[posOf, node], Mean[N[gv[posOf, #]& /@ ns]]]
                                 ]
                                 ,
-                                idxF[x]
+                                idxF[node]
                             }
                         ]
                     ];
@@ -5111,7 +5382,7 @@ z3Constraints[info_, nd_, routes_, posOf_, xv_] := Module[{
     hard,
     soft
 },
-    xOf[x_] := xv[[gv[nd["idx"], x]]];
+    xOf[v_] := xv[[gv[nd["idx"], v]]];
     byLayer = GroupBy[nodes, gv[nd["layer"], #]&];
 (* per-layer non-overlap. AxiomGap (when set) widens the edge-to-edge margin between an axiom box
    and the event circle it sits next to (this hard floor, not a soft pull, is what actually
@@ -5224,14 +5495,14 @@ z3Constraints[info_, nd_, routes_, posOf_, xv_] := Module[{
     <|"hard" -> hard, "soft" -> soft|>
 ]
 
-z3SolveX[cons_, nd_] := Module[{nodes = nd["nodes"], xv, av, soft = cons["soft"], auxCons, obj, m},
+z3SolveX[cons_, nd_] := Module[{nodes = nd["nodes"], xv, av, soft = cons["soft"], auxCons, obj, model},
     ensureZ3Link[];
     xv = Table[WolframInstitute`Z3Link`Z3Real["x" <> ToString[k]], {k, Length[nodes]}];
     av = Table[WolframInstitute`Z3Link`Z3Real["a" <> ToString[k]], {k, Length[soft]}];
     auxCons = Flatten[MapThread[{#2 >= #1[[2]], #2 >= -#1[[2]]}&, {soft, av}], 1];
     obj = Total[MapThread[#1[[1]] #2&, {soft, av}]];
-    m = WolframInstitute`Z3Link`Z3Optimize[obj -> Minimize, Join[cons["hard"], auxCons, {xv[[1]] == 0}]]["Model"];
-    AssociationThread[nodes -> Table[N[Lookup[m, "x" <> ToString[k], 0]], {k, Length[nodes]}]]
+    model = WolframInstitute`Z3Link`Z3Optimize[obj -> Minimize, Join[cons["hard"], auxCons, {xv[[1]] == 0}]]["Model"];
+    AssociationThread[nodes -> Table[N[Lookup[model, "x" <> ToString[k], 0]], {k, Length[nodes]}]]
 ]
 
 z3Border[c_, half_, circleQ_, towards_, push_ : $edgeOvershoot] := Module[{d = towards - c, sx, sy, b},
@@ -5243,14 +5514,14 @@ z3Border[c_, half_, circleQ_, towards_, push_ : $edgeOvershoot] := Module[{d = t
         sy = If[Abs[d[[2]]] < 10. ^ -9, Infinity, half[[2]] / Abs[d[[2]]]];
         c + Min[sx, sy] d
     ];
-    b - push Normalize[d] (* push > 0 reaches into the box, < 0 stops clear of it, extending a little into the box so the line reaches it *)
-]
+    b - push Normalize[d]
+(* push > 0 reaches into the box, < 0 stops clear of it, extending a little into the box so the line reaches it *)]
 
 (* raw routes (waypoints at vertex centres). Endpoint clipping to the box/circle borders is done at
    render time in z3Graphic, so the arrow gaps are render params, not layout-cache keys. *)
 
 z3EdgeRoutes[info_, nd_, routes_, allX_] := Module[{rs = info["ranksep"], posR},
-    posR[x_] := {gv[allX, x], gv[nd["layer"], x] rs - If[goalNodeQ[x], $conclusionGap, 0]};
+    posR[v_] := {gv[allX, v], gv[nd["layer"], v] rs - If[goalNodeQ[v], $conclusionGap, 0]};
     Association[
         Map[
             Function[e,
@@ -5307,8 +5578,8 @@ z3CrossingTerms[info_, nd_, routes_, xv_, ranksep_, capN_] := Module[{layerY, xO
     ensureZ3Link[];
     layerY[v_] := gv[nd["layer"], v] ranksep;
     xOf[v_] := xv[[gv[nd["idx"], v]]];
-    xAtY[{a_, b_}, y_] := With[{y1 = layerY[a], y2 = layerY[b]},
-        xOf[a] + (xOf[b] - xOf[a]) (y1 - y) / (y1 - y2)
+    xAtY[{a_, b_}, yc_] := With[{y1 = layerY[a], y2 = layerY[b]},
+        xOf[a] + (xOf[b] - xOf[a]) (y1 - yc) / (y1 - y2)
     ];
     segsOfEdge[e_] := Partition[If[KeyExistsQ[routes, e], routes[e], {e[[1]], e[[2]]}], 2, 1];
     allSegs = Flatten[Map[segsOfEdge, info["ed"]], 1];
@@ -5326,13 +5597,17 @@ z3CrossingTerms[info_, nd_, routes_, xv_, ranksep_, capN_] := Module[{layerY, xO
     ];
     terms = MapIndexed[
         Function[{p, idx},
-            Module[{s1 = p[[1]], s2 = p[[2]], yLo, yHi, sh, sl, ci = First[idx] - 1},
-                yLo = Max[yr[s1][[1]], yr[s2][[1]]];
-                yHi = Min[yr[s1][[2]], yr[s2][[2]]];
+            Module[{seg1 = p[[1]], seg2 = p[[2]], yLo, yHi, sh, sl, ci = First[idx] - 1},
+                yLo = Max[yr[seg1][[1]], yr[seg2][[1]]];
+                yHi = Min[yr[seg1][[2]], yr[seg2][[2]]];
                 sh = WolframInstitute`Z3Link`Z3Bool["sh" <> ToString[ci]];
                 sl = WolframInstitute`Z3Link`Z3Bool["sl" <> ToString[ci]];
                 {
-                    {Equivalent[sh, xAtY[s1, yHi] >= xAtY[s2, yHi]], Equivalent[sl, xAtY[s1, yLo] >= xAtY[s2, yLo]]},
+                    {
+                        Equivalent[sh, xAtY[seg1, yHi] >= xAtY[seg2, yHi]],
+                        Equivalent[sl, xAtY[seg1, yLo] >= xAtY[seg2, yLo]]
+                    }
+                    ,
                     Boole[Xor[sh, sl]]
                 }
             ]
@@ -5343,16 +5618,16 @@ z3CrossingTerms[info_, nd_, routes_, xv_, ranksep_, capN_] := Module[{layerY, xO
     {Flatten[terms[[All, 1]]], terms[[All, 2]]}
 ]
 
-z3SolveXCross[cons_, crossCons_, crossTerms_, nd_, xv_] := Module[{nodes = nd["nodes"], av, auxCons, obj, m},
+z3SolveXCross[cons_, crossCons_, crossTerms_, nd_, xv_] := Module[{nodes = nd["nodes"], av, auxCons, obj, model},
     ensureZ3Link[];
     av = Table[WolframInstitute`Z3Link`Z3Real["a" <> ToString[k]], {k, Length[cons["soft"]]}];
     auxCons = Flatten[MapThread[{#2 >= #1[[2]], #2 >= -#1[[2]]}&, {cons["soft"], av}], 1];
     obj = Total[MapThread[#1[[1]] #2&, {cons["soft"], av}]] + $crossMinWeight Total[crossTerms];
-    m = Quiet
+    model = Quiet
     @
     WolframInstitute`Z3Link`Z3Optimize[obj -> Minimize, Join[cons["hard"], auxCons, crossCons, {xv[[1]] == 0}]]["Model"];
-    If[ AssociationQ[m],
-        AssociationThread[nodes -> Table[N[Lookup[m, "x" <> ToString[k], 0]], {k, Length[nodes]}]]
+    If[ AssociationQ[model],
+        AssociationThread[nodes -> Table[N[Lookup[model, "x" <> ToString[k], 0]], {k, Length[nodes]}]]
         ,
         $Failed
     ]
@@ -5393,8 +5668,12 @@ z3Layout[g_, sizeA_, ranksep_] := Module[{info, routes, nd, posOf, xv, cons, all
         ]
     ];
     <|
-        "coords" -> AssociationThread[
-            info["vs"] -> Map[{gv[allX, #], gv[info["layer"], #] ranksep - If[goalNodeQ[#], $conclusionGap, 0]}&, info["vs"]]
+        "coords"
+        ->
+        AssociationThread[
+            info["vs"]
+            ->
+            Map[{gv[allX, #], gv[info["layer"], #] ranksep - If[goalNodeQ[#], $conclusionGap, 0]}&, info["vs"]]
         ]
         ,
         "routes" -> z3EdgeRoutes[info, nd, routes, allX]
@@ -5411,18 +5690,75 @@ z3SizesFor[g_, mode_] := If[mode === "Unlabelled", z3UnlabelledSizes[g], z3Label
 $z3LayoutMemo = <||>
 
 cachedLayoutFor[g_, mode_] := Module[{key, f, lay},
-    key = Hash[{
-        VertexList[g], EdgeList[g],
-        $graphCellSize, $cellFontScale, $quantifierSize, $textFontSize, $boxPadding,
-        $traditionalForm, $quantifierTraditional, $scriptRaise, $centerOnEquals,
-        $vertexScale, $cellSeparatorGap, $z3LayoutVersion, mode,
-        (* every parameter that changes the solved layout, so a weight change re-keys (and is
-           cached separately) instead of silently serving an old layout or clobbering a sibling *)
-        $spineForkWeight, $axiomWeight, $indWeight, $goalWeight, $channelPull,
-        $primaryAlignWeight, $crossMinWeight, $crossMinPairCap,
-        $layerGapLabelled, $layerGapUnlabelled, $edgeMargin, $dummyWidth, $conclusionGap,
-        $axiomRows, $ihAboveCircle, $axiomGap, $axiomSide
-    }];
+    key = Hash[
+        {
+            VertexList[g]
+            ,
+            EdgeList[g]
+            ,
+            $graphCellSize
+            ,
+            $cellFontScale
+            ,
+            $quantifierSize
+            ,
+            $textFontSize
+            ,
+            $boxPadding
+            ,
+            $traditionalForm
+            ,
+            $quantifierTraditional
+            ,
+            $scriptRaise
+            ,
+            $centerOnEquals
+            ,
+            $vertexScale
+            ,
+            $cellSeparatorGap
+            ,
+            $z3LayoutVersion
+            ,
+            mode
+            ,
+(* every parameter that changes the solved layout, so a weight change re-keys (and is
+   cached separately) instead of silently serving an old layout or clobbering a sibling *)
+            $spineForkWeight
+            ,
+            $axiomWeight
+            ,
+            $indWeight
+            ,
+            $goalWeight
+            ,
+            $channelPull
+            ,
+            $primaryAlignWeight
+            ,
+            $crossMinWeight
+            ,
+            $crossMinPairCap
+            ,
+            $layerGapLabelled
+            ,
+            $layerGapUnlabelled
+            ,
+            $edgeMargin
+            ,
+            $dummyWidth
+            ,
+            $conclusionGap
+            ,
+            $axiomRows
+            ,
+            $ihAboveCircle
+            ,
+            $axiomGap
+            ,
+            $axiomSide
+        }
+    ];
     If[KeyExistsQ[$z3LayoutMemo, key], Return[$z3LayoutMemo[key]]];
     f = FileNameJoin[{$proofCacheDir, "layoutcache_" <> ToString[key] <> ".mx"}];
     lay = If[ FileExistsQ[f],
@@ -5453,8 +5789,14 @@ z3LayoutCoords[g_, mode_] := cachedLayoutFor[g, mode]["coords"]
 z3FillStroke[funcA_, colA_, v_] := If[ ListQ[v] && ! eventVertexQ[v] && ! inductionNodeQ[v],
     With[{fr = First[Lookup[funcA, Key[v]][Null]]},
         {
-            FirstCase[fr, HoldPattern[Background -> b_] :> b, gv[colA, v], Infinity],
-            FirstCase[fr, HoldPattern[FrameStyle -> Directive[c_, ___]] :> c, $InductiveProofColors["FallbackFrame"], Infinity]
+            FirstCase[fr, HoldPattern[Background -> b_] :> b, gv[colA, v], Infinity]
+            ,
+            FirstCase[
+                fr,
+                HoldPattern[FrameStyle -> Directive[c_, ___]] :> c,
+                $InductiveProofColors["FallbackFrame"],
+                Infinity
+            ]
         }
     ]
     ,
@@ -5468,7 +5810,8 @@ proofDiscShapes[g_, scale_] := With[{colA = z3ColorOf[g], funcA = Association[gr
     Map[
         Function[v,
             With[{fs = z3FillStroke[funcA, colA, v]},
-                v -> discVertex[
+                v ->
+                    discVertex[
                         fs[[1]],
                         fs[[2]],
                         scale (If[inductionNodeQ[v], $indCircleDiam, $circleDiam]),
@@ -5481,12 +5824,19 @@ proofDiscShapes[g_, scale_] := With[{colA = z3ColorOf[g], funcA = Association[gr
     ]
 ]
 
-z3VertexShape[v_, mode_, sz_, fill_, stroke_, content_] := Which[ 
+(* a coordinate-space disc (radius in layout units) for the proof-graph event/induction vertices.
+   Its edge coincides exactly with where z3Border clips arrow endpoints (Min[sizeA] / 2), so the
+   arrows always meet the vertex border. A fixed-ImageSize Inset disc (discVertex) renders at a size
+   that matches the clip radius only at one display scale, leaving the arrows anchored off the disc. *)
+
+z3DiscShape[fill_, stroke_, r_, thick_] := ({fill, Disk[#1, r], stroke, AbsoluteThickness[thick], Circle[#1, r]}&)
+
+z3VertexShape[v_, mode_, sz_, fill_, stroke_, content_] := Which[
     inductionNodeQ[v],
-        discVertex[fill, stroke, sz[[1]], 1.4]
+        z3DiscShape[fill, stroke, sz[[1]] / 2, 1.4]
     ,
     mode === "Unlabelled" || eventVertexQ[v],
-        discVertex[fill, stroke, sz[[1]], 0.8]
+        z3DiscShape[fill, stroke, sz[[1]] / 2, 0.8]
     ,
     True,
         With[{im = content},
@@ -5511,7 +5861,8 @@ z3Graphic[g_, mode_] := Module[
     vsf = Map[
         Function[v,
             With[{fs = z3FillStroke[funcA, colA, v]},
-                v -> z3VertexShape[
+                v ->
+                    z3VertexShape[
                         v,
                         mode,
                         gv[sizeA, v],
@@ -5529,7 +5880,9 @@ z3Graphic[g_, mode_] := Module[
     clipEnd[v_, towards_, push_] := z3Border[gv[coords, v], gv[sizeA, v] / 2, circleQ[v], towards, push];
     esf = KeyValueMap[
         Function[{e, p},
-            e -> Module[{pp = p, st = edgeStyleFor[edgeTag[e]], ah, src, tgt},
+            e
+            ->
+            Module[{pp = p, st = edgeStyleFor[edgeTag[e]], ah, src, tgt},
                 src = clipEnd[e[[1]], pp[[2]], $edgeOvershoot];
                 tgt = clipEnd[e[[2]], pp[[-2]], -If[circleQ[e[[2]]], $circleArrowGap, $boxArrowGap]];
                 pp[[1]] = src;
@@ -5551,6 +5904,10 @@ z3Graphic[g_, mode_] := Module[
     ];
     xr = MinMax[exts[[All, 1]]];
     yr = MinMax[exts[[All, 2]]];
+(* No explicit AspectRatio: giving both AspectRatio and PlotRange makes the renderer re-fit the graph
+   and, in doing so, re-place source vertices (the induction-hypothesis box has no in-edges) away from
+   the VertexCoordinates we set, so the induction edge overshoots the drawn box. Letting the aspect
+   follow PlotRange keeps every vertex on its coordinate. *)
     Graph[
         g,
         VertexCoordinates -> Normal[coords],
@@ -5558,7 +5915,6 @@ z3Graphic[g_, mode_] := Module[
         EdgeShapeFunction -> esf,
         PlotRange -> {xr, yr},
         PlotRangePadding -> 14,
-        AspectRatio -> (yr[[2]] - yr[[1]]) / (xr[[2]] - xr[[1]]),
         ImageSize -> (xr[[2]] - xr[[1]])
     ]
 ]
@@ -5604,6 +5960,24 @@ z3StyleKey[] := {
    shapes (z3VertexShape boxes/discs) and edge colours (edgeStyleFor) as z3Graphic, but the
    chosen GraphLayout places the vertices and routes the edges. *)
 
+(* Wolfram-layout vertex shape: the fixed-ImageSize Inset disc (screen units, as in the original),
+   NOT the coordinate-space z3DiscShape - a WL GraphLayout (LayeredDigraphEmbedding, ...) produces
+   coordinate spans of a few units, where a z3-unit-radius Disk dwarfs the whole embedding and the
+   graph renders as a pile of giant overlapping circles. z3DiscShape is correct only inside
+   z3Graphic, whose layout, sizes, and arrow clipping share one coordinate system. *)
+wlVertexShape[v_, mode_, sz_, fill_, stroke_, content_] := Which[
+    inductionNodeQ[v],
+        discVertex[fill, stroke, sz[[1]], 1.4]
+    ,
+    mode === "Unlabelled" || eventVertexQ[v],
+        discVertex[fill, stroke, sz[[1]], 0.8]
+    ,
+    True,
+        With[{im = content},
+            (Inset[im, #1]&)
+        ]
+]
+
 proofGraphWL[g_, mode_, layout_] := Module[{sizeA, colA, funcA, vsf, estyle},
     sizeA = z3SizesFor[g, mode];
     colA = z3ColorOf[g];
@@ -5611,7 +5985,8 @@ proofGraphWL[g_, mode_, layout_] := Module[{sizeA, colA, funcA, vsf, estyle},
     vsf = Map[
         Function[v,
             With[{fs = z3FillStroke[funcA, colA, v]},
-                v -> z3VertexShape[
+                v ->
+                    wlVertexShape[
                         v
                         ,
                         mode
@@ -5659,11 +6034,11 @@ proofGraph[ru_Integer, mode_String, opts : OptionsPattern[]] := withRenderStyle[
         If[ lo === Automatic,
             With[{key = Hash[{ru, mode, z3StyleKey[]}]},
                 Lookup[
-                    $z3GraphicMemo, key, $z3GraphicMemo[key] = z3Graphic[inductionProofGraph[cachedProofFor[ru]], mode]
+                    $z3GraphicMemo, key, $z3GraphicMemo[key] = z3Graphic[inductionProofGraph[rawProofFor[ru]], mode]
                 ]
             ]
             ,
-            proofGraphWL[inductionProofGraph[cachedProofFor[ru]], mode, lo]
+            proofGraphWL[inductionProofGraph[rawProofFor[ru]], mode, lo]
         ]
     ]
 ]
