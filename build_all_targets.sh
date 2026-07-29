@@ -25,6 +25,21 @@ TARGETS=(
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 CRATE_DIR="$SCRIPT_DIR/TuringMachine/Libs/ndtm_search"
 
+# wstp-sys (a hard cargo-wl dependency) needs the WSTP SDK at build time, and
+# upstream wolfram-app-discovery cannot find it from an installed engine without
+# an env override (WolframResearch/wolfram-rust-library#23). Point it at the
+# engine's DeveloperKit when present (e.g. the wolframresearch/wolframengine CI
+# image); elsewhere the glob matches nothing and the variable stays unset.
+if [ -z "${WSTP_COMPILER_ADDITIONS_DIRECTORY:-}" ]; then
+    for d in /usr/local/Wolfram/*/*/SystemFiles/Links/WSTP/DeveloperKit/Linux-x86-64/CompilerAdditions; do
+        if [ -d "$d" ]; then
+            export WSTP_COMPILER_ADDITIONS_DIRECTORY="$d"
+            echo "WSTP_COMPILER_ADDITIONS_DIRECTORY=$d"
+            break
+        fi
+    done
+fi
+
 if ! command -v cargo-wl &> /dev/null; then
     echo "=== Installing cargo-wl ==="
     cargo install cargo-wl --locked
