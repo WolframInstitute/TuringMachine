@@ -13,6 +13,14 @@ valid there), replaced `BiTM/CTSToSystem5.lean` by a slim encoder module, trimme
 4.3 (stars, phase), removed `native_decide` from the theorem chain, stated the Nodup and
 well-formedness invariants, and added `Tests/SmithVectors.lean`. See PLAN.md, "M0 notes".
 
+Status note (after milestone M1, same day): the tree is now on `leanprover/lean4:v4.32.2`
+with Mathlib pinned at tag `v4.32.2`, and `Smith/Simulation.lean`, `Smith/Doubling.lean` and
+`Smith/Represents.lean` (the `ForwardSim` calculus, the doubling lemma and the representation
+relation) are lakefile roots. Sections 1 and 7 below describe the pre-M1 toolchain, module
+count and build time and are stale in those respects; PLAN.md, "M1 notes", is the current
+record. The `native_decide` sites still in `OneSidedTM/` predate M0, are outside the Smith
+chain and are not depended on by it, as the M0 notes record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`

@@ -1011,7 +1011,8 @@ theorem System4_step_wellFormed (cfg cfg' : System4Config)
       refine ⟨headNotStar_set _ _ _ rfl h_head,
               noAdjacentStars_set_notStar _ _ _ rfl h_adj,
               all_setNodup_set _ _ _ ?_ h_nodup⟩
-      simpa [System4Elem.setNodup] using decrementSet_nodup s h_s
+      simp only [System4Elem.setNodup, decide_eq_true_eq]
+      exact decrementSet_nodup s h_s
     · -- rule 4: star in state B
       rename_i heq _
       rw [heq] at h_get

@@ -1,7 +1,8 @@
 # Plan: finishing the Lean proof of Wolfram (2,3) universality
 
 Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 resolved on
-2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 is next.
+2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
+notes" in section 5); M2 is next.
 
 ## 1. Where we are
 
@@ -164,6 +165,7 @@ result connects to Mathlib's computability library.
 - Toolchain: stay on v4.29.0-rc6 for the cleanup milestone (it builds in 10 s); move to a current
   stable (v4.32.x or newer) together with Mathlib at the start of the new development. Replace
   `native_decide` by `decide` in `Wolfram23Valid.lean` now (it leaks 12 axioms downstream).
+  Done in M1: the tree is on `leanprover/lean4:v4.32.2` with Mathlib pinned at tag `v4.32.2`.
 - Mathlib: adopt it. `Multiset`, `Finset`, the `List.Perm` API, `Nat` and `Int` lemmas, `omega`,
   `decide`, `simp` sets, and `Function.iterate` remove most of the hand-rolled bag and parity
   reasoning that consumed the previous 1,800 iterations. First build is one `lake exe cache get`.
@@ -274,6 +276,184 @@ Left undone in M0: the general theorem that `system5ToSystem4` always produces a
 the terminal event of System 5 (the step becomes total, decision 5 of section 8)
 is still modelled as `step = none`; and Smith's "very large integers" are still
 absent from `ctsToSystem5`, as they are from `cy2s5.pl`.
+
+### M1 notes (done 2026-09-15)
+
+Stage 1, toolchain. `lean-toolchain` is `leanprover/lean4:v4.32.2` and `lakefile.lean`
+requires Mathlib at tag `v4.32.2` (rev 905b95818eb3), the tag pinned to that toolchain.
+One Lean API break had to be repaired, in `System4_step_wellFormed` (a `simpa ... using`
+that no longer closed a definitional gap under an unfolded `Decidable.rec`); no statement
+changed. `#print axioms BiTM.not_halts_wolfram23_valid` still reports only
+`propext, Quot.sound`.
+
+Stage 2, the new development. Three modules under `Smith/`, all three added to the
+lakefile roots: `Smith.Simulation`, `Smith.Doubling`, `Smith.Represents`. Zero `sorry`,
+zero warnings from these three files, no `native_decide`. Clean rebuild of the project
+library: 14.4 s wall, 552 jobs, 0 errors, 63 warnings (all pre-existing
+`linter.unusedSimpArgs` in `OneSidedTM/` and one in `BiTM/System5.lean`).
+
+`Smith/Simulation.lean`, the emulation calculus of section 3. `StepSys S` bundles a
+partial step function (bundled, not a typeclass: several systems share one state type,
+for instance every `CTS` on `CTSConfig`), with `StepSys.nSteps` and the equations
+`nSteps_zero`, `nSteps_one`, `nSteps_succ_left`, `nSteps_succ`, `nSteps_add`,
+`nSteps_some_of_le`, `step_some_of_nSteps`. Then
+
+    ForwardSim MS MT R := forall s t, R s t -> forall s', MS.step s = some s' ->
+      exists k, 1 <= k /\ exists t', MT.nSteps t k = some t' /\ R s' t'
+
+with `ForwardSim_comp` along `Rcomp R R' := fun s u => exists t, R s t /\ R' t u`,
+`ForwardSim_nSteps_weak` (n source steps give m >= n target steps), and the strong
+lifting `ForwardSim_nSteps`: an explicit schedule `times : Nat -> Nat` with
+`times 0 = 0`, `times j < times (j+1)` for `j < n`, and both runs defined and related
+at every `j <= n` (`IsSimSchedule`; `IsSimSchedule_le` gives `j <= times j`). The strong
+form was proved, so the weak `exists m, n <= m` fallback was not needed.
+`ForwardSim_of_fun` covers functional encoders. The vacuity guard is explicit:
+`ForwardSim_of_stuck` shows that a relation whose source states never step is a
+`ForwardSim` for free, and `ForwardSim_nontrivial` is the antidote (a related source
+state that steps forces `MT.step t = some t1`). `ForwardSimDecode MS MT decode :=
+ForwardSim MS MT (fun s t => decode t = some s)` with `ForwardSimDecode_functional`.
+`ForwardSim` is not decidable (the witness `k` is unbounded), so its two non-degeneracy
+examples are explicit: `demo_forwardSim` (a two-target-steps-per-source-step simulation)
+and `demo_not_forwardSim` (no relation with a stepping source is a `ForwardSim` into a
+target that cannot move), the latter proved through `ForwardSim_nontrivial`.
+
+`Smith/Doubling.lean`, link A. `ctsSys C : StepSys CTSConfig` with
+`ctsSys_nSteps : (ctsSys C).nSteps c n = C.nSteps c n`; `dbl` (each bit twice),
+`dblAppendants` (each appendant doubled, each followed by a blank), `double`, and
+`dblCfg c = { data := dbl c.data, phase := 2 * c.phase }`. Proved: `dbl_length`,
+`dbl_append`, `dbl_eq_nil_iff`, `dblAppendants_length`,
+`double_currentAppendant_even : (double C).currentAppendant (2*p) = dbl (C.currentAppendant p)`,
+`double_currentAppendant_odd : (double C).currentAppendant (2*p+1) = []`,
+`double_nSteps_two : (double C).nSteps (dblCfg c) 2 = Option.map dblCfg (C.step c)`
+(the halting case is covered: a doubled working string is empty exactly when the
+original is, and a one-bit working string still affords two doubled steps), the
+corollary `double_nSteps` at `2 * n`, and `double_forwardSim`, link A as a `ForwardSim`
+with `k = 2`. PDF p. 18 vectors by `decide`: `pdf_double_appendants` and
+`pdf_double_data` reproduce `111100 1111 "" 00 "" 0011 "" "" ""` from `110 11 0 01 ""`,
+and `pdf_double_steps_agree` checks the even-step correspondence for the first four
+original steps. Negative examples: `pdf_double_odd_step_differs` (after one doubled step
+the two sides differ, so the factor 2 is real) and `dbl_ne_true_false` (`dblCfg` is not
+surjective).
+
+`Smith/Represents.lean`, the representation relation T1. The exact Lean definition:
+
+    def Represents (s : System5Config) (C : CTS) (c : CTSConfig) (budget : Nat) : Prop :=
+      (exists a : List Int, pairsAsc 0 c.data a = true /\ s.bag.Perm (pairsOf c.data a)) /\
+      (exists (i : Int) (rest : List (List Int)),
+          (forall x in s.bag, x + 3 <= i) /\
+          s.rules = (ruleBlocks (appendantsFrom C c.phase budget) i).1 ++ rest)
+
+(`forall x in` stands for the bounded-membership quantifier and `/\` for
+conjunction). `C` is the DOUBLED system and `c` its
+configuration, so `c.data` is a doubled working string and one pair of bag integers
+belongs to each of its bits. Doubling is a precondition, not a side condition:
+`encodePaired` reads an appendant two bits at a time and drops a trailing odd bit, so
+the rules clause is meaningful only for `C = double C0`, and every statement about
+`Represents` here and in M2 is stated over a doubled system. The supporting
+definitions:
+
+    gap b            : Int            -- 1 for a 0, 2 for a 1
+    pairsOf w a      : List Int       -- x :: (x + gap b) :: ... , one pair per bit
+    pairsAsc lo w a  : Bool           -- lo < a_0 and a_j + gap (w_j) < a_(j+1)
+    encodePaired w i                  -- the rule pair of one doubled appendant,
+                                      -- read two bits at a time
+    ruleBlocks L i                    -- two rules per appendant, threading the counter
+    appendantsFrom C p n              -- the appendants read at phases p, ..., p+n-1
+
+`pairsAsc` is Bool-valued, hence decidable, which is what makes the examples
+`decide`-checkable. The rules clause is existential in the counter `i` and in the tail
+`rest`, and therefore survives (a) a uniform increment of the whole rule list and (b)
+dropping consumed rule groups; it is not equality with the canonical encoder output.
+
+Fidelity of the rules clause. Smith's p. 19 condition asks only that the lower integer
+of each pair of a second rule sit at least 3 above every integer of the initial bag, of
+every previous rule other than the first rule of a pair, and of the earlier bits of the
+same appendant; any spacing meeting those bounds is acceptable. The Lean clause pins the
+canonical `cy2s5.pl` layout instead: `encodePaired` advances the counter by exactly 4
+per doubled `0` and 6 per doubled `1`, `ruleBlocks` lays consecutive rule pairs down
+contiguously, and only the base counter `i` and the tail are quantified. The relation is
+therefore a strict sub-relation of Smith's. It is contained in Smith's, because the
+canonical layout meets each of those bounds with equality (a doubled `0` pair occupies
+`x, x + 1` with the next pair at `x + 4`; a doubled `1` pair occupies `x, x + 3` with
+the next pair at `x + 6`). The containment is strict: the hand-built program Smith
+prints on p. 19 uses extra slack from its third rule pair on, so it is in the relation
+at budget 2 and out of it at budget 3 (`pdf19`, `pdf19_represents_budget2`,
+`pdf19_not_represents_budget3`, and `pdf19_ne_encoder`, which records that it is not the
+encoder output either). The restriction is adequate for T1, since the canonical layout
+is what the encoder emits and what one System 5 step re-establishes, with the threshold
+met exactly; proving that is the M2 per-step lemma. Relaxing the clause to Smith's
+"at least 3" condition is an optional later generalisation, listed under open points.
+
+Proved about the relation: `Represents_bag_multiset` (the bag clause as a `Multiset`
+equality, the one place Mathlib is load-bearing), `Represents_bag_nodup`,
+`Represents_bag_ge_one`, `Represents_bag_length` (`s.bag.length = 2 * c.data.length`),
+`Represents_bag_ne_nil_of_data_ne_nil` (the "no degenerate witness" theorem of section 6
+for link B) and its converse `Represents_data_ne_nil_of_bag_ne_nil`,
+`Represents_rules_pair` (first rule = second `.map (+2)`), `Represents_rules_ge` (every
+integer of every leading rule sits at least 3 above every bag element),
+`ruleBlocks_odd_phase_blank` and `Represents_blank_rules` (a doubled system at an odd
+phase has two blank rules in front), and `Represents_shift` (a uniform increment of bag
+and rules by any `m >= 0` preserves the relation), on top of `encodePaired_shift`,
+`ruleBlocks_shift`, `pairsOf_map_add`, `pairsAsc_map_add`, `pairsAsc_mono`.
+
+Base case:
+
+    theorem ctsToSystem5_represents (C : CTS) (cfg : CTSConfig) (N : Nat) :
+        Represents (ctsToSystem5 C cfg N) (double C) (dblCfg cfg)
+          (2 * (C.appendants.length * N))
+
+The budget is the number of appendants of the doubled system times the number of full
+cycles the encoder emitted. The statement is stronger than the form quoted in section 2:
+neither `1 <= N` nor `cfg.data <> []` is needed;
+`ctsToSystem5_represents_nontrivial` adds, under those two hypotheses, that the bag, the
+rule list and the budget are all nonempty. The proof identifies the 4 rules per appendant
+of `cy2s5.pl` with 2 rules per appendant of the doubled system
+(`encodePaired_dbl : encodePaired (dbl a) i = encodeAppendant a i`,
+`ruleBlocks_flatMap`, `appendantsFrom_double`) and the phase-indexed traversal with the
+rotated appendant list (`appendantsFrom_full`, via a new `rotateLeft_getElem?`), and on
+the bag side writes the `cy2s5.pl` bag as the pairs of an explicit ascending list of
+starts (`startsOf`, `pairsOf_dbl_startsOf`, `pairsAsc_dbl_startsOf`).
+
+Non-degeneracy of `Represents` (section 6 discipline). Positive: `ex_represents`, the
+TM23Proof.pdf p. 29 example (`cy2s5.pl 3 01 1 10`, bag `1,2,3,4,5,7,8,10`, rules
+`15,18 / 13,16 / "" / "" / 21,24,27,28 / 19,22,25,26 / "" / ""`), with starts
+`1, 3, 5, 8` for the doubled working string `0011` and rule counter 13; every clause is
+closed by `decide`, and `ex_encoder` checks the encoder output itself by `decide`.
+Negative: `ex_not_represents_wrong_bag` (the bag `1,2,3,5,6,8,15,18` does not represent
+the doubled word `0011` for any rule list and any budget) and
+`ex_not_represents_empty_bag` (the empty bag never represents a nonempty working
+string). Caveat: these two are not literally `decide` proofs, because the bag clause
+quantifies existentially over the unbounded list of starts. They are reduced to
+`decide`-checkable facts by two inversion lemmas that are part of the development:
+`eq_pairsOf_of_perm` (a strictly increasing bag that is a permutation of a family of
+pairs is that family of pairs, via `pairsOf_pairwise`) and `Represents_bag_length`.
+`pairsAsc` itself has a `decide`-checked positive and negative example
+(`ex_pairsAsc_pos`, `ex_pairsAsc_neg`). Both of those negative examples fail on the bag
+clause alone, so the rules clause has two of its own, at budget 1, where it is not
+vacuous: `ex_not_represents_low_counter` (the rule pair has the right shape, which
+forces the counter, and the forced counter breaks the threshold `x + 3 <= i`) and
+`ex_not_represents_swapped_rules` (the pair is in the wrong order, so no counter fits).
+At budget 0 the rules clause constrains nothing and `Represents` reduces to the bag
+clause, which `ex_represents_budget_zero` records. `IsSimSchedule` has
+`demo_isSimSchedule` (the schedule `j |-> 2 * j` for two steps of the worked example)
+and `demo_not_isSimSchedule` (the constant schedule, the trivial witness the strict
+monotonicity clause exists to exclude).
+
+Nothing was left unproved in M1: every lemma listed for the milestone closed. Open
+points carried into M2: the per-step lemma itself (0-head and 1-head cases) is untouched,
+`Represents` says nothing about the "very large integers" of TM23Proof.pdf p. 19 (they
+are absent from `cy2s5.pl` and only matter for the terminal event), and the budget
+bookkeeping still counts full cycles rather than single appendant emissions, so budgets
+quoted from the PDF must be rescaled by `|appendants|` as recorded in the M0 notes.
+Relaxing the rules clause from the canonical `cy2s5.pl` spacing to Smith's "at least 3"
+condition is an optional generalisation; nothing downstream needs it, since the encoder
+emits the canonical layout. One statement-shape decision is due at the start of M2:
+`ForwardSim` quantifies over every source step, so it cannot hold for the fixed relation
+`fun c s => Represents s C c b` once the budget runs out (the cyclic tag system steps on,
+the System 5 program cannot). Either give the source a fuel counter,
+`StepSys (CTSConfig x Nat)` whose step decrements the fuel and is stuck at 0, and take
+`R (c, n) s := Represents s C c n`, in which case `ForwardSim_nSteps` applies unchanged;
+or state T1 directly in `IsSimSchedule` form with `n <= budget`, bypassing `ForwardSim`.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of
