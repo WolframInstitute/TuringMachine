@@ -267,6 +267,83 @@ theorem ForwardSim_nontrivial {S : Type u} {T : Type v}
   obtain ⟨k, hk, t', ht', _⟩ := h s t hR s' hstep
   exact StepSys.step_some_of_nSteps MT t t' k hk ht'
 
+/-! ## Fuel
+
+`ForwardSim` quantifies over every source step, so a relation that carries a
+finite budget cannot satisfy it once the budget runs out: the source keeps
+stepping while the target is exhausted.  `fueled M` pairs a state with a step
+budget and is stuck at budget 0, which makes the budget part of the source
+system instead of part of the relation. -/
+
+/-- The fuelled system: a state together with a step budget.  One step
+    consumes one unit of fuel; at fuel 0 the system is stuck. -/
+def fueled {S : Type u} (M : StepSys S) : StepSys (S × Nat) :=
+  ⟨fun p =>
+    match p.2 with
+    | 0 => none
+    | n + 1 => (M.step p.1).map (fun s' => (s', n))⟩
+
+/-- Out of fuel is stuck. -/
+@[simp] theorem fueled_step_zero {S : Type u} (M : StepSys S) (s : S) :
+    (fueled M).step (s, 0) = none := rfl
+
+/-- With fuel left, a fuelled step is a step of `M` and one unit less fuel. -/
+@[simp] theorem fueled_step_succ {S : Type u} (M : StepSys S) (s : S) (n : Nat) :
+    (fueled M).step (s, n + 1) = (M.step s).map (fun s' => (s', n)) := rfl
+
+/-- A fuelled run of length `j` within the budget is the underlying run of
+    length `j`, with `j` units of fuel consumed. -/
+theorem fueled_nSteps {S : Type u} (M : StepSys S) (s : S) (f j : Nat) (hj : j ≤ f) :
+    (fueled M).nSteps (s, f) j = (M.nSteps s j).map (fun s' => (s', f - j)) := by
+  induction j generalizing s f with
+  | zero => simp
+  | succ j ih =>
+    obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+    rw [StepSys.nSteps_succ_left, StepSys.nSteps_succ_left, fueled_step_succ]
+    cases h : M.step s with
+    | none => simp
+    | some s1 =>
+      rw [Option.map_some, Option.bind_some, Option.bind_some,
+          ih s1 g (by omega), Nat.succ_sub_succ]
+
+/-- A fuelled run that is still defined has not exhausted its budget. -/
+theorem fueled_nSteps_le {S : Type u} (M : StepSys S) (s : S) (f j : Nat)
+    (p : S × Nat) (h : (fueled M).nSteps (s, f) j = some p) : j ≤ f := by
+  induction j generalizing s f with
+  | zero => omega
+  | succ j ih =>
+    cases f with
+    | zero => rw [StepSys.nSteps_succ_left, fueled_step_zero] at h; simp at h
+    | succ g =>
+      rw [StepSys.nSteps_succ_left, fueled_step_succ] at h
+      cases hs : M.step s with
+      | none => rw [hs] at h; simp at h
+      | some s1 =>
+        rw [hs, Option.map_some, Option.bind_some] at h
+        have := ih s1 g h
+        omega
+
+/-- A `k`-step functional emulation lifts to the fuelled systems, with the
+    target budget scaled by `k`.  This is the shape every link of the chain
+    uses to make a finite budget a source-side counter. -/
+theorem ForwardSim_fueled_of_fun {S : Type u} {T : Type v}
+    (MS : StepSys S) (MT : StepSys T) (k : Nat) (hk : 1 ≤ k) (enc : S → T)
+    (h : ∀ s s', MS.step s = some s' → MT.nSteps (enc s) k = some (enc s')) :
+    ForwardSim (fueled MS) (fueled MT) (fun p q => q = (enc p.1, k * p.2)) := by
+  rintro ⟨s, n⟩ q rfl p hstep
+  cases n with
+  | zero => rw [fueled_step_zero] at hstep; simp at hstep
+  | succ n =>
+    rw [fueled_step_succ] at hstep
+    cases hs : MS.step s with
+    | none => rw [hs] at hstep; simp at hstep
+    | some s1 =>
+      rw [hs, Option.map_some] at hstep
+      obtain rfl : p = (s1, n) := (Option.some.inj hstep).symm
+      refine ⟨k, hk, (enc s1, k * n), ?_, rfl⟩
+      rw [fueled_nSteps MT (enc s) (k * (n + 1)) k (by rw [Nat.mul_succ]; omega),
+          h s s1 hs, Option.map_some, Nat.mul_succ, Nat.add_sub_cancel]
+
 /-! ## Decoder variant -/
 
 /-- The decoder variant of `ForwardSim`: the relation is the graph of a
@@ -362,6 +439,15 @@ theorem demo_isSimSchedule :
     · exact ⟨0, 0, rfl, rfl, ⟨by omega, by omega⟩⟩
     · exact ⟨1, 2, rfl, rfl, ⟨by omega, by omega⟩⟩
     · exact ⟨2, 4, rfl, rfl, ⟨by omega, by omega⟩⟩
+
+/-- Positive example for `fueled`: with fuel to spare the fuelled run is the
+    underlying run, with the fuel spent. -/
+theorem demo_fueled_run : (fueled demoSrc).nSteps (0, 2) 2 = some (2, 0) := by decide
+
+/-- Negative example for `fueled`: the fuel is real.  The same run with one
+    unit less fuel is stuck, which is what makes a finite budget expressible
+    as a source-side counter. -/
+theorem demo_fueled_out_of_fuel : (fueled demoSrc).nSteps (0, 1) 2 = none := by decide
 
 /-- Negative example for `IsSimSchedule`: the constant schedule is not one,
     even for a single source step, because the target has to move.  This is

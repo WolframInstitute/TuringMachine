@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 resolved on
 2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
-notes" in section 5); M2 is next.
+notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 is next.
 
 ## 1. Where we are
 
@@ -454,6 +454,131 @@ the System 5 program cannot). Either give the source a fuel counter,
 `StepSys (CTSConfig x Nat)` whose step decrements the fuel and is stuck at 0, and take
 `R (c, n) s := Represents s C c n`, in which case `ForwardSim_nSteps` applies unchanged;
 or state T1 directly in `IsSimSchedule` form with `n <= budget`, bypassing `ForwardSim`.
+
+### M2 notes (done 2026-09-15)
+
+T1 is proved. Four modules carry it: `Smith/System5Runs.lean` (run lemmas, the
+bag decoder, arithmetic helpers), `Smith/Conjecture5.lean` (the per-step lemma,
+both head cases), `Smith/ConjectureFive.lean` (the assembly into `ForwardSim`
+and T1 itself), plus the `fueled` section added to `Smith/Simulation.lean` and
+`double_forwardSim_fueled` in `Smith/Doubling.lean`. All four are lakefile
+roots. Zero `sorry`, no `native_decide`, no axioms beyond `propext`,
+`Classical.choice`, `Quot.sound`; `lake build` 617 jobs, warm 0.9 s, clean
+rebuild of the five Smith modules plus Tests 7.7 s wall.
+
+The per-step lemma. `x` is the smallest bag integer, `b` the leading bit of the
+doubled working string, `k = x + gap b` the number of System 5 steps of one
+doubled cyclic tag step (`gap false = 1`, `gap true = 2`, so `k >= 2`):
+
+    theorem represents_step_false (C : CTS) (w : List Bool) (p n : Nat)
+        (s : System5Config)
+        (h : Represents s C { data := false :: w, phase := p } (n + 1)) :
+        exists k, 1 <= k /\ exists s', System5.nSteps s k = some s' /\
+          Represents s' C { data := w, phase := (p + 1) % C.appendants.length } n
+
+    theorem represents_step_true (C : CTS) (w : List Bool) (p n : Nat)
+        (s : System5Config) (a : List Bool)
+        (happ : C.currentAppendant p = dbl a)
+        (h : Represents s C { data := true :: w, phase := p } (n + 1)) :
+        exists k, 1 <= k /\ exists s', System5.nSteps s k = some s' /\
+          Represents s' C { data := w ++ dbl a,
+                            phase := (p + 1) % C.appendants.length } n
+
+Both are corollaries of `_time` forms that pin the step count (`(k : Int) = x +
+1`, resp. `x + 2`) and exhibit `x` as a bag element below every bag element;
+those are what the schedule of T1 is built from. `represents_step_double` and
+`represents_step_double_time` do both head bits at once over a doubled system,
+where `double_currentAppendant_dbl` discharges the `dbl a` hypothesis at every
+phase (even phases: a doubled appendant; odd phases: `dbl [] = []`).
+
+The run, in Smith's words. Steps `1 .. x - 1` are pure decrements; step `x` pops
+the first rule of the leading pair, which lands at least `i + 2 + x` while the
+surviving bag is at most `i - 3 - x`, so the `xorMerge` is an append. In the
+0-head case step `x + 1` pops the second rule, which by `r1 = r2.map (. + 2)`
+has become exactly the block the first pop deposited, so `xorMerge` cancels it.
+In the 1-head case step `x + 1` is a pure decrement and step `x + 2` pops the
+second rule; the deposited block is `r2 + x` and the new one `r2 + (x + 2)`, and
+no two integers of `r2` are exactly 2 apart, so both survive and together are
+the canonical bag of the appended appendant laid out from `i + x`.
+
+The assembly (`Smith/ConjectureFive.lean`):
+
+    theorem represents_forwardSim (C0 : CTS) :
+        ForwardSim (fueled (ctsSys (double C0))) system5Sys
+          (fun p s => Represents s (double C0) p.1 p.2)
+
+    theorem cts_system5_forwardSim (C0 : CTS) :
+        ForwardSim (fueled (ctsSys C0)) system5Sys
+          (fun p s => Represents s (double C0) (dblCfg p.1) (2 * p.2))
+
+    theorem conjecture5_finite (C0 : CTS) (cfg : CTSConfig) (N n : Nat)
+        (hn : n <= C0.appendants.length * N) (c' : CTSConfig)
+        (hrun : C0.nSteps cfg n = some c') :
+        exists times : Nat -> Nat, times 0 = 0 /\
+          (forall j, j < n -> times j < times (j + 1)) /\
+          forall j, j <= n -> exists cj sj, C0.nSteps cfg j = some cj /\
+            System5.nSteps (ctsToSystem5 C0 cfg N) (times j) = some sj /\
+            Represents sj (double C0) (dblCfg cj)
+              (2 * (C0.appendants.length * N - j))
+
+    theorem conjecture5_decode (same hypotheses) :
+        exists times : Nat -> Nat, times 0 = 0 /\
+          (forall j, j < n -> times j < times (j + 1)) /\
+          forall j, j <= n -> exists cj sj, C0.nSteps cfg j = some cj /\
+            System5.nSteps (ctsToSystem5 C0 cfg N) (times j) = some sj /\
+            decodeBag sj.bag = some (dbl cj.data)
+
+The budget lives in the source system, not in the relation: `fueled M` (new in
+`Smith/Simulation.lean`) pairs a state with a step budget and is stuck at 0,
+which is decision (i) of the two the M1 notes left open. One unit of original
+fuel is one cyclic tag step, hence two appendants of the doubled system, hence
+the `2 * p.2` of the composed relation; `ForwardSim_comp` with
+`double_forwardSim_fueled` (k = 2) does the composition and the new
+`ForwardSim_congr` removes the existential `ForwardSim_comp` leaves behind.
+`conjecture5_isSimSchedule` is the same fact in `IsSimSchedule` form, from which
+both theorems above are read off; `sim_schedule_le` (proved from
+`IsSimSchedule_le`) and `conjecture5_times_ge` record `j <= times j` and
+`n <= times n`, so the schedule cannot be the degenerate constant one.
+
+Fidelity. The threshold clause of `Represents` is met with equality in the
+1-head case: the appended appendant reaches `i' + x - 1` and the new counter is
+`i' + (x + 2)`, so the threshold holds with no slack at all. In the 0-head case it
+holds with slack at least `2x + 2`. This is the sense in which the canonical
+`cy2s5.pl` spacing is exactly what one step re-establishes, as the M1 fidelity
+note predicted.
+
+Decoder. `decodeBag : List Int -> Option (List Bool)` (`Smith/System5Runs.lean`)
+sorts the bag and reads it pair by pair, mirroring `pairsAsc` clause for clause;
+`Represents_decode` turns every `Represents` into a decoding and
+`Represents_data_unique` makes the decoded word unique. Positive and negative
+`decide` examples: `decodeBag [1,2,3,4,5,7,8,10] = some [false,false,true,true]`
+(the p. 29 bag), `decodeBag [2,4,3,1] = some [false,false]` (any permutation),
+against `decodeBag [1,2,3] = none`, `decodeBag [1,2,3,6] = none`,
+`decodeBag [0,1] = none`, `decodeBag [1,2,2,3] = none`.
+
+Regression instances. On `cy2s5.pl 3 01 1 10` (p. 29, `exCTS`, `exCfg`, N = 1)
+the schedule is 0, 4, 10 and the decoded words are `dbl 01`, `dbl 1`, `dbl 10`;
+the intermediate doubled steps 2 and 7 are pinned too, and the per-step lemma is
+applied as a term four times in a row. On `test1.cy` (p. 28, working string
+`11011`, appendants `101 01 0 "" 010`, N = 10) the schedule of the first eight
+cyclic tag steps is 0, 6, 12, 16, 22, 28, 40, 44, 50 and each time decodes to
+`dbl` of the working string of that step, which is the eight-step `decide`
+example the M2 row of the table asks for; `ex_c5_test1_conjecture5` applies
+`conjecture5_decode` itself to those eight steps. Negative instances at unscheduled times: the p. 29 run does not
+decode at times 1, 5 and 6, the `test1.cy` run does not decode at time 13, and
+the word the p. 29 run decodes to at time 2 has odd length, so it is not `dbl`
+of anything. All by `decide`; no `native_decide` was needed anywhere.
+
+Left undone in M2. The relation is still the canonical-spacing sub-relation of
+Smith's p. 19 condition (the optional generalisation of the M1 notes is
+untouched); `Represents` still says nothing about the "very large integers" of
+p. 19 and nothing about the terminal event, so T1 covers only runs within the
+budget and does not yet say what happens when the rules run out (that is what
+T2's exit-in-state-C clause will need); the budget still counts full cycles, so
+a PDF budget must be divided by the number of appendants; and the schedule of
+`conjecture5_finite` is existential rather than given by a closed formula
+`times j = sum of (x_i + gap b_i)`, since the `_time` lemmas pin each increment
+but no aggregate was stated.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

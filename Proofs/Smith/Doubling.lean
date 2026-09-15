@@ -300,6 +300,20 @@ theorem double_forwardSim (C : CTS) :
   rw [hstep]
   rfl
 
+/-- Link A between the fuelled systems: one step of the original with fuel
+    `n + 1` is two steps of the doubled system with fuel `2 * (n + 1)`.  The
+    fuel makes the finite budget a counter of the source system, so
+    `ForwardSim` applies even though the budget runs out (PLAN.md M1 notes,
+    the statement-shape decision of M2). -/
+theorem double_forwardSim_fueled (C : CTS) :
+    ForwardSim (fueled (ctsSys C)) (fueled (ctsSys (double C)))
+      (fun p q => q = (dblCfg p.1, 2 * p.2)) := by
+  refine ForwardSim_fueled_of_fun (ctsSys C) (ctsSys (double C)) 2 (by omega) dblCfg ?_
+  intro c c' hstep
+  rw [ctsSys_nSteps, double_nSteps_two, ctsSys_step] at *
+  rw [hstep]
+  rfl
+
 /-! ## The PDF example and non-degeneracy
 
 The cyclic tag system of TM23Proof.pdf p. 18, `110 11 0 01 ""`, and its
