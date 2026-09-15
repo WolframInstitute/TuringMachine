@@ -1,12 +1,12 @@
 /-
   TagSystem.TagToCTS
 
-  Cook's encoding: 2-Tag System → Cyclic Tag System.
+  Cook's encoding: 2-Tag System -> Cyclic Tag System.
 
-  Each symbol aᵢ of the k-symbol tag alphabet is encoded as a binary
+  Each symbol a_i of the k-symbol tag alphabet is encoded as a binary
   word of length k: one-hot encoding with true at position i.
   A tag word is encoded by concatenating the binary encodings.
-  The CTS has k appendants, where appendant j = encoding(production(aⱼ)).
+  The CTS has k appendants, where appendant j = encoding(production(a_j)).
 
   One step of the 2-tag system corresponds to 2k steps of the CTS.
 -/
@@ -16,7 +16,7 @@ import TagSystem.Basic
 namespace TagSystem
 
 -- ============================================================================
--- Symbol encoding: Fin k → List Bool
+-- Symbol encoding: Fin k -> List Bool
 -- ============================================================================
 
 /-- Encode a tag alphabet symbol as a one-hot binary word of length k.
@@ -31,7 +31,7 @@ theorem symbolEncode_length (k : Nat) (i : Fin k) :
   simp [symbolEncode]
 
 -- ============================================================================
--- Word encoding: List (Fin k) → List Bool
+-- Word encoding: List (Fin k) -> List Bool
 -- ============================================================================
 
 /-- Encode a tag system word as a binary string by concatenating
@@ -70,10 +70,10 @@ theorem tagWordEncode_cons (k : Nat) (a : Fin k) (rest : List (Fin k)) :
 /-- Construct a Cyclic Tag System that simulates a given 2-tag system.
 
     Cook's encoding uses **2k appendants** (not k):
-    - Appendants 0..k-1:   encode production(aⱼ) as tagWordEncode k (productions(aⱼ))
+    - Appendants 0..k-1:   encode production(a_j) as tagWordEncode k (productions(a_j))
     - Appendants k..2k-1:  all empty (consume the second deleted symbol silently)
 
-    One 2-tag step on word `a :: b :: rest → rest ++ productions(a)` corresponds
+    One 2-tag step on word `a :: b :: rest -> rest ++ productions(a)` corresponds
     to 2k CTS steps:
     - First k steps process `symbolEncode k a`: the one-hot bit at position a.val
       fires appendant[a.val] = tagWordEncode(productions(a)), appending the correct production
@@ -366,7 +366,7 @@ theorem tagHalted_iff_short {k : Nat} (cfg : TagConfig k) :
 def Tag.HaltsEmpty {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Prop :=
   ∃ fuel, ts.eval cfg fuel = some []
 
-/-- Forward: Tag halts unconditionally full → CTS halts.
+/-- Forward: Tag halts unconditionally full -> CTS halts.
     If tag eval reaches an empty configuration, the CTS also halts. -/
 theorem tagToCTS_halting_forward {k : Nat} (ts : Tag k) (hk : k > 0)
     (cfg : TagConfig k) :
@@ -443,7 +443,7 @@ theorem cts_eval_none_of_length {cts : CTS} {cfg : CTSConfig} {f : Nat} :
         exact ih (by omega)
 
 -- ============================================================================
--- Backward direction: CTS halts → Tag halts
+-- Backward direction: CTS halts -> Tag halts
 -- ============================================================================
 
 theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
@@ -508,7 +508,7 @@ theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
                   apply Nat.mul_le_mul_left k h_le_2
                 omega
               rw [h_none] at h_eval_orig; contradiction
-            · -- Enough fuel to process 2k steps (n' + 1 ≥ 2k)
+            · -- Enough fuel to process 2k steps (n' + 1 >= 2k)
               have h_nsteps : (tagToCTS ts hk).nSteps (tagConfigToCTS k cfg_s) (2 * k) = some (tagConfigToCTS k cfg') := h_sim
               have h_eval' : (tagToCTS ts hk).eval (tagConfigToCTS k cfg') (n' + 1 - 2 * k) = some result := by
                 rw [← cts_nSteps_prepend_eval (tagToCTS ts hk) (tagConfigToCTS k cfg_s) (tagConfigToCTS k cfg') (2 * k) (n' + 1 - 2 * k) h_nsteps]
@@ -525,54 +525,54 @@ theorem cts_to_tag_halting {k : Nat} (ts : Tag k) (hk : k > 0)
 def exampleTag2 : Tag 2 where
   productions := fun i =>
     match i with
-    | ⟨0, _⟩ => [⟨1, by omega⟩, ⟨0, by omega⟩]  -- 0 → [1, 0]
-    | ⟨1, _⟩ => [⟨0, by omega⟩]                    -- 1 → [0]
+    | ⟨0, _⟩ => [⟨1, by omega⟩, ⟨0, by omega⟩]  -- 0 -> [1, 0]
+    | ⟨1, _⟩ => [⟨0, by omega⟩]                    -- 1 -> [0]
     | ⟨_, _⟩ => []
 
-theorem symbolEncode_2_0 : symbolEncode 2 ⟨0, by omega⟩ = [true, false] := by native_decide
-theorem symbolEncode_2_1 : symbolEncode 2 ⟨1, by omega⟩ = [false, true] := by native_decide
+theorem symbolEncode_2_0 : symbolEncode 2 ⟨0, by omega⟩ = [true, false] := by decide
+theorem symbolEncode_2_1 : symbolEncode 2 ⟨1, by omega⟩ = [false, true] := by decide
 
 theorem tagWordEncode_01 :
     tagWordEncode 2 [⟨0, by omega⟩, ⟨1, by omega⟩] = [true, false, false, true] := by
-  native_decide
+  decide
 
 theorem tagToCTS_appendants :
     (tagToCTS exampleTag2 (by omega)).appendants =
     [[false, true, true, false], [true, false], [], []] := by
-  native_decide
+  decide
 
 -- ============================================================================
--- Simulation verification (native_decide)
+-- Simulation verification (decide)
 -- ============================================================================
 
 -- Verify the corrected CTS (2k appendants) simulates correctly.
--- Tag step on [0, 1, 0] → [0] ++ productions(0) = [0, 1, 0] (fixed point)
+-- Tag step on [0, 1, 0] -> [0] ++ productions(0) = [0, 1, 0] (fixed point)
 -- 2k = 4 CTS steps on encoded [0,1,0] should yield encoded [0,1,0]
 
 def exampleCTSFromTag := tagToCTS exampleTag2 (by omega)
 def exampleCTSInit2 := tagConfigToCTS 2
     [⟨0, by omega⟩, ⟨1, by omega⟩, ⟨0, by omega⟩]
 
-/-- Key verification: 4 CTS steps (= 2×k = 2×2) on encoded [0,1,0]
+/-- Key verification: 4 CTS steps (= 2*k = 2*2) on encoded [0,1,0]
     produces exactly the encoding of the tag step result [0,1,0].
     Confirms corrected 2k-appendant CTS construction. -/
 theorem simulation_example_corrected :
     exampleCTSFromTag.nSteps exampleCTSInit2 4 =
     some (tagConfigToCTS 2 [⟨0, by omega⟩, ⟨1, by omega⟩, ⟨0, by omega⟩]) := by
-  native_decide
+  decide
 
-/-- Verify [1, 0, 1] → [1] ++ productions(1) = [1, 0] -/
+/-- Verify [1, 0, 1] -> [1] ++ productions(1) = [1, 0] -/
 theorem simulation_example_2 :
     exampleCTSFromTag.nSteps
       (tagConfigToCTS 2 [⟨1, by omega⟩, ⟨0, by omega⟩, ⟨1, by omega⟩]) 4 =
     some (tagConfigToCTS 2 [⟨1, by omega⟩, ⟨0, by omega⟩]) := by
-  native_decide
+  decide
 
-/-- Verify [0, 0, 1, 1] → [1, 1] ++ productions(0) = [1, 1, 1, 0] -/
+/-- Verify [0, 0, 1, 1] -> [1, 1] ++ productions(0) = [1, 1, 1, 0] -/
 theorem simulation_example_3 :
     exampleCTSFromTag.nSteps
       (tagConfigToCTS 2 [⟨0, by omega⟩, ⟨0, by omega⟩, ⟨1, by omega⟩, ⟨1, by omega⟩]) 4 =
     some (tagConfigToCTS 2 [⟨1, by omega⟩, ⟨1, by omega⟩, ⟨1, by omega⟩, ⟨0, by omega⟩]) := by
-  native_decide
+  decide
 
 end TagSystem

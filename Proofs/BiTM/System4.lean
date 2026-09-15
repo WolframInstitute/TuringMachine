@@ -3,16 +3,14 @@
 
   Smith's "System 4" simulator (PDF `TM23Proof.pdf` p. 34, `system4.pl`):
   a star/set-tape automaton with 3-state head (A/B/C) emulating
-  System 5 (`cy2s4.pl` PDF p. 32 encodes System 5 → System 4).
-
-  Extracted from `BiTM.CockeMinskyConstruction` in a refactor.
+  System 5 (`cy2s4.pl` PDF p. 32 encodes System 5 -> System 4).
 
   Contents:
     * `System4State`, `System4Elem`, `System4Config`
-    * `decrementSet` — helper for rule 3
-    * `System4.step` — 5-rule dispatch on (state, elems[active])
-    * `System4.nSteps` — multi-step runner
-    * `nSteps_zero/one/add/succ` — structural lemmas
+    * `decrementSet`: helper for rule 3
+    * `System4.step`: 5-rule dispatch on (state, elems[active])
+    * `System4.nSteps`: multi-step runner
+    * `nSteps_zero/one/add/succ`: structural lemmas
     * Sanity-check examples against PDF traces
 -/
 
@@ -54,16 +52,15 @@ def decrementSet (s : List Int) : List Int × Bool :=
   if 0 ∈ s then ((s.erase 0).map (· - 1), true)
   else (s.map (· - 1), false)
 
-/-- Sanity check `decrementSet` matches the perl semantics: `[0, 6, 8]` →
+/-- Sanity check `decrementSet` matches the perl semantics: `[0, 6, 8]` ->
     `([5, 7], true)` (the 0 is removed and triggers state toggle, others
     decrement to 5 and 7). -/
 example : decrementSet [0, 6, 8] = ([5, 7], true) := by decide
 
-/-- Sanity check: `[3, 4]` (no `0`) → `([2, 3], false)`. -/
+/-- Sanity check: `[3, 4]` (no `0`) -> `([2, 3], false)`. -/
 example : decrementSet [3, 4] = ([2, 3], false) := by decide
 
-/-- **`decrementSet_snd_iff_mem_zero` (iter 610)**: the boolean
-    component of `decrementSet s` is `true` exactly when `0 ∈ s`.
+/-- The boolean component of `decrementSet s` is `true` exactly when `0 in s`.
     Direct from the definition. -/
 theorem decrementSet_snd_iff_mem_zero (s : List Int) :
     (decrementSet s).snd = true ↔ 0 ∈ s := by
@@ -72,9 +69,8 @@ theorem decrementSet_snd_iff_mem_zero (s : List Int) :
   · simp [h]
   · simp [h]
 
-/-- **`decrementSet_fst_length` (iter 610)**: if `0 ∉ s`, the
-    decremented set has the same length as `s`; if `0 ∈ s`, the length
-    is `s.length - 1` (the `0` is removed before mapping). -/
+/-- If `0 not in s`, the decremented set has the same length as `s`; if `0 in
+    s`, the length is `s.length - 1` (the `0` is removed before mapping). -/
 theorem decrementSet_fst_length (s : List Int) :
     (decrementSet s).fst.length = if 0 ∈ s then s.length - 1 else s.length := by
   unfold decrementSet
@@ -89,12 +85,12 @@ def System4.step (cfg : System4Config) : Option System4Config :=
   if h_bound : cfg.active < cfg.elems.length then
     match cfg.elems.get ⟨cfg.active, h_bound⟩, cfg.state with
     | System4Elem.star, System4State.A =>
-        -- Rule 2: star in A — remove the star, state→B (active stays).
+        -- Rule 2: star in A - remove the star, state->B (active stays).
         some { elems := cfg.elems.eraseIdx cfg.active
                active := cfg.active
                state := System4State.B }
     | System4Elem.set _, System4State.A =>
-        -- Rule 1: set in A — active--; if at 0, state→B.
+        -- Rule 1: set in A - active--; if at 0, state->B.
         if cfg.active = 0 then
           some { elems := cfg.elems, active := 0, state := System4State.B }
         else
@@ -102,7 +98,7 @@ def System4.step (cfg : System4Config) : Option System4Config :=
                  active := cfg.active - 1
                  state := System4State.A }
     | System4Elem.set s, _ =>
-        -- Rule 3: set in B/C — decrement, toggle state if 0 was present.
+        -- Rule 3: set in B/C - decrement, toggle state if 0 was present.
         let (newSet, hadZero) := decrementSet s
         let newState :=
           if hadZero then
@@ -115,14 +111,14 @@ def System4.step (cfg : System4Config) : Option System4Config :=
                active := cfg.active + 1
                state := newState }
     | System4Elem.star, System4State.B =>
-        -- Rule 4: star in B — remove the star, active--, state→A.
+        -- Rule 4: star in B - remove the star, active--, state->A.
         if cfg.active = 0 then none
         else
           some { elems := cfg.elems.eraseIdx cfg.active
                  active := cfg.active - 1
                  state := System4State.A }
     | System4Elem.star, System4State.C =>
-        -- Rule 5: star in C — active++, toggle membership of `1` in
+        -- Rule 5: star in C - active++, toggle membership of `1` in
         -- elems[active] (which must be a set).
         let newActive := cfg.active + 1
         if h_new : newActive < cfg.elems.length then
@@ -158,7 +154,8 @@ theorem System4.nSteps_one (cfg : System4Config) :
         | some cfg' => System4.nSteps cfg' 0) = System4.step cfg
   cases System4.step cfg <;> rfl
 
-/-- Additive composition: `nSteps cfg (n + m) = nSteps cfg n >>= nSteps · m`. -/
+/-- Additive composition:
+    `nSteps cfg (n + m) = nSteps cfg n >>= (fun c => nSteps c m)`. -/
 theorem System4.nSteps_add (cfg : System4Config) (n m : Nat) :
     System4.nSteps cfg (n + m)
       = (System4.nSteps cfg n).bind (fun c => System4.nSteps c m) := by
@@ -177,7 +174,7 @@ theorem System4.nSteps_add (cfg : System4Config) (n m : Nat) :
     | none => rfl
     | some c => exact ih c
 
-/-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= nSteps · n`.
+/-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= (fun c => nSteps c n)`.
     Definitional, but stated explicitly for ergonomic use.
     Mirrors `System5.nSteps_succ`. -/
 theorem System4.nSteps_succ (cfg : System4Config) (n : Nat) :
@@ -187,10 +184,10 @@ theorem System4.nSteps_succ (cfg : System4Config) (n : Nat) :
 
 /-- **Sanity check** against PDF p. 34/35 trace.  Initial config from
     `system4.pl 0,6,8 "" _ B 3,4 _ 8 11,20`.  After step 1 (rule 3:
-    set in B, decrement `[3,4]` → `[2,3]`, no `0` so no state toggle,
+    set in B, decrement `[3,4]` -> `[2,3]`, no `0` so no state toggle,
     `active++`), state moves from active=3 (`{3,4}`) to active=4 (`*`).
 
-    Per PDF: `0,6,8 "" _ B 3,4 _ 8 11,20` → `0,6,8 "" _ 2,3 B _ 8 11,20`. -/
+    Per PDF: `0,6,8 "" _ B 3,4 _ 8 11,20` -> `0,6,8 "" _ 2,3 B _ 8 11,20`. -/
 example :
     System4.step { elems := [System4Elem.set [0, 6, 8], System4Elem.set [],
                               System4Elem.star, System4Elem.set [3, 4],
@@ -204,11 +201,11 @@ example :
                        System4Elem.set [11, 20]],
              active := 4,
              state := System4State.B } := by
-  native_decide
+  decide
 
 /-- 2 steps from same initial config: step 1 (rule 3, set in B) then
     step 2 (rule 4, star in B).  After step 2: star removed, active--,
-    state→A.  PDF p. 35 trace continues with the new active = 3 (= `{2,3}`). -/
+    state->A.  PDF p. 35 trace continues with the new active = 3 (= `{2,3}`). -/
 example :
     System4.nSteps
       { elems := [System4Elem.set [0, 6, 8], System4Elem.set [],
@@ -222,7 +219,7 @@ example :
                        System4Elem.set [8], System4Elem.set [11, 20]],
              active := 3,
              state := System4State.A } := by
-  native_decide
+  decide
 
 /-- A System 4 cfg halts iff `nSteps` returns `none` for some budget. -/
 def System4.Halts (cfg : System4Config) : Prop :=
@@ -235,13 +232,13 @@ theorem System4.step_none_of_active_oob (cfg : System4Config)
   unfold System4.step
   rw [dif_neg (Nat.not_lt.mpr h)]
 
-/-- Trivial halting witness: `active` out of bounds ⟹ halts in one step. -/
+/-- Trivial halting witness: `active` out of bounds => halts in one step. -/
 theorem System4.Halts_of_active_oob (cfg : System4Config)
     (h : cfg.active ≥ cfg.elems.length) :
     System4.Halts cfg :=
   ⟨1, by rw [System4.nSteps_one]; exact System4.step_none_of_active_oob cfg h⟩
 
-/-- Trivial halting witness: empty `elems` ⟹ halts in one step. -/
+/-- Trivial halting witness: empty `elems` => halts in one step. -/
 theorem System4.Halts_of_empty_elems (cfg : System4Config) (h : cfg.elems = []) :
     System4.Halts cfg := by
   apply System4.Halts_of_active_oob
@@ -323,16 +320,14 @@ theorem System4_Halts_nSteps_iff
     System4.Halts cfg ↔ System4.Halts r :=
   ⟨System4_Halts_nSteps_succ cfg n r h_n, System4_Halts_nSteps_pred cfg n r h_n⟩
 
-/-- **`System4.Halts_of_step_none` (iter 622)**: if `step cfg = none`,
-    then `cfg` halts in 1 step. -/
+/-- If `step cfg = none`, then `cfg` halts in 1 step. -/
 theorem System4.Halts_of_step_none (cfg : System4Config)
     (h : System4.step cfg = none) :
     System4.Halts cfg :=
   ⟨1, by rw [System4.nSteps_one]; exact h⟩
 
-/-- **`System4_not_Halts_imp_step_some` (iter 622)**: contrapositive
-    of `System4.Halts_of_step_none` — if `cfg` does NOT halt, then
-    `step cfg` is `some`.  Mirrors iter 620's System5 version. -/
+/-- Contrapositive of `System4.Halts_of_step_none` - if `cfg` does NOT halt,
+    then `step cfg` is `some`.  Mirrors the System 5 version. -/
 theorem System4_not_Halts_imp_step_some (cfg : System4Config)
     (h : ¬ System4.Halts cfg) :
     ∃ cfg', System4.step cfg = some cfg' := by
@@ -343,9 +338,8 @@ theorem System4_not_Halts_imp_step_some (cfg : System4Config)
     exact System4.Halts_of_step_none cfg h_step
   | some cfg' => exact ⟨cfg', rfl⟩
 
-/-- **`System4_not_Halts_step_succ` (iter 622)**: contrapositive of
-    `System4_Halts_step_pred` — non-halt propagates forward through
-    step. -/
+/-- Contrapositive of `System4_Halts_step_pred` - non-halt propagates forward
+    through step. -/
 theorem System4_not_Halts_step_succ
     (cfg cfg' : System4Config) (h_step : System4.step cfg = some cfg')
     (h : ¬ System4.Halts cfg) :
@@ -371,7 +365,7 @@ theorem System4_self_loop_nSteps_self
     rw [System4.nSteps_succ, h_self]
     simpa using ih
 
-/-- **System4 self-loop ⇒ not-Halts**. -/
+/-- **System4 self-loop => not-Halts**. -/
 theorem System4_self_loop_not_halts
     (cfg : System4Config) (h_self : System4.step cfg = some cfg) :
     ¬ System4.Halts cfg := by
@@ -433,10 +427,9 @@ theorem System4_periodic_nSteps_iter
     rw [Nat.succ_mul, System4.nSteps_add, ih]
     simpa using h_period
 
-/-- **`System4_Halts_of_exists_step_none` (iter 624)**: backward
-    direction of the step-none witness characterisation — if some
-    intermediate cfg `r` reached after `k` steps has `step r = none`,
-    then the original cfg halts.  Mirrors `System5` version. -/
+/-- Backward direction of the step-none witness characterisation - if some
+    intermediate cfg `r` reached after `k` steps has `step r = none`, then the
+    original cfg halts.  Mirrors `System5` version. -/
 theorem System4_Halts_of_exists_step_none
     (cfg : System4Config)
     (h : ∃ k r, System4.nSteps cfg k = some r ∧ System4.step r = none) :
@@ -455,7 +448,7 @@ theorem System4_nSteps_some_compose
   exact h_m
 
 /-- **System4 step-none witness extractor**: from `System4.Halts cfg`,
-    extract `(k, r)` with `nSteps cfg k = some r ∧ System4.step r = none`. -/
+    extract `(k, r)` with `nSteps cfg k = some r /\ System4.step r = none`. -/
 theorem System4_Halts_extract_step_none_witness
     (cfg : System4Config) (h : System4.Halts cfg) :
     ∃ k r, System4.nSteps cfg k = some r ∧ System4.step r = none := by
@@ -477,7 +470,7 @@ theorem System4_Halts_extract_step_none_witness
         exact h_pn
   · exact absurd hN (h_none N (Nat.le_refl _))
 
-/-- **System4 periodic orbit ⇒ not-Halts**. -/
+/-- **System4 periodic orbit => not-Halts**. -/
 theorem System4_periodic_not_halts
     (cfg : System4Config) (p : Nat) (h_pos : p ≥ 1)
     (h_period : System4.nSteps cfg p = some cfg) :
@@ -495,25 +488,23 @@ theorem System4_periodic_not_halts
     at h_iter
   cases h_iter
 
-/-- **`System4_Halts_iff_exists_step_none_witness` (iter 626)**:
-    biconditional iff form. -/
+/-- Biconditional iff form. -/
 theorem System4_Halts_iff_exists_step_none_witness (cfg : System4Config) :
     System4.Halts cfg ↔
     ∃ k r, System4.nSteps cfg k = some r ∧ System4.step r = none :=
   ⟨System4_Halts_extract_step_none_witness cfg,
    System4_Halts_of_exists_step_none cfg⟩
 
-/-- **`System4_no_period_of_Halts` (iter 626)**: contrapositive of
-    `System4_periodic_not_halts`. -/
+/-- Contrapositive of `System4_periodic_not_halts`. -/
 theorem System4_no_period_of_Halts
     (cfg : System4Config) (h : System4.Halts cfg)
     (p : Nat) (h_pos : p ≥ 1) :
     System4.nSteps cfg p ≠ some cfg :=
   fun h_period => System4_periodic_not_halts cfg p h_pos h_period h
 
-/-- **System4 → BiTM step-to-nSteps emulation lifting**: System4 →
+/-- **System4 -> BiTM step-to-nSteps emulation lifting**: System4 ->
     tm analog of `step_to_nSteps_emulation_system5_to_tm`.  Given
-    per-step System4 → tm emulator, lift to multi-step. -/
+    per-step System4 -> tm emulator, lift to multi-step. -/
 theorem step_to_nSteps_emulation_system4_to_tm
     (tm : Machine) (encode : System4Config → Config)
     (h_emulate : ∀ cfg cfg', System4.step cfg = some cfg' →
@@ -541,7 +532,7 @@ theorem step_to_nSteps_emulation_system4_to_tm
         BiTM_nSteps_some_compose tm (encode cfg) (encode cfg₁)
           n m' (encode result) h_n h_m'⟩
 
-/-- **System4 → BiTM halt-preservation under step emulation**.
+/-- **System4 -> BiTM halt-preservation under step emulation**.
     Composes step-to-nSteps lifting + System4 step-none witness
     extractor + `BiTM_Halts_nSteps_pred`. -/
 theorem system4Halts_imp_tmHalts_under_step_emulation
@@ -557,8 +548,7 @@ theorem system4Halts_imp_tmHalts_under_step_emulation
   exact BiTM_Halts_nSteps_pred tm (encode cfg) m (encode r) h_m
     (h_halt_preserve r h_step_none)
 
-/-- **`system4_not_Halts_of_tm_not_Halts` (iter 630)**: contrapositive
-    of `system4Halts_imp_tmHalts_under_step_emulation`. -/
+/-- Contrapositive of `system4Halts_imp_tmHalts_under_step_emulation`. -/
 theorem system4_not_Halts_of_tm_not_Halts
     (tm : Machine) (encode : System4Config → Config)
     (h_step_emulate : ∀ cfg cfg', System4.step cfg = some cfg' →
@@ -569,9 +559,8 @@ theorem system4_not_Halts_of_tm_not_Halts
   fun h_halts => h (system4Halts_imp_tmHalts_under_step_emulation tm encode
     h_step_emulate h_halt_preserve cfg h_halts)
 
-/-- **`System4_Halts_step_decompose` (iter 643)**: any halting System4
-    cfg is either at halt position (`step cfg = none`) or steps to
-    another halting cfg. -/
+/-- Any halting System4 cfg is either at halt position (`step cfg = none`) or
+    steps to another halting cfg. -/
 theorem System4_Halts_step_decompose
     (cfg : System4Config) (h : System4.Halts cfg) :
     System4.step cfg = none ∨
@@ -582,8 +571,7 @@ theorem System4_Halts_step_decompose
     right
     exact ⟨cfg', rfl, (System4_Halts_step_iff cfg cfg' h_step).mp h⟩
 
-/-- **`System4_Halts_step_decompose_some` (iter 643)**: when `step` is
-    known to succeed, the step branch is forced. -/
+/-- When `step` is known to succeed, the step branch is forced. -/
 theorem System4_Halts_step_decompose_some
     (cfg cfg' : System4Config) (h_step : System4.step cfg = some cfg')
     (h_halts : System4.Halts cfg) :
@@ -594,10 +582,9 @@ theorem System4_Halts_step_decompose_some
     have heq : cfg' = cfg'' := by injection h_step'
     rw [heq]; exact h_halts'
 
-/-- **`System4_Halts_induction` (iter 643)**: strong induction over
-    halting System4 cfgs.  Halt base is `step cfg = none` (System4
-    has multiple halt conditions: active OOB, rule 4 with active=0,
-    adjacent stars in rule 5). -/
+/-- Strong induction over halting System4 cfgs.  Halt base is `step cfg =
+    none` (System4 has multiple halt conditions: active OOB, rule 4 with
+    active=0, adjacent stars in rule 5). -/
 theorem System4_Halts_induction (P : System4Config → Prop)
     (h_halt : ∀ cfg, System4.step cfg = none → P cfg)
     (h_back : ∀ cfg cfg', System4.step cfg = some cfg' →
@@ -616,7 +603,7 @@ theorem System4_Halts_induction (P : System4Config → Prop)
       have h_he' : System4.Halts cfg' := ⟨m, h_n'⟩
       exact h_back cfg cfg' h_step h_he' (ih cfg' h_n')
 
-/-- **System4 → BiTM step-to-nSteps emulation positive bound**.
+/-- **System4 -> BiTM step-to-nSteps emulation positive bound**.
     Required for chain composition. -/
 theorem step_to_nSteps_emulation_system4_to_tm_pos
     (tm : Machine) (encode : System4Config → Config)
@@ -641,11 +628,9 @@ theorem step_to_nSteps_emulation_system4_to_tm_pos
         BiTM_nSteps_some_compose tm (encode cfg) (encode cfg₁)
           n m' (encode result) h_n h_m'⟩
 
-/-- **`System4_Halts_imp_nSteps_eventually_none` (iter 552)**:
-    System4 analog of iter 551.  Loose bound `N = n` (the halting
-    witness step count) — sharper would require a `System4_nSteps_
-    none_decompose` lemma which doesn't yet exist.  Proof: simple
-    `System4.nSteps_add` + `none.bind = none`. -/
+/-- A halting System 4 cfg has all later `nSteps` equal to `none`.
+    Loose bound `N = n` (the halting witness step count).  Proof:
+    `System4.nSteps_add` plus `none.bind = none`. -/
 theorem System4_Halts_imp_nSteps_eventually_none (cfg : System4Config)
     (h : System4.Halts cfg) :
     ∃ N, ∀ k, k > N → System4.nSteps cfg k = none := by
@@ -657,9 +642,8 @@ theorem System4_Halts_imp_nSteps_eventually_none (cfg : System4Config)
   rfl
 
 
-/-- **`System4_nSteps_none_decompose` (iter 562 helper)**: if
-    `nSteps cfg n = none`, then some intermediate cfg at step `k <
-    n` has `step = none`.  Building block for iter 562. -/
+/-- If `nSteps cfg n = none`, then some intermediate cfg at step `k < n` has
+    `step = none`.  Building block for `System4_Halts_iff_exact_step_witness`. -/
 theorem System4_nSteps_none_decompose (cfg : System4Config) (n : Nat)
     (h : System4.nSteps cfg n = none) :
     ∃ k < n, ∃ cfg', System4.nSteps cfg k = some cfg' ∧ System4.step cfg' = none := by
@@ -677,9 +661,8 @@ theorem System4_nSteps_none_decompose (cfg : System4Config) (n : Nat)
       rw [System4.nSteps_succ, h_step]
       exact h_n'
 
-/-- **`System4_Halts_iff_exact_step_witness` (iter 562)**: System4
-    analog of iter 558/559/560/561.  `System4.Halts cfg ↔ ∃ exact
-    step-none witness with eventually-none beyond`.  Completes the
+/-- `System4.Halts cfg <-> exists exact step-none witness with
+    eventually-none beyond`.  Completes the
     exact-step-witness biconditional family across all five
     systems (BiTM/CTS/Tag/System5/System4). -/
 theorem System4_Halts_iff_exact_step_witness (cfg : System4Config) :
@@ -706,10 +689,9 @@ theorem System4_Halts_iff_exact_step_witness (cfg : System4Config) :
     show System4.nSteps result 1 = none
     rw [System4.nSteps_succ, h_halt]; rfl
 
-/-- **`System4_Halts_succ_boundary` (iter 718)**: System 4 analog of
-    iter 716's `System5_Halts_succ_boundary`.  From `System4.Halts
-    cfg`, extracts the exact halt boundary — there exists `n` with
-    `nSteps cfg n = some result ∧ nSteps cfg (n+1) = none`.  Direct
+/-- System 4 analog of `System5_Halts_succ_boundary`.  From `System4.Halts
+    cfg`, extracts the exact halt boundary - there exists `n` with
+    `nSteps cfg n = some result /\ nSteps cfg (n+1) = none`.  Direct
     via `_Halts_iff_exact_step_witness` (forward direction): the
     exact halt step `N` produces `some result`, and `N + 1 > N` lies
     in the eventually-none zone. -/
@@ -721,8 +703,7 @@ theorem System4_Halts_succ_boundary (cfg : System4Config)
     (System4_Halts_iff_exact_step_witness cfg).mp h
   exact ⟨N, result, h_n, h_eventual (N + 1) (by omega)⟩
 
-/-- **`System4_Halts_exact_step_form_unique` (iter 565)**: System4
-    uniqueness analog. -/
+/-- System4 uniqueness analog. -/
 theorem System4_Halts_exact_step_form_unique (cfg : System4Config)
     (N₁ N₂ : Nat) (result₁ result₂ : System4Config)
     (h₁_n : System4.nSteps cfg N₁ = some result₁)
@@ -737,14 +718,12 @@ theorem System4_Halts_exact_step_form_unique (cfg : System4Config)
     · have h_none := h₂_eventual N₁ h_lt'
       rw [h_none] at h₁_n; cases h₁_n
     · omega
-/-- **`System4_Halts_iff_step_none_or_step` (iter 573)**: System4
-    analog of iter 570/571/572.  System4 has no clean step-none
-    halt criterion (multiple paths to step = none), so the
-    biconditional uses `System4.step cfg = none` directly:
-    `System4.Halts cfg ↔ System4.step cfg = none ∨ (∃ cfg',
-    System4.step cfg = some cfg' ∧ System4.Halts cfg')`.
-    Completes the Halts-iff-step-or-halt biconditional family
-    across BiTM/CTS/Tag/System5/System4 (iters 570/571/540/572/573). -/
+/-- System4 has no clean step-none halt criterion (multiple paths to step =
+    none), so the biconditional uses `System4.step cfg = none` directly:
+    `System4.Halts cfg <-> System4.step cfg = none \/ (exists cfg',
+    System4.step cfg = some cfg' /\ System4.Halts cfg')`. Completes the
+    Halts-iff-step-or-halt biconditional family across
+    BiTM/CTS/Tag/System5/System4. -/
 theorem System4_Halts_iff_step_none_or_step (cfg : System4Config) :
     System4.Halts cfg ↔ System4.step cfg = none ∨
                        ∃ cfg', System4.step cfg = some cfg' ∧
@@ -756,7 +735,7 @@ theorem System4_Halts_iff_step_none_or_step (cfg : System4Config) :
       rw [System4.nSteps_succ, h_none]
       rfl
     · exact System4_Halts_step_pred cfg cfg' h_step h_halts
-/-- **`System4_Halts_first_none` (iter 574)**: System4 analog. -/
+/-- System4 analog. -/
 theorem System4_Halts_first_none (cfg : System4Config)
     (h : System4.Halts cfg) :
     ∃ n, System4.nSteps cfg n = none ∧ ∀ m < n, System4.nSteps cfg m ≠ none := by
@@ -765,15 +744,13 @@ theorem System4_Halts_first_none (cfg : System4Config)
     ⟨k, _h_le, h_pk, h_min⟩ | h_none
   · exact ⟨k, h_pk, h_min⟩
   · exact absurd hN (h_none N (Nat.le_refl _))
-/-- **`System4_Halts_no_period` (iter 575)**: System4 analog —
-    direct contrapositive of existing `System4_periodic_not_halts`. -/
+/-- System4 analog - direct contrapositive of existing `System4_periodic_not_halts`. -/
 theorem System4_Halts_no_period
     (cfg : System4Config) (h : System4.Halts cfg)
     (p : Nat) (h_pos : p ≥ 1) :
     System4.nSteps cfg p ≠ some cfg :=
   fun h_period => System4_periodic_not_halts cfg p h_pos h_period h
-/-- **`System4_not_Halts_iff_nSteps_always_some` (iter 576)**: System4
-    analog. -/
+/-- System4 analog. -/
 theorem System4_not_Halts_iff_nSteps_always_some (cfg : System4Config) :
     ¬ System4.Halts cfg ↔ ∀ n, ∃ result, System4.nSteps cfg n = some result := by
   constructor
@@ -784,7 +761,7 @@ theorem System4_not_Halts_iff_nSteps_always_some (cfg : System4Config) :
   · intro h_all ⟨n, h_n⟩
     obtain ⟨r, h_r⟩ := h_all n
     rw [h_r] at h_n; cases h_n
-/-- **`System4_nSteps_halt_unique` (iter 582)**: System4 analog. -/
+/-- System4 analog. -/
 theorem System4_nSteps_halt_unique (cfg : System4Config)
     (n₁ n₂ : Nat) (r₁ r₂ : System4Config)
     (h₁ : System4.nSteps cfg n₁ = some r₁) (h_step₁ : System4.step r₁ = none)
@@ -801,5 +778,288 @@ theorem System4_nSteps_halt_unique (cfg : System4Config)
       rw [System4_nSteps_past_step_none_eq_none cfg n₂ r₂ h₂ h_step₂ k hk_pos] at h₁
       cases h₁
     · exact h_eq.symm
+
+/-! ## Well-formedness of a System 4 tape -/
+
+/-- `true` exactly on a star. -/
+def System4Elem.isStar : System4Elem -> Bool
+  | System4Elem.star => true
+  | System4Elem.set _ => false
+
+/-- `true` on a star, and on a set that has no duplicates. -/
+def System4Elem.setNodup : System4Elem -> Bool
+  | System4Elem.star => true
+  | System4Elem.set s => decide s.Nodup
+
+/-- `true` when the first tape element is not a star. -/
+def headNotStar (l : List System4Elem) : Bool :=
+  match l.head? with
+  | none => true
+  | some e => !e.isStar
+
+/-- `true` when no two consecutive tape elements are both stars. -/
+def noAdjacentStars : List System4Elem -> Bool
+  | [] => true
+  | e :: rest =>
+      (match rest.head? with
+       | some c => !(e.isStar && c.isStar)
+       | none => true) && noAdjacentStars rest
+
+/-- A well-formed System 4 tape: the leftmost element is a set, no two stars
+    are adjacent, and every set has no duplicates.  `s52s4.pl` emits exactly
+    such tapes; rule 5 (star in state C) is only defined on them, and the
+    parity semantics of the sets needs the `Nodup` clause. -/
+def System4Config.WellFormed (cfg : System4Config) : Prop :=
+  headNotStar cfg.elems = true
+    ∧ noAdjacentStars cfg.elems = true
+    ∧ cfg.elems.all System4Elem.setNodup = true
+
+/-- `WellFormed` is a conjunction of Boolean equations, hence decidable. -/
+instance System4Config.instDecidableWellFormed (cfg : System4Config) :
+    Decidable cfg.WellFormed := by
+  unfold System4Config.WellFormed
+  infer_instance
+
+/-- Tail of a tape with no adjacent stars has no adjacent stars. -/
+theorem noAdjacentStars_tail (e : System4Elem) (rest : List System4Elem)
+    (h : noAdjacentStars (e :: rest) = true) : noAdjacentStars rest = true := by
+  simp only [noAdjacentStars, Bool.and_eq_true] at h
+  exact h.2
+
+/-- Introduction rule for `noAdjacentStars` on a cons. -/
+theorem noAdjacentStars_cons (e : System4Elem) (rest : List System4Elem)
+    (h_head : ∀ c, rest.head? = some c → (e.isStar && c.isStar) = false)
+    (h_rest : noAdjacentStars rest = true) :
+    noAdjacentStars (e :: rest) = true := by
+  simp only [noAdjacentStars, Bool.and_eq_true]
+  refine ⟨?_, h_rest⟩
+  cases h_c : rest.head? with
+  | none => rfl
+  | some c => simp [h_head c h_c]
+
+/-- Elimination rule for `noAdjacentStars` on a cons. -/
+theorem noAdjacentStars_cons_head (e c : System4Elem) (rest : List System4Elem)
+    (h : noAdjacentStars (e :: rest) = true) (h_c : rest.head? = some c) :
+    (e.isStar && c.isStar) = false := by
+  simp only [noAdjacentStars, Bool.and_eq_true] at h
+  have h1 := h.1
+  rw [h_c] at h1
+  rwa [Bool.not_eq_true'] at h1
+
+/-- The head of `l.set i x` is either `x` or the head of `l`. -/
+theorem head?_set (l : List System4Elem) (i : Nat) (x c : System4Elem)
+    (h : (l.set i x).head? = some c) : c = x ∨ l.head? = some c := by
+  cases l with
+  | nil => simp at h
+  | cons a t =>
+    cases i with
+    | zero => left; simpa using h.symm
+    | succ j => right; simpa using h
+
+/-- Replacing a tape element by a non-star keeps stars non-adjacent. -/
+theorem noAdjacentStars_set_notStar (l : List System4Elem) (i : Nat)
+    (x : System4Elem) (h_x : x.isStar = false) (h : noAdjacentStars l = true) :
+    noAdjacentStars (l.set i x) = true := by
+  induction l generalizing i with
+  | nil => rfl
+  | cons e rest ih =>
+    cases i with
+    | zero =>
+      show noAdjacentStars (x :: rest) = true
+      exact noAdjacentStars_cons x rest (fun c _ => by simp [h_x])
+        (noAdjacentStars_tail e rest h)
+    | succ j =>
+      show noAdjacentStars (e :: rest.set j x) = true
+      refine noAdjacentStars_cons e _ ?_ (ih j (noAdjacentStars_tail e rest h))
+      intro c h_c
+      rcases head?_set rest j x c h_c with rfl | h_head
+      · simp [h_x]
+      · exact noAdjacentStars_cons_head e c rest h h_head
+
+/-- Deleting a star keeps stars non-adjacent: its two neighbours are both
+    non-stars, so they may be brought together. -/
+theorem noAdjacentStars_eraseIdx_star (l : List System4Elem) (i : Nat)
+    (e0 : System4Elem) (h_get : l[i]? = some e0) (h_star : e0.isStar = true)
+    (h : noAdjacentStars l = true) :
+    noAdjacentStars (l.eraseIdx i) = true := by
+  induction l generalizing i with
+  | nil => rfl
+  | cons e rest ih =>
+    cases i with
+    | zero =>
+      show noAdjacentStars rest = true
+      exact noAdjacentStars_tail e rest h
+    | succ j =>
+      show noAdjacentStars (e :: rest.eraseIdx j) = true
+      have h_rest : rest[j]? = some e0 := by simpa using h_get
+      refine noAdjacentStars_cons e _ ?_
+        (ih j h_rest (noAdjacentStars_tail e rest h))
+      intro c h_c
+      cases rest with
+      | nil => simp at h_c
+      | cons a rest' =>
+        cases j with
+        | zero =>
+          have h_a : a = e0 := by simpa using h_rest
+          have h_ea : (e.isStar && a.isStar) = false :=
+            noAdjacentStars_cons_head e a (a :: rest') h rfl
+          rw [h_a, h_star, Bool.and_true] at h_ea
+          simp [h_ea]
+        | succ k =>
+          have h_ca : c = a := by simpa using h_c.symm
+          rw [h_ca]
+          exact noAdjacentStars_cons_head e a (a :: rest') h rfl
+
+/-- Replacing a tape element by a non-star keeps the leftmost element a set. -/
+theorem headNotStar_set (l : List System4Elem) (i : Nat) (x : System4Elem)
+    (h_x : x.isStar = false) (h : headNotStar l = true) :
+    headNotStar (l.set i x) = true := by
+  cases l with
+  | nil => rfl
+  | cons e rest =>
+    cases i with
+    | zero =>
+      show headNotStar (x :: rest) = true
+      simp [headNotStar, h_x]
+    | succ j =>
+      show headNotStar (e :: rest.set j x) = true
+      simpa [headNotStar] using h
+
+/-- Deleting a star keeps the leftmost element a set.  The star cannot be at
+    index 0, because the leftmost element is a set. -/
+theorem headNotStar_eraseIdx_star (l : List System4Elem) (i : Nat)
+    (e0 : System4Elem) (h_get : l[i]? = some e0) (h_star : e0.isStar = true)
+    (h : headNotStar l = true) :
+    headNotStar (l.eraseIdx i) = true := by
+  cases l with
+  | nil => rfl
+  | cons e rest =>
+    cases i with
+    | zero =>
+      exfalso
+      have h_e : e = e0 := by simpa using h_get
+      have : e.isStar = false := by simpa [headNotStar] using h
+      rw [h_e, h_star] at this
+      cases this
+    | succ j =>
+      show headNotStar (e :: rest.eraseIdx j) = true
+      simpa [headNotStar] using h
+
+/-- Deleting an element keeps every set duplicate-free. -/
+theorem all_setNodup_eraseIdx (l : List System4Elem) (i : Nat)
+    (h : l.all System4Elem.setNodup = true) :
+    (l.eraseIdx i).all System4Elem.setNodup = true := by
+  rw [List.all_eq_true] at h ⊢
+  intro x h_x
+  exact h x (List.mem_of_mem_eraseIdx h_x)
+
+/-- Replacing an element by a duplicate-free set keeps every set
+    duplicate-free. -/
+theorem all_setNodup_set (l : List System4Elem) (i : Nat) (x : System4Elem)
+    (h_x : x.setNodup = true) (h : l.all System4Elem.setNodup = true) :
+    (l.set i x).all System4Elem.setNodup = true := by
+  rw [List.all_eq_true] at h ⊢
+  intro y h_y
+  rcases List.mem_or_eq_of_mem_set h_y with h1 | rfl
+  · exact h y h1
+  · exact h_x
+
+/-- Decrementing a duplicate-free set leaves it duplicate-free. -/
+theorem decrementSet_nodup (s : List Int) (h : s.Nodup) : (decrementSet s).1.Nodup := by
+  unfold decrementSet
+  by_cases h0 : (0 : Int) ∈ s
+  · simp only [h0, if_pos]
+    exact nodup_map_sub_one (List.Nodup.erase 0 h)
+  · simp only [h0, if_false]
+    exact nodup_map_sub_one h
+
+/-- **`System4.step` preserves `System4Config.WellFormed`.**  Rules 1 and 3
+    do not move stars; rules 2 and 4 delete a star, whose two neighbours are
+    non-stars and so may be brought together; rule 5 only rewrites a set.
+    The leftmost element stays a set because a star is never deleted at
+    index 0 (rule 4 returns `none` there and rule 2 would need a star at the
+    leftmost position, which `headNotStar` forbids). -/
+theorem System4_step_wellFormed (cfg cfg' : System4Config)
+    (h : cfg.WellFormed) (hs : System4.step cfg = some cfg') : cfg'.WellFormed := by
+  obtain ⟨h_head, h_adj, h_nodup⟩ := h
+  unfold System4.step at hs
+  split at hs
+  · rename_i h_bound
+    have h_get : cfg.elems[cfg.active]? = some (cfg.elems.get ⟨cfg.active, h_bound⟩) := by
+      rw [List.get_eq_getElem]
+      exact List.getElem?_eq_getElem h_bound
+    have h_mem : cfg.elems.get ⟨cfg.active, h_bound⟩ ∈ cfg.elems := List.get_mem _ _
+    split at hs
+    · -- rule 2: star in state A
+      rename_i heq _
+      rw [heq] at h_get
+      injection hs with hs
+      subst hs
+      exact ⟨headNotStar_eraseIdx_star _ _ _ h_get rfl h_head,
+             noAdjacentStars_eraseIdx_star _ _ _ h_get rfl h_adj,
+             all_setNodup_eraseIdx _ _ h_nodup⟩
+    · -- rule 1: set in state A
+      split at hs <;> (injection hs with hs; subst hs; exact ⟨h_head, h_adj, h_nodup⟩)
+    · -- rule 3: set in state B or C
+      rename_i s heq _
+      rw [heq] at h_mem
+      have h_s : s.Nodup := by
+        have := (List.all_eq_true.mp h_nodup) _ h_mem
+        simpa [System4Elem.setNodup] using this
+      injection hs with hs
+      subst hs
+      refine ⟨headNotStar_set _ _ _ rfl h_head,
+              noAdjacentStars_set_notStar _ _ _ rfl h_adj,
+              all_setNodup_set _ _ _ ?_ h_nodup⟩
+      simpa [System4Elem.setNodup] using decrementSet_nodup s h_s
+    · -- rule 4: star in state B
+      rename_i heq _
+      rw [heq] at h_get
+      split at hs
+      · cases hs
+      · injection hs with hs
+        subst hs
+        exact ⟨headNotStar_eraseIdx_star _ _ _ h_get rfl h_head,
+               noAdjacentStars_eraseIdx_star _ _ _ h_get rfl h_adj,
+               all_setNodup_eraseIdx _ _ h_nodup⟩
+    · -- rule 5: star in state C
+      rename_i heq _
+      dsimp only at hs
+      split at hs
+      · rename_i h_new
+        split at hs
+        · rename_i s heq2
+          have h_mem2 : cfg.elems.get ⟨cfg.active + 1, h_new⟩ ∈ cfg.elems := List.get_mem _ _
+          rw [heq2] at h_mem2
+          have h_s : s.Nodup := by
+            have := (List.all_eq_true.mp h_nodup) _ h_mem2
+            simpa [System4Elem.setNodup] using this
+          injection hs with hs
+          subst hs
+          refine ⟨headNotStar_set _ _ _ rfl h_head,
+                  noAdjacentStars_set_notStar _ _ _ rfl h_adj,
+                  all_setNodup_set _ _ _ ?_ h_nodup⟩
+          simpa [System4Elem.setNodup] using xorInsert_nodup 1 s h_s
+        · cases hs
+      · cases hs
+  · cases hs
+
+/-- `System4Config.WellFormed` is preserved along any number of steps. -/
+theorem System4_nSteps_wellFormed (cfg : System4Config) (n : Nat)
+    (result : System4Config) (h : cfg.WellFormed)
+    (hs : System4.nSteps cfg n = some result) : result.WellFormed := by
+  induction n generalizing cfg with
+  | zero =>
+    rw [System4.nSteps_zero] at hs
+    injection hs with h_eq
+    rw [← h_eq]; exact h
+  | succ k ih =>
+    rw [System4.nSteps_succ] at hs
+    cases h_step : System4.step cfg with
+    | none => rw [h_step] at hs; cases hs
+    | some cfg₁ =>
+      rw [h_step] at hs
+      simp only [Option.bind_some] at hs
+      exact ih cfg₁ (System4_step_wellFormed cfg cfg₁ h h_step) hs
 
 end BiTM

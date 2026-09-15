@@ -7,15 +7,13 @@
   either pops a rule (XOR-merging it into the bag) when a `0`
   surfaces, or proceeds without popping otherwise.
 
-  Extracted from `BiTM.CockeMinskyConstruction` in a refactor.
-
   Contents:
     * `System5Config` structure
     * `System5.step` definition
-    * `System5_step_pure_decrement` — no-pop case characterisation
-    * `System5_step_none_iff` — halting iff bag or rules empty
-    * `System5_step_some_iff` — dual: success iff both nonempty
-    * `System5_step_pop_rule` — pop case characterisation
+    * `System5_step_pure_decrement`: no-pop case characterisation
+    * `System5_step_none_iff`: halting iff bag or rules empty
+    * `System5_step_some_iff`: dual: success iff both nonempty
+    * `System5_step_pop_rule`: pop case characterisation
 -/
 
 import BiTM.XorMerge
@@ -31,7 +29,7 @@ open TagSystem
 structure System5Config where
   /-- The current bag (parity-mod-2 multiset). -/
   bag : List Int
-  /-- The remaining rules; rules are popped (consumed) as `0` ∈ bag triggers. -/
+  /-- The remaining rules; rules are popped (consumed) as `0` in bag triggers. -/
   rules : List (List Int)
   deriving Repr, DecidableEq
 
@@ -54,7 +52,7 @@ def System5.step (cfg : System5Config) : Option System5Config :=
 
 /-- When no `0` survives the decrement (and neither bag nor rules is
     empty), `System5.step` simply decrements the bag and increments
-    the rules — no rule pop, no XOR-merge. -/
+    the rules - no rule pop, no XOR-merge. -/
 theorem System5_step_pure_decrement (cfg cfg' : System5Config)
     (h_step : System5.step cfg = some cfg')
     (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
@@ -174,8 +172,8 @@ theorem System5_step_pop_rule (cfg cfg' : System5Config)
     refine ⟨r.map (· + 1), rs.map (fun r => r.map (· + 1)), rfl, ?_, ?_⟩ <;>
       (simp [← h_eq])
 
-/-- **Iter 886: rules length strict decrease on P-step**.  When
-    `System5.step` is a pop (i.e., `0 ∈ bag.map(·-1)`), the resulting
+/-- **Rules length strict decrease on P-step**.  When
+    `System5.step` is a pop (i.e., `0 in bag.map(fun x => x - 1)`), the resulting
     rules list has length exactly `cfg.rules.length - 1`. -/
 theorem System5_step_rules_length_eq_pop (cfg cfg' : System5Config)
     (h_step : System5.step cfg = some cfg')
@@ -192,8 +190,8 @@ theorem System5_step_rules_length_eq_pop (cfg cfg' : System5Config)
     simp
   omega
 
-/-- **Iter 899: explicit P-step characterization**.  When the rules
-    head is known (cfg.rules = r1 :: rest) and `0 ∈ cfg.bag.map(·-1)`,
+/-- **Explicit P-step characterization**.  When the rules
+    head is known (cfg.rules = r1 :: rest) and `0 in cfg.bag.map(fun x => x - 1)`,
     the System5 step pops r1 (incremented) and merges with bag-after-erase. -/
 theorem System5_step_explicit_pop (cfg : System5Config)
     (r1 : List Int) (rest_rules : List (List Int))
@@ -220,7 +218,7 @@ theorem System5_step_explicit_pop (cfg : System5Config)
   rw [h_rules]
   rfl
 
-/-- **Iter 887: bridge between `1 ∈ bag` and `0 ∈ bag.map(·-1)`**.
+/-- **Bridge between `1 in bag` and `0 in bag.map(fun x => x - 1)`**.
     This is the predicate that distinguishes P-steps from D-steps,
     expressed in the more natural "bag has counter 1" form. -/
 theorem System5_one_mem_iff_zero_in_decremented (bag : List Int) :
@@ -234,8 +232,8 @@ theorem System5_one_mem_iff_zero_in_decremented (bag : List Int) :
     rw [this] at hx_mem
     exact hx_mem
 
-/-- **Iter 886: rules length preserved on D-step**.  When
-    `System5.step` is a pure decrement (i.e., `0 ∉ bag.map(·-1)`),
+/-- **Rules length preserved on D-step**.  When
+    `System5.step` is a pure decrement (i.e., `0 not in bag.map(fun x => x - 1)`),
     rules length is preserved. -/
 theorem System5_step_rules_length_eq_dec (cfg cfg' : System5Config)
     (h_step : System5.step cfg = some cfg')
@@ -247,11 +245,11 @@ theorem System5_step_rules_length_eq_dec (cfg cfg' : System5Config)
   rw [h_rules']
   simp
 
-/-- **Iter 884: rules length monotonicity (single step)**.  Every
+/-- **Rules length monotonicity (single step)**.  Every
     `System5.step` either preserves rules length (D-step / pure
     decrement) or decreases by 1 (P-step / pop rule).  So `cfg'.rules.length
-    ≤ cfg.rules.length` always.  Foundational invariant for trajectory
-    analysis — see iter 883 closure plan in plan file. -/
+    <= cfg.rules.length` always.  Foundational invariant for trajectory
+    analysis. -/
 theorem System5_step_rules_length_le (cfg cfg' : System5Config)
     (h_step : System5.step cfg = some cfg') :
     cfg'.rules.length ≤ cfg.rules.length := by
@@ -277,9 +275,9 @@ theorem System5_step_rules_length_le (cfg cfg' : System5Config)
       rw [← h_eq]
       simp
 
-/-- **Iter 968: single-step P-step rules form**.  Strengthened version
-    of `System5_step_rules_drop_inc`: when `0 ∈ bag.map(·-1)` (P-step
-    condition), `j = 1` exactly — the rules drop the head and increment.
+/-- **Single-step P-step rules form**.  Strengthened version
+    of `System5_step_rules_drop_inc`: when `0 in bag.map(fun x => x - 1)` (P-step
+    condition), `j = 1` exactly - the rules drop the head and increment.
     Removes the existential to give a direct equality.  Useful for
     chaining 4 P-steps in the false-head trajectory. -/
 theorem System5_step_rules_pstep
@@ -309,9 +307,9 @@ theorem System5_step_rules_pstep
     rw [← h_rest]
     simp [List.drop]
 
-/-- **Iter 956: single-step rules-drop-inc invariant**.  Every successful
-    `System5.step` produces rules `(cfg.rules.drop j).map(map(·+1))` for
-    some `j ∈ {0, 1}` — `j = 1` on a P-step (rule popped), `j = 0` on a
+/-- **Single-step rules-drop-inc invariant**.  Every successful
+    `System5.step` produces rules `(cfg.rules.drop j).map(map(fun x => x + 1))` for
+    some `j in {0, 1}` - `j = 1` on a P-step (rule popped), `j = 0` on a
     D-step (rule retained, just incremented).  Foundational for the
     multi-step trajectory invariant `System5_nSteps_rules_form`. -/
 theorem System5_step_rules_drop_inc (cfg cfg' : System5Config)
@@ -359,7 +357,7 @@ def System5.nSteps (cfg : System5Config) : Nat → Option System5Config
 @[simp] theorem System5.nSteps_zero (cfg : System5Config) :
     System5.nSteps cfg 0 = some cfg := rfl
 
-/-- **Iter 885: rules length monotonicity (multi-step)**.  Across any
+/-- **Rules length monotonicity (multi-step)**.  Across any
     `n` System5 steps reaching a `some cfg'`, the rules length only
     decreases.  By induction on `n` using `System5_step_rules_length_le`. -/
 theorem System5_nSteps_rules_length_le
@@ -388,7 +386,8 @@ theorem System5.nSteps_one (cfg : System5Config) :
         | some cfg' => System5.nSteps cfg' 0) = System5.step cfg
   cases System5.step cfg <;> rfl
 
-/-- Additive composition: `nSteps cfg (n + m) = nSteps cfg n >>= nSteps · m`. -/
+/-- Additive composition:
+    `nSteps cfg (n + m) = nSteps cfg n >>= (fun c => nSteps c m)`. -/
 theorem System5.nSteps_add (cfg : System5Config) (n m : Nat) :
     System5.nSteps cfg (n + m)
       = (System5.nSteps cfg n).bind (fun c => System5.nSteps c m) := by
@@ -407,15 +406,16 @@ theorem System5.nSteps_add (cfg : System5Config) (n m : Nat) :
     | none => rfl
     | some c => exact ih c
 
-/-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= nSteps · n`.
+/-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= (fun c => nSteps c n)`.
     Definitional, but stated explicitly for ergonomic use. -/
 theorem System5.nSteps_succ (cfg : System5Config) (n : Nat) :
     System5.nSteps cfg (n + 1)
       = (System5.step cfg).bind (fun c => System5.nSteps c n) := by
   rw [Nat.add_comm, System5.nSteps_add, System5.nSteps_one]
 
-/-- Shift composition: two `(· + _)` maps compose to a single map of
-    the sum.  `(l.map (· + a)).map (· + b) = l.map (· + (a + b))`. -/
+/-- Shift composition: two `(fun x => x + _)` maps compose to a single map of
+    the sum.  `(l.map (fun x => x + a)).map (fun x => x + b)` equals
+    `l.map (fun x => x + (a + b))`. -/
 theorem List_Int_map_add_compose (l : List Int) (a b : Int) :
     (l.map (· + a)).map (· + b) = l.map (· + (a + b)) := by
   rw [List.map_map]
@@ -424,8 +424,8 @@ theorem List_Int_map_add_compose (l : List Int) (a b : Int) :
   show (x + a) + b = x + (a + b)
   omega
 
-/-- Dual: two `(· - _)` maps compose to a single map of the sum.
-    `(l.map (· - a)).map (· - b) = l.map (· - (a + b))`. -/
+/-- Dual: two `(fun x => x - _)` maps compose to a single map of the sum.
+    `(l.map (fun x => x - a)).map (fun x => x - b) = l.map (fun x => x - (a + b))`. -/
 theorem List_Int_map_sub_compose (l : List Int) (a b : Int) :
     (l.map (· - a)).map (· - b) = l.map (· - (a + b)) := by
   rw [List.map_map]
@@ -434,8 +434,8 @@ theorem List_Int_map_sub_compose (l : List Int) (a b : Int) :
   show (x - a) - b = x - (a + b)
   omega
 
-/-- Add-then-sub by the same value is the identity: `(l.map (· + k)).map
-    (· - k) = l`.  Useful for cancelling out a shift-then-unshift. -/
+/-- Add-then-sub by the same value is the identity: `(l.map (fun x => x + k)).map
+    (fun x => x - k) = l`.  Useful for cancelling out a shift-then-unshift. -/
 theorem List_Int_map_add_sub_self (l : List Int) (k : Int) :
     (l.map (· + k)).map (· - k) = l := by
   rw [List.map_map]
@@ -455,8 +455,8 @@ theorem List_Int_map_sub_add_self (l : List Int) (k : Int) :
   rw [h]
   exact List.map_id l
 
-/-- Helper: iterated subtraction commutes — `l.map (· - (k+1))`
-    equals `l.map (· - k)` then `· - 1`. -/
+/-- Helper: iterated subtraction commutes - `l.map (fun x => x - (k+1))`
+    equals `l.map (fun x => x - k)` then `fun x => x - 1`. -/
 theorem List_Int_map_sub_succ (l : List Int) (k : Nat) :
     l.map (· - ((k + 1 : Nat) : Int)) = (l.map (· - (k : Int))).map (· - 1) := by
   rw [List.map_map]
@@ -465,8 +465,8 @@ theorem List_Int_map_sub_succ (l : List Int) (k : Nat) :
   show x - ((k + 1 : Nat) : Int) = (x - (k : Int)) - 1
   omega
 
-/-- Helper: iterated addition commutes — `l.map (· + (k+1))`
-    equals `l.map (· + k)` then `· + 1`. -/
+/-- Helper: iterated addition commutes - `l.map (fun x => x + (k+1))`
+    equals `l.map (fun x => x + k)` then `fun x => x + 1`. -/
 theorem List_Int_map_add_succ (l : List Int) (k : Nat) :
     l.map (· + ((k + 1 : Nat) : Int)) = (l.map (· + (k : Int))).map (· + 1) := by
   rw [List.map_map]
@@ -475,14 +475,14 @@ theorem List_Int_map_add_succ (l : List Int) (k : Nat) :
   show x + ((k + 1 : Nat) : Int) = (x + (k : Int)) + 1
   omega
 
-/-- **Iter 956: multi-step rules trajectory invariant**.  After `n`
+/-- **Multi-step rules trajectory invariant**.  After `n`
     successful System5 steps from `cfg`, the resulting rules list is
-    `(cfg.rules.drop k).map(map(·+n))` for some `k ≤ n` (the cumulative
+    `(cfg.rules.drop k).map(map(fun x => x + n))` for some `k <= n` (the cumulative
     P-step count along the trajectory).  Each of the `k` popped rules
     advances the drop-index by 1; every step (P or D) increments every
     surviving rule by 1, so after `n` steps the cumulative shift is `n`.
-    Foundational for the Smith Conjecture 0 false-head closure plan
-    (handoff: trajectory invariant gap blocking the 4-step proof). -/
+    Foundational for the false-head trajectory analysis of the Smith
+    Conjecture 0 chain. -/
 theorem System5_nSteps_rules_form
     (cfg cfg' : System5Config) (n : Nat)
     (h : System5.nSteps cfg n = some cfg') :
@@ -516,8 +516,8 @@ theorem System5_nSteps_rules_form
       push_cast
       omega
 
-/-- **Iter 968: multi-step all-P-step rules form**.  When every
-    intermediate System5 step is a P-step (`0 ∈ bag.map(·-1)`), the
+/-- **Multi-step all-P-step rules form**.  When every
+    intermediate System5 step is a P-step (`0 in bag.map(fun x => x - 1)`), the
     trajectory drops *exactly* `n` rules (i.e., `k = n` in
     `System5_nSteps_rules_form`).  Removes the existential `k`,
     giving the precise per-step relationship: each P-step pops one
@@ -575,7 +575,7 @@ theorem System5_halted_nSteps_succ_eq_none (cfg : System5Config) (n : Nat)
   rw [System5.nSteps_succ, (System5_step_none_iff cfg).mpr h]
   rfl
 
-/-- Generalisation: for any `n ≥ 1`, `nSteps haltedCfg n = none`. -/
+/-- Generalisation: for any `n >= 1`, `nSteps haltedCfg n = none`. -/
 theorem System5_halted_nSteps_eq_none (cfg : System5Config) (n : Nat)
     (h : cfg.bag = [] ∨ cfg.rules = []) (h_n : 1 ≤ n) :
     System5.nSteps cfg n = none := by
@@ -584,7 +584,7 @@ theorem System5_halted_nSteps_eq_none (cfg : System5Config) (n : Nat)
 
 /-- System 5 analog of `CTS_nSteps_none_decompose`: if `System5.nSteps
     cfg n = none`, then some intermediate state at step `k < n` is
-    halted (`bag = [] ∨ rules = []`). -/
+    halted (`bag = [] \/ rules = []`). -/
 theorem System5_nSteps_none_decompose (cfg : System5Config) (n : Nat)
     (h : System5.nSteps cfg n = none) :
     ∃ k < n, ∃ cfg', System5.nSteps cfg k = some cfg'
@@ -620,7 +620,7 @@ theorem System5_nSteps_none_of_reaches_halted
   show System5.nSteps cfg' 1 = none
   exact System5_halted_nSteps_succ_eq_none cfg' 0 h_halt
 
-/-- **System 5 halts ↔ reaches halted**: clean iff form. -/
+/-- **System 5 halts <-> reaches halted**: clean iff form. -/
 theorem System5_nSteps_halts_iff_reaches_halted (cfg : System5Config) :
     (∃ n, System5.nSteps cfg n = none) ↔
     ∃ k cfg', System5.nSteps cfg k = some cfg'
@@ -636,12 +636,12 @@ theorem System5_nSteps_halts_iff_reaches_halted (cfg : System5Config) :
 def System5.Halts (cfg : System5Config) : Prop :=
   ∃ n, System5.nSteps cfg n = none
 
-/-- Trivial halting witness: empty bag ⟹ halts in one step. -/
+/-- Trivial halting witness: empty bag => halts in one step. -/
 theorem System5.Halts_of_empty_bag (cfg : System5Config) (h : cfg.bag = []) :
     System5.Halts cfg :=
   ⟨1, by rw [System5.nSteps_one]; exact (System5_step_none_iff cfg).mpr (Or.inl h)⟩
 
-/-- Trivial halting witness: empty rules ⟹ halts in one step. -/
+/-- Trivial halting witness: empty rules => halts in one step. -/
 theorem System5.Halts_of_empty_rules (cfg : System5Config) (h : cfg.rules = []) :
     System5.Halts cfg :=
   ⟨1, by rw [System5.nSteps_one]; exact (System5_step_none_iff cfg).mpr (Or.inr h)⟩
@@ -737,21 +737,18 @@ theorem System5_nSteps_some_compose
   rw [System5.nSteps_add, h_n]
   exact h_m
 
-/-- **`System5_Halts_iff_reaches_halted` (iter 620)**: clean
-    `Halts`-form of `System5_nSteps_halts_iff_reaches_halted`.
-    `System5.Halts cfg ↔ ∃ k cfg', cfg evolves into cfg' in k
-    steps and cfg' is halted (empty bag or empty rules)`.  Direct
-    via the def unfold. -/
+/-- Clean `Halts`-form of `System5_nSteps_halts_iff_reaches_halted`.
+    `System5.Halts cfg <-> exists k cfg', cfg evolves into cfg' in k steps and
+    cfg' is halted (empty bag or empty rules)`.  Direct via the def unfold. -/
 theorem System5_Halts_iff_reaches_halted (cfg : System5Config) :
     System5.Halts cfg ↔
     ∃ k cfg', System5.nSteps cfg k = some cfg'
               ∧ (cfg'.bag = [] ∨ cfg'.rules = []) :=
   System5_nSteps_halts_iff_reaches_halted cfg
 
-/-- **`System5_not_Halts_imp_step_some` (iter 620)**: contrapositive
-    flavour — if `cfg` does NOT halt, then `step cfg` is `some`
-    (since `step = none` implies halt in 1 step).  Useful to extract
-    a successor cfg in non-halting trajectories. -/
+/-- Contrapositive flavour - if `cfg` does NOT halt, then `step cfg` is `some`
+    (since `step = none` implies halt in 1 step).  Useful to extract a
+    successor cfg in non-halting trajectories. -/
 theorem System5_not_Halts_imp_step_some (cfg : System5Config)
     (h : ¬ System5.Halts cfg) :
     ∃ cfg', System5.step cfg = some cfg' := by
@@ -788,7 +785,7 @@ theorem System5_self_loop_nSteps_self
     rw [System5.nSteps_succ, h_self]
     simpa using ih
 
-/-- **System5 self-loop ⇒ not-Halts**: a System5 cfg with a self-step
+/-- **System5 self-loop => not-Halts**: a System5 cfg with a self-step
     cannot have `System5.Halts`. -/
 theorem System5_self_loop_not_halts
     (cfg : System5Config) (h_self : System5.step cfg = some cfg) :
@@ -797,7 +794,7 @@ theorem System5_self_loop_not_halts
   rw [System5_self_loop_nSteps_self cfg h_self n] at h_n
   cases h_n
 
-/-- **System5 step-none nSteps succ eq none**: `step cfg = none →
+/-- **System5 step-none nSteps succ eq none**: `step cfg = none ->
     nSteps cfg (n+1) = none`. -/
 theorem System5_step_none_nSteps_succ_eq_none
     (cfg : System5Config) (h : System5.step cfg = none) (n : Nat) :
@@ -806,7 +803,7 @@ theorem System5_step_none_nSteps_succ_eq_none
   rfl
 
 /-- **System5 nSteps past step-none = none**: once a trajectory
-    reaches a step-none cfg, any further `k ≥ 1` steps yield `none`. -/
+    reaches a step-none cfg, any further `k >= 1` steps yield `none`. -/
 theorem System5_nSteps_past_step_none_eq_none
     (cfg : System5Config) (n : Nat) (result : System5Config)
     (h_n : System5.nSteps cfg n = some result) (h_step : System5.step result = none)
@@ -816,9 +813,10 @@ theorem System5_nSteps_past_step_none_eq_none
   obtain ⟨m, rfl⟩ : ∃ m, k = m + 1 := ⟨k - 1, by omega⟩
   simpa using System5_step_none_nSteps_succ_eq_none result h_step m
 
-/-- **System5 nSteps intermediate retrieval**: given `nSteps` results
-    at `n₁ ≤ n₂`, the in-between trajectory is `nSteps r₁ (n₂ - n₁) =
-    some r₂`. -/
+/-- **System5 nSteps intermediate retrieval**: given `nSteps` results at
+    two step counts, the earlier of which is at most the later, the
+    in-between trajectory runs from the earlier result to the later one in
+    the difference of the two step counts. -/
 theorem System5_nSteps_intermediate
     (cfg r₁ r₂ : System5Config) (n₁ n₂ : Nat) (h_le : n₁ ≤ n₂)
     (h₁ : System5.nSteps cfg n₁ = some r₁)
@@ -859,11 +857,9 @@ theorem System5_periodic_nSteps_iter
     rw [Nat.succ_mul, System5.nSteps_add, ih]
     simpa using h_period
 
-/-- **`System5_Halts_of_exists_step_none` (iter 624)**: backward
-    direction of the step-none witness characterisation — if some
-    intermediate cfg `r` reached after `k` steps has `step r = none`,
-    then the original cfg halts.  Composes `nSteps_pred` with
-    `step_none_imp_Halts`. -/
+/-- Backward direction of the step-none witness characterisation - if some
+    intermediate cfg `r` reached after `k` steps has `step r = none`, then the
+    original cfg halts.  Composes `nSteps_pred` with `step_none_imp_Halts`. -/
 theorem System5_Halts_of_exists_step_none
     (cfg : System5Config)
     (h : ∃ k r, System5.nSteps cfg k = some r ∧ System5.step r = none) :
@@ -873,7 +869,7 @@ theorem System5_Halts_of_exists_step_none
     (System5_step_none_imp_Halts r h_step)
 
 /-- **System5 step-none witness extractor**: from `System5.Halts cfg`,
-    extract `k`, `r` such that `nSteps cfg k = some r ∧ step r = none`.
+    extract `k`, `r` such that `nSteps cfg k = some r /\ step r = none`.
     Halt-time extractor; uses `find_min_or_none`. -/
 theorem System5_Halts_extract_step_none_witness
     (cfg : System5Config) (h : System5.Halts cfg) :
@@ -896,8 +892,8 @@ theorem System5_Halts_extract_step_none_witness
         exact h_pn
   · exact absurd hN (h_none N (Nat.le_refl _))
 
-/-- **System5 periodic orbit ⇒ not-Halts**: a config with a periodic
-    orbit (period ≥ 1) cannot halt.  Uses `System5_Halts_extract_step_
+/-- **System5 periodic orbit => not-Halts**: a config with a periodic
+    orbit (period >= 1) cannot halt.  Uses `System5_Halts_extract_step_
     none_witness` plus `System5_nSteps_past_step_none_eq_none`. -/
 theorem System5_periodic_not_halts
     (cfg : System5Config) (p : Nat) (h_pos : p ≥ 1)
@@ -916,19 +912,18 @@ theorem System5_periodic_not_halts
     at h_iter
   cases h_iter
 
-/-- **`System5_Halts_iff_exists_step_none_witness` (iter 626)**:
-    biconditional combining iter 624's backward direction with iter
-    625's extractor.  `System5.Halts cfg ↔ ∃ k r, nSteps cfg k = some r
-    ∧ step r = none`.  The most useful iff form for halt analysis. -/
+/-- Biconditional combining the backward direction
+    `System5_Halts_of_exists_step_none` with the step-none witness
+    extractor.  `System5.Halts cfg <-> exists k r, nSteps cfg k = some r
+    /\ step r = none`.  The most useful iff form for halt analysis. -/
 theorem System5_Halts_iff_exists_step_none_witness (cfg : System5Config) :
     System5.Halts cfg ↔
     ∃ k r, System5.nSteps cfg k = some r ∧ System5.step r = none :=
   ⟨System5_Halts_extract_step_none_witness cfg,
    System5_Halts_of_exists_step_none cfg⟩
 
-/-- **`System5_no_period_of_Halts` (iter 626)**: contrapositive of
-    `System5_periodic_not_halts` — halting cfgs have no periodic
-    orbit at any positive period.  Useful for ruling out cycles in
+/-- Contrapositive of `System5_periodic_not_halts` - halting cfgs have no
+    periodic orbit at any positive period.  Useful for ruling out cycles in
     halting trajectories. -/
 theorem System5_no_period_of_Halts
     (cfg : System5Config) (h : System5.Halts cfg)
@@ -936,9 +931,9 @@ theorem System5_no_period_of_Halts
     System5.nSteps cfg p ≠ some cfg :=
   fun h_period => System5_periodic_not_halts cfg p h_pos h_period h
 
-/-- **System5 → BiTM step-to-nSteps emulation lifting**: generic-`tm`
+/-- **System5 -> BiTM step-to-nSteps emulation lifting**: generic-`tm`
     target version of `step_to_nSteps_emulation_system5_to_system4`.
-    Given per-step System5 → tm emulator with `n ≥ 1` budget, lifts
+    Given per-step System5 -> tm emulator with `n >= 1` budget, lifts
     to multi-step. -/
 theorem step_to_nSteps_emulation_system5_to_tm
     (tm : Machine) (encode : System5Config → Config)
@@ -967,9 +962,9 @@ theorem step_to_nSteps_emulation_system5_to_tm
         BiTM_nSteps_some_compose tm (encode cfg) (encode cfg₁)
           n m' (encode result) h_n h_m'⟩
 
-/-- **System5 → BiTM halt-preservation under step emulation**: composes
-    iter 433's lifting with the System5 step-none witness extractor +
-    `BiTM_Halts_nSteps_pred`. -/
+/-- **System5 -> BiTM halt-preservation under step emulation**: composes
+    the step-to-nSteps lifting with the System5 step-none witness
+    extractor and `BiTM_Halts_nSteps_pred`. -/
 theorem system5Halts_imp_tmHalts_under_step_emulation
     (tm : Machine) (encode : System5Config → Config)
     (h_step_emulate : ∀ cfg cfg', System5.step cfg = some cfg' →
@@ -983,10 +978,9 @@ theorem system5Halts_imp_tmHalts_under_step_emulation
   exact BiTM_Halts_nSteps_pred tm (encode cfg) m (encode r) h_m
     (h_halt_preserve r h_step_none)
 
-/-- **`system5_not_Halts_of_tm_not_Halts` (iter 630)**: contrapositive
-    of `system5Halts_imp_tmHalts_under_step_emulation` — if the
-    encoded tm cfg does NOT halt, then the System5 cfg does NOT halt
-    either.  Useful when transferring non-halting facts (e.g.
+/-- Contrapositive of `system5Halts_imp_tmHalts_under_step_emulation` - if the
+    encoded tm cfg does NOT halt, then the System5 cfg does NOT halt either.
+    Useful when transferring non-halting facts (e.g.
     `not_halts_wolfram23_init`) backwards through an emulation. -/
 theorem system5_not_Halts_of_tm_not_Halts
     (tm : Machine) (encode : System5Config → Config)
@@ -998,18 +992,16 @@ theorem system5_not_Halts_of_tm_not_Halts
   fun h_halts => h (system5Halts_imp_tmHalts_under_step_emulation tm encode
     h_step_emulate h_halt_preserve cfg h_halts)
 
-/-- **`System5_step_or_halted` (iter 643)**: every System5 cfg is
-    either halted (bag/rules empty) or admits a step.  Direct from
-    `System5_step_none_iff`. -/
+/-- Every System5 cfg is either halted (bag/rules empty) or admits a step.
+    Direct from `System5_step_none_iff`. -/
 theorem System5_step_or_halted (cfg : System5Config) :
     (cfg.bag = [] ∨ cfg.rules = []) ∨ ∃ cfg', System5.step cfg = some cfg' := by
   cases h_step : System5.step cfg with
   | none => left; exact (System5_step_none_iff cfg).mp h_step
   | some cfg' => right; exact ⟨cfg', rfl⟩
 
-/-- **`System5_Halts_step_decompose` (iter 643)**: any halting System5
-    cfg is either at halt position (bag/rules empty) or steps to
-    another halting cfg. -/
+/-- Any halting System5 cfg is either at halt position (bag/rules empty) or
+    steps to another halting cfg. -/
 theorem System5_Halts_step_decompose
     (cfg : System5Config) (h : System5.Halts cfg) :
     (cfg.bag = [] ∨ cfg.rules = []) ∨
@@ -1019,8 +1011,7 @@ theorem System5_Halts_step_decompose
   · right
     exact ⟨cfg', h_step, (System5_Halts_step_iff cfg cfg' h_step).mp h⟩
 
-/-- **`System5_Halts_step_decompose_active` (iter 643)**: when both
-    bag and rules are non-empty, the step branch is forced. -/
+/-- When both bag and rules are non-empty, the step branch is forced. -/
 theorem System5_Halts_step_decompose_active
     (cfg : System5Config) (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
     (h_halts : System5.Halts cfg) :
@@ -1031,10 +1022,9 @@ theorem System5_Halts_step_decompose_active
     · exact absurd hr h_rules
   · exact h_step
 
-/-- **`System5_Halts_induction` (iter 643)**: strong induction over
-    halting System5 cfgs.  Any `P` satisfying the halt-condition base
-    (`bag = [] ∨ rules = []`) and backwards-step preservation holds on
-    all halting cfgs. -/
+/-- Strong induction over halting System5 cfgs.  Any `P` satisfying the
+    halt-condition base (`bag = [] \/ rules = []`) and backwards-step
+    preservation holds on all halting cfgs. -/
 theorem System5_Halts_induction (P : System5Config → Prop)
     (h_halt : ∀ cfg, (cfg.bag = [] ∨ cfg.rules = []) → P cfg)
     (h_back : ∀ cfg cfg', System5.step cfg = some cfg' →
@@ -1054,8 +1044,8 @@ theorem System5_Halts_induction (P : System5Config → Prop)
       have h_he' : System5.Halts cfg' := ⟨m, h_n'⟩
       exact h_back cfg cfg' h_step h_he' (ih cfg' h_n')
 
-/-- **System5 → BiTM step-to-nSteps emulation positive bound**:
-    System5 → tm analog of `step_to_nSteps_emulation_system5_to_
+/-- **System5 -> BiTM step-to-nSteps emulation positive bound**:
+    System5 -> tm analog of `step_to_nSteps_emulation_system5_to_
     system4_pos`.  Required for BiTM-side chain composition. -/
 theorem step_to_nSteps_emulation_system5_to_tm_pos
     (tm : Machine) (encode : System5Config → Config)
@@ -1080,9 +1070,8 @@ theorem step_to_nSteps_emulation_system5_to_tm_pos
         BiTM_nSteps_some_compose tm (encode cfg) (encode cfg₁)
           n m' (encode result) h_n h_m'⟩
 
-/-- **`System5_nSteps_one_pure_decrement` (iter 677)**: nSteps form
-    of pure decrement.  Combines `System5.nSteps_one`, `_step_some_iff`,
-    and `_step_pure_decrement`. -/
+/-- `nSteps` form of pure decrement.  Combines `System5.nSteps_one`,
+    `_step_some_iff`, and `_step_pure_decrement`. -/
 theorem System5_nSteps_one_pure_decrement (cfg : System5Config)
     (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
     (h_zero : 0 ∉ cfg.bag.map (· - 1)) :
@@ -1096,9 +1085,9 @@ theorem System5_nSteps_one_pure_decrement (cfg : System5Config)
   show (some ⟨cfg'.bag, cfg'.rules⟩ : Option System5Config) = _
   rw [h_b, h_r]
 
-/-- **`System5_nSteps_one_pop_rule` (iter 677)**: nSteps form of rule
-    pop.  When `0 ∈ cfg.bag.map (· - 1)`, `nSteps cfg 1` pops the next
-    incremented rule and XOR-merges into `(bag.map (·-1)).erase 0`. -/
+/-- `nSteps` form of rule pop.  When `0 in cfg.bag.map (fun x => x - 1)`,
+    `nSteps cfg 1` pops the next incremented rule and XOR-merges into
+    `(bag.map (fun x => x - 1)).erase 0`. -/
 theorem System5_nSteps_one_pop_rule (cfg : System5Config)
     (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
     (h_zero : 0 ∈ cfg.bag.map (· - 1)) :
@@ -1116,10 +1105,9 @@ theorem System5_nSteps_one_pop_rule (cfg : System5Config)
   show (some ⟨cfg'.bag, cfg'.rules⟩ : Option System5Config) = _
   rw [h_b, h_r]
 
-/-- **`System5_nSteps_k_pure_decrement` (iter 677)**: multi-step pure
-    decrement.  If no value in `{1, ..., k}` appears in `cfg.bag`, then
-    `k` consecutive System 5 steps are pure decrements.  Workhorse for
-    `cy2s5.pl`-style System 5 trajectories between successive
+/-- Multi-step pure decrement.  If no value in `{1, ..., k}` appears in
+    `cfg.bag`, then `k` consecutive System 5 steps are pure decrements.
+    Workhorse for `cy2s5.pl`-style System 5 trajectories between successive
     CTS-step encodings. -/
 theorem System5_nSteps_k_pure_decrement (cfg : System5Config) (k : Nat)
     (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
@@ -1164,12 +1152,10 @@ theorem System5_nSteps_k_pure_decrement (cfg : System5Config) (k : Nat)
       simp only [Function.comp]
       rw [← List_Int_map_add_succ]
 
-/-- **`System5_nSteps_one_empty_rule_pop` (iter 678)**: System5 step
-    with empty-head rule + `1 ∈ bag` — pure decrement-erase on the bag
-    (empty rule contributes nothing via `xorMerge_nil`), advance rules
-    to tail (incremented).  Specialises `System5_nSteps_one_pop_rule`
-    to the empty-rule case relevant to `AllEmptyAppendants` CTS
-    dynamics. -/
+/-- System5 step with empty-head rule + `1 in bag` - pure decrement-erase on
+    the bag (empty rule contributes nothing via `xorMerge_nil`), advance rules
+    to tail (incremented).  Specialises `System5_nSteps_one_pop_rule` to the
+    empty-rule case relevant to `AllEmptyAppendants` CTS dynamics. -/
 theorem System5_nSteps_one_empty_rule_pop
     (cfg : System5Config) (rest : List (List Int))
     (h_rules : cfg.rules = [] :: rest)
@@ -1199,9 +1185,9 @@ theorem System5_nSteps_one_empty_rule_pop
       = _
   rw [xorMerge_nil]
 
-/-- **`System5_nSteps_decrement_then_pop` (iter 677)**: full per-step
-    emulation primitive — `k` pure decrements followed by one rule pop.
-    The single-CTS-step emulation primitive for `smith-step-emulation`. -/
+/-- Full per-step emulation primitive - `k` pure decrements followed by one
+    rule pop. The single-CTS-step emulation primitive for
+    `smith-step-emulation`. -/
 theorem System5_nSteps_decrement_then_pop (cfg : System5Config) (k : Nat)
     (h_bag : cfg.bag ≠ []) (h_rules : cfg.rules ≠ [])
     (h_no_small : ∀ j : Nat, 1 ≤ j → j ≤ k → (↑j : Int) ∉ cfg.bag)
@@ -1247,8 +1233,8 @@ theorem System5_nSteps_decrement_then_pop (cfg : System5Config) (k : Nat)
   congr 1
   rw [h_bag_k, ← List_Int_map_sub_succ]
 
-/-- **System 5 `nSteps`-none succ propagation** (analogue of iter
-    326).  Direct via `System5.nSteps_add`. -/
+/-- **System 5 `nSteps`-none succ propagation**.  Direct via
+    `System5.nSteps_add`. -/
 theorem System5_nSteps_none_succ
     (cfg : System5Config) (n : Nat)
     (h : System5.nSteps cfg n = none) :
@@ -1257,7 +1243,7 @@ theorem System5_nSteps_none_succ
   rfl
 
 /-- **System 5 `nSteps`-none monotone propagation**: once `nSteps cfg
-    n = none`, also `= none` for all `m ≥ n`. -/
+    n = none`, also `= none` for all `m >= n`. -/
 theorem System5_nSteps_none_propagate
     (cfg : System5Config) (n m : Nat)
     (h_le : n ≤ m) (h_n : System5.nSteps cfg n = none) :
@@ -1271,7 +1257,7 @@ theorem System5_nSteps_none_propagate
     rw [show n + (j + 1) = (n + j) + 1 from by omega]
     exact System5_nSteps_none_succ cfg (n + j) ih
 
-/-- **System 5 `nSteps`-some monotonicity** (analogue of iter 362). -/
+/-- **System 5 `nSteps`-some monotonicity**. -/
 theorem System5_nSteps_some_le
     (cfg : System5Config) (k n : Nat) (h_le : k ≤ n)
     (result : System5Config) (h : System5.nSteps cfg n = some result) :
@@ -1283,8 +1269,7 @@ theorem System5_nSteps_some_le
     cases h
   | some intermediate => exact ⟨intermediate, rfl⟩
 
-/-- **`System5_nSteps_some_decompose` (iter 714)**: sharpens iter 713's
-    `_nSteps_some_le` — when `nSteps cfg n = some result` and `k ≤ n`,
+/-- Sharpens `System5_nSteps_some_le`: when `nSteps cfg n = some result` and `k <= n`,
     not only does the intermediate at step `k` exist, but `nSteps
     intermediate (n - k) = some result` follows.  Lets downstream code
     split a successful System 5 trajectory at any intermediate step.
@@ -1305,14 +1290,12 @@ theorem System5_nSteps_some_decompose
   rw [Option.bind_some] at h
   exact h
 
-/-- **`System5_Halts_imp_nSteps_eventually_none` (iter 551)**:
-    System5 analog of iter 549/550.  `System5.Halts cfg` (defined
-    as `∃ n, nSteps cfg n = none`) lifts to the eventually-none
-    form `∃ N, ∀ k > N, nSteps cfg k = none`.  Proof: decompose the
-    `nSteps = none` witness via iter 437's
-    `System5_nSteps_none_decompose` to get an intermediate halted
-    cfg, then apply iter 443's `System5_nSteps_past_step_none_eq_none`
-    to extend to all later step counts. -/
+/-- `System5.Halts cfg` (defined as `exists n, nSteps cfg n = none`) lifts to
+    the eventually-none form `exists N, forall k > N, nSteps cfg k = none`.
+    Proof: decompose the `nSteps = none` witness via
+    `System5_nSteps_none_decompose` to get an intermediate halted cfg, then
+    apply `System5_nSteps_past_step_none_eq_none` to extend to all later step
+    counts. -/
 theorem System5_Halts_imp_nSteps_eventually_none (cfg : System5Config)
     (h : System5.Halts cfg) :
     ∃ N, ∀ k, k > N → System5.nSteps cfg k = none := by
@@ -1329,9 +1312,8 @@ theorem System5_Halts_imp_nSteps_eventually_none (cfg : System5Config)
     (m - k) (by omega)
 
 
-/-- **`System5_Halts_exact_step_form` (iter 554)**: System5 analog
-    of iter 553.  For any halting System5 cfg, there's an exact
-    step `N` reaching a halted cfg (`bag = [] ∨ rules = []`), and
+/-- For any halting System5 cfg, there's an exact
+    step `N` reaching a halted cfg (`bag = [] \/ rules = []`), and
     beyond `N` all nSteps return `none`.  Combines
     `System5_nSteps_halts_iff_reaches_halted` (existence) with
     `System5_halted_nSteps_eq_none` (post-halt-is-none) via
@@ -1350,10 +1332,10 @@ theorem System5_Halts_exact_step_form (cfg : System5Config)
   show System5.nSteps result (k - N) = none
   exact System5_halted_nSteps_eq_none result (k - N) h_halt (by omega)
 
-/-- **`System5_Halts_iff_exact_step_witness` (iter 561)**: System5
-    analog of iter 558/559/560.  `System5.Halts cfg ↔ ∃ exact halt-step
-    witness with eventually-none beyond`.  Forward direction is iter
-    554; reverse uses `System5_nSteps_none_of_reaches_halted` to
+/-- `System5.Halts cfg <-> exists exact halt-step witness with
+    eventually-none beyond`.  Forward direction is
+    `System5_Halts_exact_step_form`; reverse uses
+    `System5_nSteps_none_of_reaches_halted` to
     derive `nSteps cfg (N+1) = none`, witnessing the existential
     halt-shape `System5.Halts`. -/
 theorem System5_Halts_iff_exact_step_witness (cfg : System5Config) :
@@ -1366,13 +1348,12 @@ theorem System5_Halts_iff_exact_step_witness (cfg : System5Config) :
   · rintro ⟨N, result, h_n, h_halt, _⟩
     exact ⟨N + 1, System5_nSteps_none_of_reaches_halted cfg result N h_n h_halt⟩
 
-/-- **`System5_Halts_succ_boundary` (iter 716)**: from `System5.Halts
-    cfg`, extracts the exact halt boundary — there exists `n` with
-    `nSteps cfg n = some result ∧ nSteps cfg (n+1) = none`.  Direct
-    corollary of `_Halts_exact_step_form`: at the exact halt step `N`,
-    the state is `some result` (with `bag = []` or `rules = []`), and
-    the next step is in the `eventually-none` zone (since `N + 1 > N`).
-    Canonical "halt boundary" witness for downstream code. -/
+/-- From `System5.Halts cfg`, extracts the exact halt boundary - there exists
+    `n` with `nSteps cfg n = some result /\ nSteps cfg (n+1) = none`.  Direct
+    corollary of `_Halts_exact_step_form`: at the exact halt step `N`, the
+    state is `some result` (with `bag = []` or `rules = []`), and the next
+    step is in the `eventually-none` zone (since `N + 1 > N`). Canonical "halt
+    boundary" witness for downstream code. -/
 theorem System5_Halts_succ_boundary (cfg : System5Config)
     (h : System5.Halts cfg) :
     ∃ n result, System5.nSteps cfg n = some result
@@ -1381,9 +1362,7 @@ theorem System5_Halts_succ_boundary (cfg : System5Config)
     System5_Halts_exact_step_form cfg h
   exact ⟨N, result, h_n, h_eventual (N + 1) (by omega)⟩
 
-/-- **`System5_Halts_exact_step_form_unique` (iter 565)**: System5
-    uniqueness analog of iter 556/557.  The exact halt step witness
-    is unique. -/
+/-- The exact halt step witness is unique. -/
 theorem System5_Halts_exact_step_form_unique (cfg : System5Config)
     (N₁ N₂ : Nat) (result₁ result₂ : System5Config)
     (h₁_n : System5.nSteps cfg N₁ = some result₁)
@@ -1398,9 +1377,8 @@ theorem System5_Halts_exact_step_form_unique (cfg : System5Config)
     · have h_none := h₂_eventual N₁ h_lt'
       rw [h_none] at h₁_n; cases h₁_n
     · omega
-/-- **`System5_Halts_iff_step_or_halted` (iter 572)**: System5 analog
-    of iter 570/571.  `System5.Halts cfg ↔ (cfg.bag = [] ∨ cfg.rules
-    = []) ∨ (∃ cfg', System5.step cfg = some cfg' ∧ System5.Halts
+/-- `System5.Halts cfg <-> (cfg.bag = [] \/ cfg.rules
+    = []) \/ (exists cfg', System5.step cfg = some cfg' /\ System5.Halts
     cfg')`.  Forward direction is `System5_Halts_step_decompose`;
     reverse uses `System5.Halts_of_empty_bag/_rules` and
     `System5_Halts_step_pred`. -/
@@ -1414,11 +1392,10 @@ theorem System5_Halts_iff_step_or_halted (cfg : System5Config) :
     · exact System5.Halts_of_empty_bag cfg h_bag
     · exact System5.Halts_of_empty_rules cfg h_rules
     · exact System5_Halts_step_pred cfg cfg' h_step h_halts
-/-- **`System5_Halts_first_none` (iter 574)**: System5 analog of
-    iter 416 (`CTS_Halts_first_none` / `BiTM_Halts_first_none`).
-    From `System5.Halts cfg`, extracts the smallest `n` with
+/-- System5 analog of `CTS_Halts_first_none` and
+    `BiTM_Halts_first_none`.  From `System5.Halts cfg`, extracts the smallest `n` with
     `System5.nSteps cfg n = none`.  Proof uses
-    `find_min_or_none` (now in `TagSystem.HaltsEmpty`) on the
+    `find_min_or_none` (in `TagSystem.HaltsEmpty`) on the
     decidable predicate `nSteps cfg n = none`, with the existing
     halts witness as the bound. -/
 theorem System5_Halts_first_none (cfg : System5Config)
@@ -1429,20 +1406,18 @@ theorem System5_Halts_first_none (cfg : System5Config)
     ⟨k, _h_le, h_pk, h_min⟩ | h_none
   · exact ⟨k, h_pk, h_min⟩
   · exact absurd hN (h_none N (Nat.le_refl _))
-/-- **`System5_Halts_no_period` (iter 575)**: System5 analog of
-    `BiTM_Halts_no_period` / `CTS_Halts_no_period`.  A halting
-    System5 cfg cannot be periodic.  Direct contrapositive of
-    existing `System5_periodic_not_halts`. -/
+/-- System5 analog of `BiTM_Halts_no_period` / `CTS_Halts_no_period`.  A
+    halting System5 cfg cannot be periodic.  Direct contrapositive of existing
+    `System5_periodic_not_halts`. -/
 theorem System5_Halts_no_period
     (cfg : System5Config) (h : System5.Halts cfg)
     (p : Nat) (h_pos : p ≥ 1) :
     System5.nSteps cfg p ≠ some cfg :=
   fun h_period => System5_periodic_not_halts cfg p h_pos h_period h
-/-- **`System5_not_Halts_iff_nSteps_always_some` (iter 576)**: System5
-    analog of `BiTM_not_Halts_iff_nSteps_always_some` (now in
-    `BiTM.HaltInduction`).  Since `System5.Halts cfg` is defined as
-    `∃ n, nSteps cfg n = none`, the negation is "no n with nSteps =
-    none", which by the Option dichotomy is "∀ n, nSteps = some _". -/
+/-- System5 analog of `BiTM_not_Halts_iff_nSteps_always_some` (now in
+    `BiTM.HaltInduction`).  Since `System5.Halts cfg` is defined as `exists n,
+    nSteps cfg n = none`, the negation is "no n with nSteps = none", which by
+    the Option dichotomy is "forall n, nSteps = some _". -/
 theorem System5_not_Halts_iff_nSteps_always_some (cfg : System5Config) :
     ¬ System5.Halts cfg ↔ ∀ n, ∃ result, System5.nSteps cfg n = some result := by
   constructor
@@ -1453,9 +1428,8 @@ theorem System5_not_Halts_iff_nSteps_always_some (cfg : System5Config) :
   · intro h_all ⟨n, h_n⟩
     obtain ⟨r, h_r⟩ := h_all n
     rw [h_r] at h_n; cases h_n
-/-- **`System5_nSteps_halt_unique` (iter 582)**: System5 analog of
-    `BiTM_nSteps_halt_unique` / `CTS_nSteps_halt_unique`.  Two
-    valid halt counts agree.  Halt criterion: `step r = none`. -/
+/-- System5 analog of `BiTM_nSteps_halt_unique` / `CTS_nSteps_halt_unique`.
+    Two valid halt counts agree.  Halt criterion: `step r = none`. -/
 theorem System5_nSteps_halt_unique (cfg : System5Config)
     (n₁ n₂ : Nat) (r₁ r₂ : System5Config)
     (h₁ : System5.nSteps cfg n₁ = some r₁) (h_step₁ : System5.step r₁ = none)
@@ -1473,11 +1447,10 @@ theorem System5_nSteps_halt_unique (cfg : System5Config)
       cases h₁
     · exact h_eq.symm
 
-/-- **`System5_step_none_imp_nSteps_pos_none` (iter 720)**: if `step
-    cfg = none`, then `nSteps cfg n = none` for all `n ≥ 1`.  Direct
+/-- If `step cfg = none`, then `nSteps cfg n = none` for all `n >= 1`.  Direct
     via `System5.nSteps_one` (gives `nSteps cfg 1 = none`) and
-    `System5_nSteps_none_propagate`.  Useful canonical form: a
-    halted-at-cfg state stays halted for all subsequent step counts. -/
+    `System5_nSteps_none_propagate`.  Useful canonical form: a halted-at-cfg
+    state stays halted for all subsequent step counts. -/
 theorem System5_step_none_imp_nSteps_pos_none
     (cfg : System5Config) (h : System5.step cfg = none)
     (n : Nat) (h_n : 1 ≤ n) :
@@ -1485,5 +1458,170 @@ theorem System5_step_none_imp_nSteps_pos_none
   have h_one : System5.nSteps cfg 1 = none := by
     rw [System5.nSteps_one]; exact h
   exact System5_nSteps_none_propagate cfg 1 n h_n h_one
+
+/-! ## The Nodup invariant -/
+
+/-- **Bag `Nodup` is preserved by `System5.step`.**  `system5.pl` keeps the bag
+    in a hash and removes even multiplicities at the start of every iteration,
+    so `System5.step` (which does no such normalisation) is faithful to the
+    Perl only on `Nodup` bags.  This theorem says the property propagates:
+    decrementing is injective, erasing `0` preserves `Nodup`, and `xorMerge`
+    preserves `Nodup` of its left argument. -/
+theorem System5_step_bag_nodup (cfg cfg' : System5Config)
+    (h : cfg.bag.Nodup) (hs : System5.step cfg = some cfg') :
+    cfg'.bag.Nodup := by
+  have h_bag : cfg.bag ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inl h_nil)] at hs
+    cases hs
+  have h_rules : cfg.rules ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inr h_nil)] at hs
+    cases hs
+  have h_dec : (cfg.bag.map (· - 1)).Nodup := nodup_map_sub_one h
+  by_cases h_zero : 0 ∈ cfg.bag.map (· - 1)
+  · obtain ⟨nextRule, restRules, _, h_bag', _⟩ :=
+      System5_step_pop_rule cfg cfg' hs h_bag h_rules h_zero
+    rw [h_bag']
+    exact xorMerge_nodup _ nextRule (List.Nodup.erase 0 h_dec)
+  · obtain ⟨h_bag', _⟩ :=
+      System5_step_pure_decrement cfg cfg' hs h_bag h_rules h_zero
+    rw [h_bag']
+    exact h_dec
+
+/-- **Positivity of the bag is preserved by `System5.step`** on a `Nodup` bag
+    whose rules are themselves positive.  In the no-pop case no bag entry is
+    1 (otherwise a 0 would surface), so the decrement stays at or above 1; in
+    the pop case the single 0 is erased and the popped rule contributes
+    entries at least 2. -/
+theorem System5_step_bag_ge_one (cfg cfg' : System5Config)
+    (h_nodup : cfg.bag.Nodup)
+    (h_bag : ∀ x ∈ cfg.bag, x ≥ 1)
+    (h_rules : ∀ r ∈ cfg.rules, ∀ x ∈ r, x ≥ 1)
+    (hs : System5.step cfg = some cfg') :
+    ∀ x ∈ cfg'.bag, x ≥ 1 := by
+  have h_bag_ne : cfg.bag ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inl h_nil)] at hs
+    cases hs
+  have h_rules_ne : cfg.rules ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inr h_nil)] at hs
+    cases hs
+  by_cases h_zero : 0 ∈ cfg.bag.map (· - 1)
+  · obtain ⟨nextRule, restRules, h_inc, h_bag', _⟩ :=
+      System5_step_pop_rule cfg cfg' hs h_bag_ne h_rules_ne h_zero
+    have h_next : ∀ x ∈ nextRule, x ≥ 2 := by
+      cases h_cfg : cfg.rules with
+      | nil => exact absurd h_cfg h_rules_ne
+      | cons r rs =>
+        rw [h_cfg] at h_inc
+        simp only [List.map_cons, List.cons.injEq] at h_inc
+        intro x h_x
+        rw [← h_inc.1] at h_x
+        obtain ⟨y, h_y, h_eq⟩ := List.mem_map.mp h_x
+        have := h_rules r (by rw [h_cfg]; exact List.mem_cons_self) y h_y
+        omega
+    intro x h_x
+    rw [h_bag'] at h_x
+    rcases xorMerge_mem_or _ nextRule x h_x with h_left | h_right
+    · have h_ne : x ≠ 0 := by
+        intro h_x0
+        exact (List.Nodup.not_mem_erase (nodup_map_sub_one h_nodup))
+          (h_x0 ▸ h_left)
+      obtain ⟨y, h_y, h_eq⟩ :=
+        List.mem_map.mp (List.mem_of_mem_erase h_left)
+      have := h_bag y h_y
+      omega
+    · have := h_next x h_right
+      omega
+  · obtain ⟨h_bag', _⟩ :=
+      System5_step_pure_decrement cfg cfg' hs h_bag_ne h_rules_ne h_zero
+    intro x h_x
+    rw [h_bag'] at h_x
+    obtain ⟨y, h_y, h_eq⟩ := List.mem_map.mp h_x
+    have h_y1 := h_bag y h_y
+    have h_ne : y ≠ 1 := by
+      intro h_eq1
+      exact h_zero (List.mem_map.mpr ⟨y, h_y, by omega⟩)
+    omega
+
+/-- Positivity of the rules is preserved by `System5.step`: the surviving
+    rules are the tail, incremented. -/
+theorem System5_step_rules_ge_one (cfg cfg' : System5Config)
+    (h_rules : ∀ r ∈ cfg.rules, ∀ x ∈ r, x ≥ 1)
+    (hs : System5.step cfg = some cfg') :
+    ∀ r ∈ cfg'.rules, ∀ x ∈ r, x ≥ 1 := by
+  have h_bag_ne : cfg.bag ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inl h_nil)] at hs
+    cases hs
+  have h_rules_ne : cfg.rules ≠ [] := by
+    intro h_nil
+    rw [(System5_step_none_iff cfg).mpr (Or.inr h_nil)] at hs
+    cases hs
+  have h_sub : ∀ r' ∈ cfg.rules.map (fun r => r.map (· + 1)),
+      ∀ x ∈ r', x ≥ 1 := by
+    intro r' h_r' x h_x
+    obtain ⟨r, h_r, h_eq⟩ := List.mem_map.mp h_r'
+    rw [← h_eq] at h_x
+    obtain ⟨y, h_y, h_yx⟩ := List.mem_map.mp h_x
+    have := h_rules r h_r y h_y
+    omega
+  by_cases h_zero : 0 ∈ cfg.bag.map (· - 1)
+  · obtain ⟨nextRule, restRules, h_inc, _, h_rules'⟩ :=
+      System5_step_pop_rule cfg cfg' hs h_bag_ne h_rules_ne h_zero
+    intro r h_r x h_x
+    rw [h_rules'] at h_r
+    exact h_sub r (by rw [h_inc]; exact List.mem_cons.mpr (Or.inr h_r)) x h_x
+  · obtain ⟨_, h_rules'⟩ :=
+      System5_step_pure_decrement cfg cfg' hs h_bag_ne h_rules_ne h_zero
+    intro r h_r x h_x
+    rw [h_rules'] at h_r
+    exact h_sub r h_r x h_x
+
+/-- Bag `Nodup` is preserved along any number of System 5 steps. -/
+theorem System5_nSteps_bag_nodup (cfg : System5Config) (n : Nat)
+    (result : System5Config) (h : cfg.bag.Nodup)
+    (hs : System5.nSteps cfg n = some result) :
+    result.bag.Nodup := by
+  induction n generalizing cfg with
+  | zero =>
+    rw [System5.nSteps_zero] at hs
+    injection hs with h_eq
+    rw [← h_eq]; exact h
+  | succ k ih =>
+    rw [System5.nSteps_succ] at hs
+    cases h_step : System5.step cfg with
+    | none => rw [h_step] at hs; cases hs
+    | some cfg₁ =>
+      rw [h_step] at hs
+      simp only [Option.bind_some] at hs
+      exact ih cfg₁ (System5_step_bag_nodup cfg cfg₁ h h_step) hs
+
+/-- Positivity of the bag is preserved along any number of System 5 steps,
+    given that the bag starts `Nodup` and the rules start positive. -/
+theorem System5_nSteps_bag_ge_one (cfg : System5Config) (n : Nat)
+    (result : System5Config)
+    (h_nodup : cfg.bag.Nodup)
+    (h_bag : ∀ x ∈ cfg.bag, x ≥ 1)
+    (h_rules : ∀ r ∈ cfg.rules, ∀ x ∈ r, x ≥ 1)
+    (hs : System5.nSteps cfg n = some result) :
+    ∀ x ∈ result.bag, x ≥ 1 := by
+  induction n generalizing cfg with
+  | zero =>
+    rw [System5.nSteps_zero] at hs
+    injection hs with h_eq
+    rw [← h_eq]; exact h_bag
+  | succ k ih =>
+    rw [System5.nSteps_succ] at hs
+    cases h_step : System5.step cfg with
+    | none => rw [h_step] at hs; cases hs
+    | some cfg₁ =>
+      rw [h_step] at hs
+      simp only [Option.bind_some] at hs
+      exact ih cfg₁ (System5_step_bag_nodup cfg cfg₁ h_nodup h_step)
+        (System5_step_bag_ge_one cfg cfg₁ h_nodup h_bag h_rules h_step)
+        (System5_step_rules_ge_one cfg cfg₁ h_rules h_step) hs
 
 end BiTM

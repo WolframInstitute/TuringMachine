@@ -2,17 +2,15 @@
   BiTM.Wolfram23Valid
 
   Validity infrastructure for Wolfram's (2,3) Turing machine
-  configurations: state ∈ {1, 2}, head < 3, all tape values < 3.
+  configurations: state in {1, 2}, head < 3, all tape values < 3.
 
   Key results:
     * `IsValidWolfram23Cfg` predicate
-    * `step_wolfram23_preserves_valid` — single-step preservation
-    * `nSteps_wolfram23_preserves_valid` — multi-step preservation
-    * `not_halts_wolfram23_valid` — wolfram23 never halts on valid cfgs
-    * `wolfram23_init_valid` — initial cfg is valid
-    * `wolfram23_at_n` — concrete trajectory from `wolfram23_init`
-
-  Extracted from `BiTM.CockeMinskyConstruction` in a refactor.
+    * `step_wolfram23_preserves_valid`: single-step preservation
+    * `nSteps_wolfram23_preserves_valid`: multi-step preservation
+    * `not_halts_wolfram23_valid`: wolfram23 never halts on valid cfgs
+    * `wolfram23_init_valid`: initial cfg is valid
+    * `wolfram23_at_n`: concrete trajectory from `wolfram23_init`
 -/
 
 import BiTM.Basic
@@ -31,9 +29,9 @@ theorem wolfram23_nextState_in_range (q s : Nat) (h_q : q = 1 ∨ q = 2)
     (wolfram23.transition q s).nextState = 2 := by
   rcases h_q with h_q | h_q <;> subst h_q
   all_goals (match s, h_s with
-            | 0, _ => first | (left; native_decide) | (right; native_decide)
-            | 1, _ => first | (left; native_decide) | (right; native_decide)
-            | 2, _ => first | (left; native_decide) | (right; native_decide))
+            | 0, _ => decide
+            | 1, _ => decide
+            | 2, _ => decide)
 
 /-- One step of wolfram23 from a valid input lands in a valid state. -/
 theorem step_wolfram23_state_in_range (cfg : Config)
@@ -55,9 +53,9 @@ theorem wolfram23_write_in_range (q s : Nat) (h_q : q = 1 ∨ q = 2)
     (wolfram23.transition q s).write < 3 := by
   rcases h_q with h_q | h_q <;> subst h_q
   all_goals (match s, h_s with
-            | 0, _ => native_decide
-            | 1, _ => native_decide
-            | 2, _ => native_decide)
+            | 0, _ => decide
+            | 1, _ => decide
+            | 2, _ => decide)
 
 /-- A valid wolfram23 config: active state, in-range head, and all
     tape values `< 3` on both sides. -/
@@ -67,7 +65,7 @@ def IsValidWolfram23Cfg (cfg : Config) : Prop :=
     ∧ (∀ x ∈ cfg.left, x < 3)
     ∧ (∀ x ∈ cfg.right, x < 3)
 
-/-- A valid wolfram23 cfg has nonzero state (`state ∈ {1, 2}`). -/
+/-- A valid wolfram23 cfg has nonzero state (`state in {1, 2}`). -/
 theorem IsValidWolfram23Cfg.state_ne_zero (cfg : Config) (h : IsValidWolfram23Cfg cfg) :
     cfg.state ≠ 0 := by
   rcases h.1 with h_s | h_s <;> rw [h_s] <;> omega
@@ -186,9 +184,8 @@ theorem not_halts_wolfram23_valid (cfg : Config) (h : IsValidWolfram23Cfg cfg) :
 theorem wolfram23_init_valid : IsValidWolfram23Cfg wolfram23_init := by
   refine ⟨Or.inl rfl, by decide, ?_, ?_⟩ <;> intro x h <;> cases h
 
-/-- Hence wolfram23 doesn't halt from `wolfram23_init` — strengthening
-    `wolfram23_runs_20` from "doesn't halt within 20" to
-    "doesn't halt for any fuel". -/
+/-- Hence wolfram23 doesn't halt from `wolfram23_init`: not just "doesn't
+    halt within a fixed budget" but "doesn't halt for any fuel". -/
 theorem not_halts_wolfram23_init : ¬ Halts wolfram23 wolfram23_init :=
   not_halts_wolfram23_valid wolfram23_init wolfram23_init_valid
 
@@ -207,7 +204,7 @@ theorem step_wolfram23_valid_ne_none (cfg : Config)
   intro h_ne; cases h_ne
 
 /-- The post-step-1 cfg of wolfram23 from init is valid.
-    (Concrete instance: the cfg `⟨2, [1], 0, []⟩` after 1 step
+    (Concrete instance: the cfg with state 2, left `[1]`, head 0, right `[]` after 1 step
     from init is itself a valid input for further wolfram23 evolution.) -/
 example : IsValidWolfram23Cfg
     { state := 2, left := [1], head := 0, right := [] } := by
@@ -294,7 +291,7 @@ theorem wolfram23_at_n_state_ne_zero (n : Nat) :
   have h := (wolfram23_at_n_valid n).1
   rcases h with h_s | h_s <;> rw [h_s] <;> omega
 
-/-- Wolfram23 never halts at any trajectory point — strengthens
+/-- Wolfram23 never halts at any trajectory point - strengthens
     `not_halts_wolfram23_init` to every reachable config. -/
 theorem wolfram23_at_n_not_halted (n : Nat) :
     halted (wolfram23_at_n n) = false := by
@@ -306,26 +303,23 @@ theorem wolfram23_at_n_eq_iff_reach (n m : Nat) :
     nSteps wolfram23 (wolfram23_at_n n) m = some (wolfram23_at_n (n + m)) :=
   nSteps_wolfram23_at_n n m
 
-/-- **`wolfram23_at_n_state_in_one_two` (iter 637)**: state is always
-    in {1, 2} along wolfram23's canonical trajectory.  Direct extract
-    from `wolfram23_at_n_valid`'s first component. -/
+/-- State is always in {1, 2} along wolfram23's canonical trajectory.  Direct
+    extract from `wolfram23_at_n_valid`'s first component. -/
 theorem wolfram23_at_n_state_in_one_two (n : Nat) :
     (wolfram23_at_n n).state = 1 ∨ (wolfram23_at_n n).state = 2 :=
   (wolfram23_at_n_valid n).1
 
-/-- **`wolfram23_at_n_head_lt_three` (iter 637)**: head bounded by
-    numSymbols (= 3). -/
+/-- Head bounded by numSymbols (= 3). -/
 theorem wolfram23_at_n_head_lt_three (n : Nat) :
     (wolfram23_at_n n).head < 3 :=
   (wolfram23_at_n_valid n).2.1
 
-/-- **`wolfram23_at_n_left_lt_three` (iter 637)**: all symbols on left
-    tape are valid wolfram23 alphabet (0, 1, or 2). -/
+/-- All symbols on left tape are valid wolfram23 alphabet (0, 1, or 2). -/
 theorem wolfram23_at_n_left_lt_three (n : Nat) :
     ∀ x ∈ (wolfram23_at_n n).left, x < 3 :=
   (wolfram23_at_n_valid n).2.2.1
 
-/-- **`wolfram23_at_n_right_lt_three` (iter 637)**: same for right tape. -/
+/-- Same for right tape. -/
 theorem wolfram23_at_n_right_lt_three (n : Nat) :
     ∀ x ∈ (wolfram23_at_n n).right, x < 3 :=
   (wolfram23_at_n_valid n).2.2.2

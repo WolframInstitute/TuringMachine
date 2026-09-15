@@ -4,16 +4,42 @@
   Symmetric-difference (parity-mod-2) list-bag operations used by the
   System 5 reduction in `BiTM.CockeMinskyConstruction`.
 
-  Pure list utilities — no dependency on TM/Tag/CTS machinery.
+  Pure list utilities - no dependency on TM/Tag/CTS machinery.
 
   Contents:
     * `xorInsert`, `xorMerge` definitions
     * Membership / Nodup lemmas
     * Symmetric-difference characterisation (`xorMerge_mem_iff`)
-    * Self-merge → empty (`xorMerge_self_eq_nil`)
+    * Self-merge -> empty (`xorMerge_self_eq_nil`)
 -/
 
 namespace BiTM
+
+/-! ## Nodup transport along injective maps -/
+
+/-- `List.map` preserves `Nodup` along an injective function. -/
+theorem nodup_map_of_injective {alpha beta : Type} (f : alpha -> beta)
+    (hf : forall a b : alpha, f a = f b -> a = b)
+    {l : List alpha} (h : l.Nodup) : (l.map f).Nodup := by
+  induction l with
+  | nil => exact List.nodup_nil
+  | cons a t ih =>
+    obtain ⟨h_a, h_t⟩ := List.nodup_cons.mp h
+    rw [List.map_cons, List.nodup_cons]
+    refine ⟨?_, ih h_t⟩
+    intro h_mem
+    obtain ⟨b, h_b, h_fb⟩ := List.mem_map.mp h_mem
+    exact h_a ((hf b a h_fb) ▸ h_b)
+
+/-- Decrementing every entry of an integer list preserves `Nodup`. -/
+theorem nodup_map_sub_one {l : List Int} (h : l.Nodup) :
+    (l.map (· - 1)).Nodup :=
+  nodup_map_of_injective _ (fun a b hab => by omega) h
+
+/-- Incrementing every entry of an integer list preserves `Nodup`. -/
+theorem nodup_map_add_one {l : List Int} (h : l.Nodup) :
+    (l.map (· + 1)).Nodup :=
+  nodup_map_of_injective _ (fun a b hab => by omega) h
 
 /-- XOR-insert: if `x` already appears an odd number of times in `xs`,
     remove one occurrence (toggling to even); else add one.  Equivalent
@@ -29,13 +55,13 @@ def xorMerge (xs ys : List Int) : List Int :=
 @[simp] theorem xorMerge_nil (xs : List Int) : xorMerge xs [] = xs := by
   simp [xorMerge]
 
-/-- Direct unfold of `xorInsert` when the element is absent. -/
+/-- `xorInsert x xs` prepends `x` when `x` is not in `xs`. -/
 theorem xorInsert_not_mem (x : Int) (xs : List Int) (h : x ∉ xs) :
     xorInsert x xs = x :: xs := by
   unfold xorInsert
   rw [if_neg h]
 
-/-- Direct unfold of `xorInsert` when the element is present. -/
+/-- `xorInsert x xs` erases `x` when `x` is in `xs`. -/
 theorem xorInsert_mem (x : Int) (xs : List Int) (h : x ∈ xs) :
     xorInsert x xs = xs.erase x := by
   unfold xorInsert
@@ -52,7 +78,7 @@ theorem xorInsert_nodup (x : Int) (xs : List Int) (h : xs.Nodup) :
     exact List.nodup_cons.mpr ⟨h_mem, h⟩
 
 /-- **Toggle membership of `y`** under `xorInsert y` (Nodup hypothesis).
-    `y ∈ xorInsert y xs ↔ y ∉ xs`. -/
+    `y in xorInsert y xs <-> y not in xs`. -/
 theorem xorInsert_mem_self_iff_nodup (y : Int) (xs : List Int) (h : xs.Nodup) :
     y ∈ xorInsert y xs ↔ y ∉ xs := by
   by_cases h_mem : y ∈ xs
@@ -63,8 +89,8 @@ theorem xorInsert_mem_self_iff_nodup (y : Int) (xs : List Int) (h : xs.Nodup) :
   · rw [xorInsert_not_mem _ _ h_mem]
     simp [h_mem]
 
-/-- `xorInsert y` only affects membership of `y`: for any `x ≠ y`,
-    `x ∈ xorInsert y xs ↔ x ∈ xs`. -/
+/-- `xorInsert y` only affects membership of `y`: for any `x <> y`,
+    `x in xorInsert y xs <-> x in xs`. -/
 theorem xorInsert_mem_other_iff
     (y : Int) (xs : List Int) (x : Int) (h_ne : x ≠ y) :
     x ∈ xorInsert y xs ↔ x ∈ xs := by
@@ -84,13 +110,13 @@ theorem xorMerge_cons (xs : List Int) (y : Int) (ys : List Int) :
     xorMerge xs (y :: ys) = xorMerge (xorInsert y xs) ys := by
   simp [xorMerge]
 
-/-- Membership-aware cons step: when `y ∈ xs`, peeling `y` erases from xs. -/
+/-- Membership-aware cons step: when `y in xs`, peeling `y` erases from xs. -/
 theorem xorMerge_cons_mem (xs : List Int) (y : Int) (l : List Int)
     (h : y ∈ xs) :
     xorMerge xs (y :: l) = xorMerge (xs.erase y) l := by
   rw [xorMerge_cons, xorInsert_mem _ _ h]
 
-/-- Membership-aware cons step: when `y ∉ xs`, peeling `y` prepends to xs. -/
+/-- Membership-aware cons step: when `y not in xs`, peeling `y` prepends to xs. -/
 theorem xorMerge_cons_not_mem (xs : List Int) (y : Int) (l : List Int)
     (h : y ∉ xs) :
     xorMerge xs (y :: l) = xorMerge (y :: xs) l := by
@@ -102,26 +128,26 @@ theorem xorMerge_singleton (xs : List Int) (y : Int) :
     xorMerge xs [y] = xorInsert y xs := by
   simp [xorMerge]
 
-/-- `xorMerge xs [y]` with `y ∉ xs`: the result is `y :: xs`. -/
+/-- `xorMerge xs [y]` with `y not in xs`: the result is `y :: xs`. -/
 theorem xorMerge_singleton_not_mem (xs : List Int) (y : Int) (h : y ∉ xs) :
     xorMerge xs [y] = y :: xs := by
   rw [xorMerge_singleton]
   exact xorInsert_not_mem y xs h
 
-/-- `xorMerge xs [y]` with `y ∈ xs`: the result is `xs.erase y`. -/
+/-- `xorMerge xs [y]` with `y in xs`: the result is `xs.erase y`. -/
 theorem xorMerge_singleton_mem (xs : List Int) (y : Int) (h : y ∈ xs) :
     xorMerge xs [y] = xs.erase y := by
   rw [xorMerge_singleton]
   exact xorInsert_mem y xs h
 
-/-- Length of `xorMerge xs [y]` when `y ∉ xs`: prepending adds 1. -/
+/-- Length of `xorMerge xs [y]` when `y not in xs`: prepending adds 1. -/
 theorem xorMerge_singleton_not_mem_length
     (xs : List Int) (y : Int) (h : y ∉ xs) :
     (xorMerge xs [y]).length = xs.length + 1 := by
   rw [xorMerge_singleton_not_mem _ _ h]
   simp
 
-/-- Length of `xorMerge xs [y]` when `y ∈ xs`: erase removes one. -/
+/-- Length of `xorMerge xs [y]` when `y in xs`: erase removes one. -/
 theorem xorMerge_singleton_mem_length
     (xs : List Int) (y : Int) (h_mem : y ∈ xs) :
     (xorMerge xs [y]).length = xs.length - 1 := by
@@ -146,8 +172,8 @@ theorem xorMerge_nodup (xs ys : List Int) (h : xs.Nodup) :
 
 /-- **Symmetric-difference characterisation**: under `Nodup` of both
     arguments, `xorMerge xs ys` realises the symmetric difference
-    `(xs \ ys) ∪ (ys \ xs)` at the membership level.  Induction on `ys`,
-    using iter-221's toggle-membership lemmas at each step. -/
+    `(xs \ ys) union (ys \ xs)` at the membership level.  Proved by
+    induction on `ys` with the toggle-membership lemmas at each step. -/
 theorem xorMerge_mem_iff (xs ys : List Int)
     (h_xs : xs.Nodup) (h_ys : ys.Nodup) (x : Int) :
     x ∈ xorMerge xs ys ↔ (x ∈ xs ∧ x ∉ ys) ∨ (x ∉ xs ∧ x ∈ ys) := by
@@ -166,7 +192,7 @@ theorem xorMerge_mem_iff (xs ys : List Int)
       simp [List.mem_cons, h_eq]
 
 /-- **`xorMerge` of a list with itself is empty** (under `Nodup`).
-    Symmetric difference `xs △ xs = ∅`.  Direct corollary of
+    The symmetric difference of `xs` with itself is empty.  Corollary of
     `xorMerge_mem_iff` plus `List.eq_nil_iff_forall_not_mem`. -/
 theorem xorMerge_self_eq_nil (xs : List Int) (h : xs.Nodup) :
     xorMerge xs xs = [] := by
@@ -177,9 +203,9 @@ theorem xorMerge_self_eq_nil (xs : List Int) (h : xs.Nodup) :
   · exact h2 h1
   · exact h1 h2
 
-/-- **`xorMerge` head extraction (membership level)**: when `a ∉ ys` and
-    `a ∉ l`, the head `a` survives the merge — `x ∈ xorMerge (a :: l) ys
-    ↔ x ∈ a :: xorMerge l ys`.  Bridges `xorMerge` reasoning to head/tail
+/-- **`xorMerge` head extraction (membership level)**: when `a not in ys` and
+    `a not in l`, the head `a` survives the merge - `x in xorMerge (a :: l) ys
+    <-> x in a :: xorMerge l ys`.  Bridges `xorMerge` reasoning to head/tail
     decomposition for elements disjoint from the merging rule. -/
 theorem xorMerge_cons_left_mem_iff (a : Int) (l ys : List Int)
     (h_a_ys : a ∉ ys) (h_l : l.Nodup) (h_a : a ∉ l) (h_ys : ys.Nodup) (x : Int) :
@@ -193,9 +219,9 @@ theorem xorMerge_cons_left_mem_iff (a : Int) (l ys : List Int)
   · subst h_eq; simp [h_a, h_a_ys]
   · simp [h_eq]
 
-/-- **`xorMerge` reduces to union when disjoint**: if `xs ∩ ys = ∅`,
+/-- **`xorMerge` reduces to union when disjoint**: if `xs` and `ys` are disjoint,
     `xorMerge xs ys` realises set union at the membership level.
-    Direct corollary of iter 222's symmetric-difference characterisation. -/
+    Corollary of `xorMerge_mem_iff`. -/
 theorem xorMerge_disjoint_mem_iff (xs ys : List Int)
     (h_xs : xs.Nodup) (h_ys : ys.Nodup) (h_disj : ∀ x ∈ xs, x ∉ ys) (x : Int) :
     x ∈ xorMerge xs ys ↔ x ∈ xs ∨ x ∈ ys := by
@@ -204,16 +230,16 @@ theorem xorMerge_disjoint_mem_iff (xs ys : List Int)
   · simp [h, h_disj x h]
   · simp [h]
 
-/-- **`xorMerge` empty-left membership**: `x ∈ xorMerge [] xs ↔ x ∈ xs`
-    (under `xs.Nodup`).  Symmetric difference of `∅` and `xs` is `xs`. -/
+/-- **`xorMerge` empty-left membership**: `x in xorMerge [] xs <-> x in xs`
+    (under `xs.Nodup`).  The symmetric difference of `[]` and `xs` is `xs`. -/
 theorem xorMerge_empty_left_mem_iff (xs : List Int)
     (h : xs.Nodup) (x : Int) :
     x ∈ xorMerge [] xs ↔ x ∈ xs := by
   rw [xorMerge_mem_iff [] xs List.nodup_nil h]
   simp
 
-/-- **`xorMerge` is membership-commutative**: `x ∈ xorMerge xs ys ↔
-    x ∈ xorMerge ys xs` (under Nodup hypotheses).  Symmetric difference
+/-- **`xorMerge` is membership-commutative**: `x in xorMerge xs ys <->
+    x in xorMerge ys xs` (under Nodup hypotheses).  Symmetric difference
     is symmetric. -/
 theorem xorMerge_mem_comm (xs ys : List Int)
     (h_xs : xs.Nodup) (h_ys : ys.Nodup) (x : Int) :
@@ -227,8 +253,8 @@ theorem xorMerge_mem_comm (xs ys : List Int)
     · exact Or.inr ⟨h2, h1⟩
     · exact Or.inl ⟨h2, h1⟩
 
-/-- **Iter 969: membership-preservation in `xorMerge`**.  When `x ∈ xs`
-    and `x ∉ ys` (with both `Nodup`), `x ∈ xorMerge xs ys`.  Direct
+/-- **Membership-preservation in `xorMerge`**.  When `x in xs`
+    and `x not in ys` (with both `Nodup`), `x in xorMerge xs ys`.  Direct
     consequence of the symmetric-difference characterisation:
     elements in only one side survive.  Useful for proving "the 1 in
     the bag is preserved across the System5 P-step xorMerge", a
@@ -246,7 +272,7 @@ theorem xorMerge_empty_left (ys : List Int) :
     xorMerge [] ys = ys.foldl (fun acc y => xorInsert y acc) [] := by
   simp [xorMerge]
 
-/-- **Iter 912: disjoint xorMerge as list concat**.  When `xs` and `ys`
+/-- **Disjoint xorMerge as list concat**.  When `xs` and `ys`
     are disjoint and `ys` has no duplicates that aren't already in xs,
     `xorMerge xs ys = ys.reverse ++ xs`.  Each xorInsert prepends its
     argument when it's absent, so foldl produces the reversed list
@@ -270,8 +296,9 @@ theorem xorMerge_disjoint_eq_reverse_append (xs ys : List Int)
     rw [ih (y :: xs) h_disjoint' h_rest_nodup]
     simp
 
-/-- **Iter 953: disjoint xorMerge length**.  Sum of lengths when
-    disjoint and Nodup (corollary of iter 912's list form). -/
+/-- **Disjoint xorMerge length**.  Sum of lengths when
+    disjoint and Nodup; corollary of the list form
+    `xorMerge_disjoint_eq_reverse_append`. -/
 theorem xorMerge_disjoint_length (xs ys : List Int)
     (h_disjoint : ∀ y ∈ ys, y ∉ xs)
     (h_ys : ys.Nodup) :
@@ -279,17 +306,16 @@ theorem xorMerge_disjoint_length (xs ys : List Int)
   rw [xorMerge_disjoint_eq_reverse_append xs ys h_disjoint h_ys]
   simp [List.length_reverse]; omega
 
-/-- **Iter 872 self-cancellation (membership level)**: merging the same
+/-- **Self-cancellation (membership level)**: merging the same
     rule twice is membership-equivalent to the original bag.  This
-    captures the algebraic property `(xs △ r) △ r = xs` for symmetric
-    difference, at the Nodup-membership level (the actual list might
-    differ in order from `xs`).
+    captures the algebraic property `(xs xor r) xor r = xs` for
+    symmetric difference, at the Nodup-membership level (the actual
+    list might differ in order from `xs`).
 
     Used in the false-head System 5 trajectory analysis: the encoder
-    pops r₁ at step 1 and a numerically-equal rule at step 2 (after
-    intermediate bag decrement), and these xor-cancel back to the
-    pre-pop bag minus the consumed false-bit prefix.  See iter 871
-    trajectory trace in CTSToSystem5.lean. -/
+    pops one rule at step 1 and a numerically equal rule at step 2
+    (after the intermediate bag decrement), and these xor-cancel back
+    to the pre-pop bag minus the consumed false-bit prefix. -/
 theorem xorMerge_self_cancel_mem_iff (xs r : List Int)
     (h_xs : xs.Nodup) (h_r : r.Nodup) (x : Int) :
     x ∈ xorMerge (xorMerge xs r) r ↔ x ∈ xs := by
@@ -299,12 +325,12 @@ theorem xorMerge_self_cancel_mem_iff (xs r : List Int)
   by_cases h_in_xs : x ∈ xs <;> by_cases h_in_r : x ∈ r <;>
     simp [h_in_xs, h_in_r]
 
-/-- **Iter 999: xorMerge of same-membership lists has no elements**.
+/-- **`xorMerge` of same-membership lists has no elements**.
     When `ys` and `zs` are both `Nodup` and have the same membership
     set, `xorMerge ys zs` is empty (at the membership level).  Used in
-    the bag-2 cancellation: r1.reverse and r2.map(·+2) have the same
-    membership (since r1 = r2.map(·+2) by encoder identity, iter 888),
-    so xorMerge cancels them to nothing. -/
+    the bag-2 cancellation: `r1.reverse` and `r2.map (fun x => x + 2)`
+    have the same membership, since `r1 = r2.map (fun x => x + 2)` by the
+    encoder identity, so xorMerge cancels them to nothing. -/
 theorem xorMerge_same_mem_no_mem (ys zs : List Int)
     (h_ys : ys.Nodup) (h_zs : zs.Nodup)
     (h_mem : ∀ x, x ∈ ys ↔ x ∈ zs) (x : Int) :
@@ -313,5 +339,18 @@ theorem xorMerge_same_mem_no_mem (ys zs : List Int)
   rintro (⟨h1, h2⟩ | ⟨h1, h2⟩)
   · exact h2 ((h_mem x).mp h1)
   · exact h1 ((h_mem x).mpr h2)
+
+/-- Every member of a `xorMerge` comes from one of the two arguments. -/
+theorem xorMerge_mem_or (xs ys : List Int) (x : Int)
+    (h : x ∈ xorMerge xs ys) : x ∈ xs ∨ x ∈ ys := by
+  induction ys generalizing xs with
+  | nil => left; simpa using h
+  | cons y rest ih =>
+    rw [xorMerge_cons] at h
+    rcases ih (xorInsert y xs) h with h1 | h2
+    · by_cases h_xy : x = y
+      · right; rw [h_xy]; exact List.mem_cons_self
+      · left; exact (xorInsert_mem_other_iff y xs x h_xy).mp h1
+    · right; exact List.mem_cons.mpr (Or.inr h2)
 
 end BiTM

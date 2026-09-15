@@ -3,7 +3,7 @@
 
   Formalization of 2-tag systems and cyclic tag systems.
   These are intermediate computational models in universality proofs:
-    Turing Machine → 2-Tag System → Cyclic Tag System → (Rule 110 / (2,3) TM)
+    Turing Machine -> 2-Tag System -> Cyclic Tag System -> (Rule 110 / (2,3) TM)
 
   Canonical home: TuringMachineSearch/Proofs/TagSystem/
   Imported by both Rule110 and BiTM universality proofs.
@@ -19,7 +19,7 @@ namespace TagSystem
     Each step: read the first symbol, delete the first 2 symbols,
     append the production for the read symbol. -/
 structure Tag (k : Nat) where
-  /-- Production rules: for each symbol i ∈ Fin k, the string to append -/
+  /-- Production rules: for each symbol i in Fin k, the string to append -/
   productions : Fin k → List (Fin k)
 
 /-- Configuration of a tag system: just the current data word -/
@@ -206,11 +206,11 @@ def exampleCTSInit : CTSConfig :=
 
 theorem example_cts_step1 :
     exampleCTS.step exampleCTSInit = some { data := [true], phase := 0 } := by
-  native_decide
+  decide
 
 theorem example_cts_step2 :
     (do let s1 ← exampleCTS.step exampleCTSInit; exampleCTS.step s1) =
     some { data := [true], phase := 0 } := by
-  native_decide
+  decide
 
 end TagSystem
