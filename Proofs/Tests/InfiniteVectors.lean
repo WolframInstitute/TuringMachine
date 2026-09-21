@@ -221,6 +221,21 @@ example : (inSteps wolfram23 (istart (tape bdsE)) 793).map
 example : (inSteps wolfram23 (istart (tape bdsE)) 793).map
     (fun d => decodeW23 32 4 (truncI 450 d)) = some (some [false]) := by decide +kernel
 
+/-- Window stability, the point of the theorem's "every larger window"
+    clause: at 335 the first 0 right of the head is cell 31; the window of
+    30 cells does not decode, and every window from 31 on decodes alike
+    (a window ending inside the conglomerate acts as a terminator, which is
+    why the clause quantifies over all larger windows). -/
+example : (inSteps wolfram23 (istart (tape bdsE)) 335).map
+    (fun d => (d.right 31, [30, 31, 32, 64].map fun W => decodeW23 32 4 (truncI W d)))
+    = some (0, [none, some [false], some [false], some [false]]) := by decide +kernel
+
+/-- The left-end clause has bite: on the all-zero tape wolfram23 is back on
+    the first cell in state A at time 12 and moves left from it. -/
+example : (inSteps wolfram23 (istart (fun _ => 0)) 12).map
+    (fun d => (d.state, d.left, d.head, (wolfram23.transition d.state d.head).dir))
+    = some (1, [], 1, Dir.L) := by decide
+
 /-- Past the exit of block 1 the infinite run enters block 2 instead of
     leaving the tape: at time 918 the head is on block 2's first cell, a 2;
     the head is on the first cell only at time 0. -/
