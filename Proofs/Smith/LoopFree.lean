@@ -95,17 +95,6 @@ theorem sys1_measure (c c' : LConfig) (hst : c.state ≠ C) (h : lstep sys1 c = 
 
 /-! ## From the measure to the end of the run -/
 
-theorem lnSteps_add (M : LMachine) (c : LConfig) (n m : Nat) :
-    lnSteps M c (n + m) = (lnSteps M c n).bind fun c' => lnSteps M c' m := by
-  unfold lnSteps
-  exact StepSys.nSteps_add _ _ _ _
-
-/-- A run that is over stays over. -/
-theorem lnSteps_none_add (M : LMachine) (c : LConfig) (n m : Nat) (h : lnSteps M c n = none) :
-    lnSteps M c (n + m) = none := by
-  rw [lnSteps_add, h]
-  rfl
-
 /-- A lexicographically decreasing measure on a set of configurations
     closed under the step ends every run from the set. -/
 theorem run_ends_of_measure (M : LMachine) (P : LConfig → Prop) (W phase : LConfig → Nat)

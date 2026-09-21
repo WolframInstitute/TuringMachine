@@ -112,6 +112,9 @@ def System4.step (cfg : System4Config) : Option System4Config :=
                state := newState }
     | System4Elem.star, System4State.B =>
         -- Rule 4: star in B - remove the star, active--, state->A.
+        -- `active = 0`: unreachable from a well-formed tape (the head element
+        -- of `System4Config.WellFormed` is a set); not the behaviour of
+        -- `system4.pl` there, which decrements `$active` to -1 and goes on.
         if cfg.active = 0 then none
         else
           some { elems := cfg.elems.eraseIdx cfg.active
@@ -130,6 +133,10 @@ def System4.step (cfg : System4Config) : Option System4Config :=
                      state := System4State.C }
           | System4Elem.star => none  -- adjacent stars: shouldn't happen by
                                        -- the construction (PDF p. 35)
+        -- Star last: unreachable from a well-formed tape whose last element is
+        -- a set (`System4Config.WellFormed` with the `hlast` hypothesis of
+        -- `Smith/Conjecture3.lean`); not the behaviour of `system4.pl` there,
+        -- which autovivifies a set past the end, toggles 1 in it, and stops.
         else none
   else none
 

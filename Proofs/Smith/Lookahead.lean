@@ -12,10 +12,16 @@
   left of the head nearest first, the head cell, the cells to the right
   nearest first, and the state.  The tape is finite and is never extended:
   a move off either end is `none`, and so is a two-cell rule with no right
-  neighbour.  `exitRight` records the state in which a run leaves the tape
-  to the right, the observable exit of Conjectures 0 to 3 ("the first cell
-  to become active after the emulation has finished is the cell to the
-  right of the initial condition").
+  neighbour.  In the chain the exit of System 3 ("the first cell to become
+  active after the emulation has finished is the cell to the right of the
+  initial condition") is observed as the two-cell rule `C 1` at the right
+  end of the tape, where `lstep` returns `none` (`rep3_exit` in
+  `Smith/Conjecture0.lean`); relabeled to System 0 it is the one-cell rule
+  `B 2` at the last cell, which `wolfram23` executes onto the blank right of
+  the tape (`toBi_exit` in `Smith/Wolfram23Bridge.lean`,
+  `wolfram23_exit_step` in `Smith/Conjecture0.lean`).  `exitRight` records
+  the state in which a one-cell rule leaves the tape to the right; it is
+  used only by the p. 47 check below.
 
   Contents:
     * `LState`, `LRule`, `LMachine`, `LConfig`, `lstep`, `lnSteps`,
@@ -120,6 +126,17 @@ theorem lnSteps_succ (M : LMachine) (c : LConfig) (n : Nat) :
 @[simp] theorem lnSteps_one (M : LMachine) (c : LConfig) : lnSteps M c 1 = lstep M c := by
   unfold lnSteps
   rw [StepSys.nSteps_one, lsys_step]
+
+theorem lnSteps_add (M : LMachine) (c : LConfig) (n m : Nat) :
+    lnSteps M c (n + m) = (lnSteps M c n).bind fun c' => lnSteps M c' m := by
+  unfold lnSteps
+  exact StepSys.nSteps_add _ _ _ _
+
+/-- A run that is over stays over. -/
+theorem lnSteps_none_add (M : LMachine) (c : LConfig) (n m : Nat) (h : lnSteps M c n = none) :
+    lnSteps M c (n + m) = none := by
+  rw [lnSteps_add, h]
+  rfl
 
 /-- A step never changes the length of the tape. -/
 theorem lstep_length (M : LMachine) (c c' : LConfig) (h : lstep M c = some c') :

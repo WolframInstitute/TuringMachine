@@ -107,7 +107,14 @@ end StepSys
 /-- Forward simulation: every source step is matched by a run of at least
     one target step that re-establishes the relation.  The clause
     `1 <= k` is what forbids the trivial witness in which the target stands
-    still while the source moves. -/
+    still while the source moves.
+
+    That clause is all the predicate itself rules out: a relation that
+    ignores the source (`fun _ _ => True`) is a `ForwardSim` for any target
+    that never gets stuck.  The content of each emulation theorem is in the
+    relation being the graph of a (partial) decoder, with the decoders and
+    the size and exit clauses stated in the theorems themselves (PLAN.md
+    section 6). -/
 def ForwardSim {S : Type u} {T : Type v}
     (MS : StepSys S) (MT : StepSys T) (R : S → T → Prop) : Prop :=
   ∀ s t, R s t → ∀ s', MS.step s = some s' →

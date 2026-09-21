@@ -43,7 +43,7 @@
 -/
 
 import Smith.System3Runs
-import Smith.LoopFree
+import Smith.Systems123
 import Smith.Conjecture4
 
 namespace Smith

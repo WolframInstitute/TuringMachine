@@ -5,14 +5,16 @@
   of Alex Smith's own Perl interpreters (`docs/TM23Proof.pdf`).  Each test
   cites the page it comes from.
 
-  This is the only module of the Smith chain (TM, TagSystem, BiTM, Tests) that
-  may use `native_decide`, and `native_decide` is used only for the System 4
-  runs of D5, where the kernel cannot finish the computation in reasonable
-  time: those runs are about 10^4 steps over a 545-element tape.  Everything
-  else, the structural checks of the D4 tape included, closes by `decide`.
-  Nothing outside this file depends on anything established here, so the
-  `native_decide` axiom does not reach the development: every claim below is
-  an `example`, and every `def` in the file is used only by `example`s.
+  This is the only module of the development that uses `native_decide`, and
+  only where the kernel cannot finish the computation in reasonable time: the
+  three System 4 runs of D5, about 10^4 steps over a 545-element tape.  The
+  runs of 10^3 steps of D7 and the longer System 3 and wolfram23 runs of D8 to
+  D10 close by kernel reduction (`decide +kernel`, no extra axiom); everything
+  else, the structural checks of the D4 tape included, closes by plain
+  `decide`.  Nothing outside the test modules depends on anything established
+  here, so the `native_decide` axiom does not reach the development: every
+  claim below is an `example`, and every `def` in the file is used only by
+  `example`s.
 
   Vectors:
     * D1  `cy2s5.pl 3 01 1 10`                       (p. 29)
@@ -22,6 +24,9 @@
     * D5  `system4.pl C` on the D4 tape               (p. 41)
     * D6  the System 0 transition table               (p. 3)
     * D7  the scheduled times of the D5 run under `RepS4` (M3)
+    * D8  the System 3 emulation of a System 4 run (M5)
+    * D9  the wolfram23 decoder `decodeW23` (M6)
+    * D10 the composite decoder `decodeTM` on the D9 tapes (M8)
 -/
 
 import BiTM.CTSToSystem5
@@ -31,6 +36,7 @@ import BiTM.Wolfram23Valid
 import Smith.Conjecture4
 import Smith.Conjecture3
 import Smith.Conjecture0
+import Smith.Universality
 
 namespace Tests
 
@@ -323,29 +329,29 @@ after 8, 1336, 1616 and 1904 System 4 steps, and there `decodeS4` below the
 band `2f - 2j - 2` reads the System 5 bag.  The times in between at which
 the head is also at the left end in state A (570, the end of the first pop
 phase, and 1475, the middle of a D-step) decode to `none`, because the
-parity set then holds odd integers.  These runs are 10^3 steps long, so they
-close by `native_decide` like D5. -/
+parity set then holds odd integers.  These runs are 10^3 steps long and
+close by kernel reduction (`decide +kernel`, a few seconds each). -/
 
 example : (System4.nSteps s4D4 8).bind (fun c => Smith.decodeS4 c 28) = some [1] := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 1336).bind (fun c => Smith.decodeS4 c 26) = some [3, 6] := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 1616).bind (fun c => Smith.decodeS4 c 24) = some [2, 5] := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 1904).bind (fun c => Smith.decodeS4 c 22) = some [1, 4] := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 1904).map (fun c => (c.active, c.state)) = some (0, System4State.A) := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 570).bind (fun c => Smith.decodeS4 c 26) = none := by
-  native_decide
+  decide +kernel
 
 example : (System4.nSteps s4D4 1475).bind (fun c => Smith.decodeS4 c 24) = none := by
-  native_decide
+  decide +kernel
 
 /-- The D-step of `Smith.System4Runs` on the D4 tape, by `decide`: the bag
     set `{2}` is decremented twice and two empty sets are merged. -/
@@ -453,5 +459,43 @@ example : Smith.decodeW23 8 4 ⟨1, [], 2, [1, 1, 0]⟩ = none := by decide
 example : Smith.lstep Smith.sys3 ⟨[2, 1, 1, 2, 2, 0], 1, [], Smith.LState.C⟩ = none := by decide
 example : BiTM.step wolfram23 (Smith.toBi (Smith.phi2 (Smith.phi3 ⟨[2, 1, 1, 2, 2, 0], 1, [], Smith.LState.C⟩)))
     = some ⟨1, [0, 1, 2, 2, 1, 1, 0], 0, []⟩ := by decide
+
+/-! ## D10: the composite decoder `decodeTM` on the D9 tapes (M8)
+
+`decodeTM S N b` is `decodeW23 N b`, then `undbl`, then `decodeCTS S`. The
+D9 tapes decode by `decodeW23` to the words `0` and `1`, which are not
+doubled words, so `decodeTM` rejects them; the tape of `initAC 3 3 [0, 2, 4,
+6] [*, {}]` (bag `{1, 2, 3, 4}`, the pairs of the doubled word `00`, band 7:
+the block of width 8 has room for the parity positions 0 to 6) passes
+`undbl` with the word `0`, which `decodeCTS 2` rejects because it is not a
+whole number of one-hot blocks of length `1 + 84 * 2`. A tape on which
+`decodeTM` returns a configuration needs the doubled encoding of a
+configuration word, at least `2 * 4 * (1 + 84 S)` bits, hence a block of
+width at least `2^13` for `S = 2`, whose rendering `encSet` builds its
+parity rows by iteration (`row`) and is out of reach of `decide`; the last
+two stages on such a word are checked in `Tests/TMToCTSVectors.lean`. -/
+
+def s3D10 : Smith.LConfig := (Smith.initAC 3 3 [0, 2, 4, 6] [System4Elem.star, System4Elem.set []]).toL
+
+example : (Smith.lnSteps Smith.sys3 s3D10 8).map
+    (fun c => Smith.decodeW23 8 7 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some (some [false, false]) := by
+  decide
+
+example : (Smith.lnSteps Smith.sys3 s3D10 8).map
+    (fun c => (Smith.decodeW23 8 7 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))).bind Smith.undbl)
+    = some (some [false]) := by
+  decide
+
+example : (Smith.lnSteps Smith.sys3 s3D9 8).map
+    (fun c => Smith.decodeTM 2 8 4 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some none := by
+  decide +kernel
+
+example : (Smith.lnSteps Smith.sys3 s3D9b 8).map
+    (fun c => Smith.decodeTM 2 8 6 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some none := by
+  decide +kernel
+
+example : (Smith.lnSteps Smith.sys3 s3D10 8).map
+    (fun c => Smith.decodeTM 2 8 7 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some none := by
+  decide +kernel
 
 end Tests

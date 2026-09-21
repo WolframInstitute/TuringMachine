@@ -1,12 +1,16 @@
 /-
   Smith.Universality
 
-  PLAN.md target T8 (milestone M8): the headline theorem. Every run of a
-  well-formed binary Turing machine from a valid configuration is reproduced
-  by the wolfram23 machine from a finite initial tape: T4
+  PLAN.md target T8 (milestone M8): the headline theorem. For every run of
+  `n` steps of a well-formed binary Turing machine from a valid
+  configuration there is a finite initial tape, depending on the machine,
+  the configuration and `n`, from which the wolfram23 machine reproduces
+  those `n` steps at a strictly increasing schedule of times and then exits
+  to the right in state A. The one-tape-per-machine-and-input form is
+  `wolfram23_infinite` in `Smith/Infinite.lean`. T8 is T4
   (`Smith.Conjecture0`, Smith's finite-form Conjecture 0) composed with T7
   (`TagSystem.TMToCTS`, the Cocke-Minsky simulation of the machine by a
-  cyclic tag system).
+  cyclic tag system). See `Smith/Infinite.lean` for T6, the infinite form.
 
   The cyclic tag system of T7 makes one cycle of its `2 (1 + 84 S)`
   appendants per tag step, so the budget of cycles T4 needs is the number of

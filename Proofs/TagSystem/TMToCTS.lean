@@ -8,12 +8,15 @@
   carried onto a cyclic tag system by Cook's `tagToCTS` of
   `TagSystem.TagToCTS` (one tag step is `2 (1 + 84 S)` cyclic tag steps), and
   the decoder `decodeCTS` reads the cyclic tag word back: the one-hot blocks
-  as tag symbols, the tag symbols as the configuration word
-  `A_q x (al x)^m B x (be x)^N`, and the numbers `m`, `N` as tape halves.
+  as tag symbols (`tagWordDecode`, which accepts exactly the images of
+  `tagWordEncode`: `tagWordDecode_encode`, `tagWordDecode_sound`), the tag
+  symbols as the configuration word `A_q x (al x)^m B x (be x)^N`, and the
+  numbers `m`, `N` as tape halves.
 
   Contents: `Kind.idx`, `enc`, `dec`, `WordOK`, `tagK`, the transport
   `nStepsP_enc`, `cts_of_tag`, `WF`, `tmSys`, `tm_cts_forwardSim`, the
-  decoder `decodeCTS`, `decodeCTS_word`, `t7_finite`.
+  decoder `symbolDecode`, `tagWordDecode`, `decodeCTS`, `decodeCTS_word`,
+  `t7_finite`.
 -/
 
 import TagSystem.CockeMinsky
@@ -255,7 +258,12 @@ theorem cts_of_tag {K : Nat} (ts : Tag K) (hK : K > 0) (k : Nat) :
 /-! ## The machine -/
 
 /-- A well-formed binary machine: from a state below `numStates` reading a
-    bit, it writes a bit and moves to a state below `numStates`. -/
+    bit, it writes a bit and moves to a state below `numStates`. The
+    quantifier `q < numStates` includes `q = 0`, the halt state that
+    `BiTM.step` never executes: the tag productions `prod` are defined on
+    the state-0 symbols too and keep applying `tm.transition 0 _` after the
+    machine halts, so the transport lemmas (`prod_OK`, `stepP_OK`,
+    `nStepsP_enc`) need that row in range as well. -/
 def WF (tm : Machine) : Prop :=
   ∀ q, q < tm.numStates → ∀ s, s < 2 →
     (tm.transition q s).write < 2 ∧ (tm.transition q s).nextState < tm.numStates
@@ -378,10 +386,14 @@ def symbolDecodeAux : List Bool → Nat → Option Nat
   | true :: rest, i => if rest.all (fun b => !b) then some i else none
   | false :: rest, i => symbolDecodeAux rest (i + 1)
 
+/-- The symbol of a one-hot block: `none` unless the block has length
+    exactly `k` and holds a single `true`. -/
 def symbolDecode (k : Nat) (l : List Bool) : Option (Fin k) :=
-  match symbolDecodeAux l 0 with
-  | some i => if h : i < k then some ⟨i, h⟩ else none
-  | none => none
+  if l.length = k then
+    match symbolDecodeAux l 0 with
+    | some i => if h : i < k then some ⟨i, h⟩ else none
+    | none => none
+  else none
 
 theorem range_map_beq (k : Nat) : ∀ i, i < k →
     (List.range k).map (fun j => j == i) = List.replicate i false ++ true :: List.replicate (k - i - 1) false := by
@@ -425,40 +437,116 @@ theorem symbolDecodeAux_spec (i : Nat) : ∀ (r j : Nat),
     omega
 
 theorem symbolDecode_encode (k : Nat) (a : Fin k) : symbolDecode k (symbolEncode k a) = some a := by
-  unfold symbolDecode symbolEncode
+  unfold symbolDecode
+  rw [if_pos (symbolEncode_length k a)]
+  unfold symbolEncode
   rw [range_map_beq k a.val a.isLt, symbolDecodeAux_spec, Nat.zero_add]
   simp only [a.isLt, dite_true]
 
-/-- The one-hot blocks of a cyclic tag word as tag symbols. -/
+/-- A block `symbolDecodeAux` accepts is a run of `false`s, one `true`, and a
+    run of `false`s, the `true` at the returned position. -/
+theorem symbolDecodeAux_sound (l : List Bool) : ∀ (j i : Nat), symbolDecodeAux l j = some i →
+    j ≤ i ∧ ∃ r, l = List.replicate (i - j) false ++ true :: List.replicate r false := by
+  induction l with
+  | nil => intro j i h; cases h
+  | cons b rest ih =>
+    intro j i h
+    cases b with
+    | true =>
+      simp only [symbolDecodeAux] at h
+      split at h
+      · rename_i hall
+        obtain rfl := Option.some.inj h
+        refine ⟨le_refl _, rest.length, ?_⟩
+        rw [Nat.sub_self, List.replicate_zero, List.nil_append]
+        congr 1
+        rw [List.eq_replicate_iff]
+        refine ⟨rfl, fun c hc => ?_⟩
+        rw [List.all_eq_true] at hall
+        have hc' := hall c hc
+        cases c
+        · rfl
+        · exact absurd hc' (by decide)
+      · cases h
+    | false =>
+      obtain ⟨hle, r, hr⟩ := ih (j + 1) i h
+      refine ⟨by omega, r, ?_⟩
+      rw [hr, show i - j = (i - (j + 1)) + 1 from by omega, List.replicate_succ, List.cons_append]
+
+/-- A block `symbolDecode` accepts is the encoding of the symbol it returns. -/
+theorem symbolDecode_sound (k : Nat) (l : List Bool) (a : Fin k) (h : symbolDecode k l = some a) :
+    l = symbolEncode k a := by
+  unfold symbolDecode at h
+  split at h
+  · rename_i hlen
+    split at h
+    · rename_i i hi
+      split at h
+      · rename_i hik
+        obtain rfl := Option.some.inj h
+        obtain ⟨-, r, rfl⟩ := symbolDecodeAux_sound l 0 i hi
+        simp only [List.length_append, List.length_replicate, List.length_cons, Nat.sub_zero] at hlen
+        unfold symbolEncode
+        rw [range_map_beq k i hik]
+        congr 3
+        omega
+      · cases h
+    · cases h
+  · cases h
+
+/-- The one-hot blocks of a cyclic tag word as tag symbols: `none` unless the
+    word is a sequence of whole blocks of length `k`, each one-hot. -/
 def tagWordDecode (k : Nat) (hk : 0 < k) (l : List Bool) : Option (List (Fin k)) :=
-  if h : l = [] then some []
-  else
+  if l = [] then some []
+  else if _ : k ≤ l.length then
     match symbolDecode k (l.take k), tagWordDecode k hk (l.drop k) with
     | some a, some w => some (a :: w)
     | _, _ => none
+  else none
 termination_by l.length
-decreasing_by
-  have : 0 < l.length := by
-    cases l with
-    | nil => exact absurd rfl h
-    | cons _ _ => simp
-  rw [List.length_drop]
-  omega
+decreasing_by rw [List.length_drop]; omega
 
 theorem tagWordDecode_encode (k : Nat) (hk : 0 < k) (w : List (Fin k)) :
     tagWordDecode k hk (tagWordEncode k w) = some w := by
   induction w with
   | nil => rw [tagWordDecode]; simp [tagWordEncode]
   | cons a w ih =>
-    rw [tagWordDecode]
-    have hne : tagWordEncode k (a :: w) ≠ [] := by
+    rw [tagWordDecode, tagWordEncode_cons]
+    have hlen := symbolEncode_length k a
+    have hne : symbolEncode k a ++ tagWordEncode k w ≠ [] := by
       intro h
-      have := tagWordEncode_length k (a :: w)
-      rw [h] at this
-      simp at this
+      have := congrArg List.length h
+      simp only [List.length_append, hlen, List.length_nil] at this
       omega
-    rw [dif_neg hne, tagWordEncode_cons, List.take_left' (symbolEncode_length k a),
-      List.drop_left' (symbolEncode_length k a), symbolDecode_encode, ih]
+    rw [if_neg hne, dif_pos (by simp only [List.length_append, hlen]; omega),
+      List.take_left' hlen, List.drop_left' hlen, symbolDecode_encode, ih]
+
+/-- A word `tagWordDecode` accepts is the encoding of the tag word it returns:
+    the decoder is the inverse of `tagWordEncode` and rejects every other word. -/
+theorem tagWordDecode_sound (k : Nat) (hk : 0 < k) (l : List Bool) : ∀ (w : List (Fin k)),
+    tagWordDecode k hk l = some w → l = tagWordEncode k w := by
+  induction l using tagWordDecode.induct k hk with
+  | case1 =>
+    intro w h
+    rw [tagWordDecode, if_pos rfl] at h
+    obtain rfl := Option.some.inj h
+    rw [tagWordEncode_nil]
+  | case2 l hl hle a w' hw ha ih =>
+    intro w h
+    rw [tagWordDecode, if_neg hl, dif_pos hle, ha, hw] at h
+    obtain rfl := Option.some.inj h
+    rw [tagWordEncode_cons, ← ih w' hw, ← symbolDecode_sound k _ a ha, List.take_append_drop]
+  | case3 l hl hle hno _ =>
+    intro w h
+    rw [tagWordDecode, if_neg hl, dif_pos hle] at h
+    split at h
+    · rename_i a w' ha hw
+      exact absurd (hno a w' ha hw) id
+    · cases h
+  | case4 l hl hle =>
+    intro w h
+    rw [tagWordDecode, if_neg hl, dif_neg hle] at h
+    cases h
 
 /-- The leading pairs `a x` of a word, counted. -/
 def countPairs (a : Sym) : List Sym → Nat × List Sym

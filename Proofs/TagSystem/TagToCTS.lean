@@ -6,7 +6,8 @@
   Each symbol a_i of the k-symbol tag alphabet is encoded as a binary
   word of length k: one-hot encoding with true at position i.
   A tag word is encoded by concatenating the binary encodings.
-  The CTS has k appendants, where appendant j = encoding(production(a_j)).
+  The CTS has 2k appendants: the k production encodings, appendant j =
+  encoding(production(a_j)), followed by k empty appendants.
 
   One step of the 2-tag system corresponds to 2k steps of the CTS.
 -/
