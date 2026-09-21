@@ -426,10 +426,13 @@ theorem RepS4_decode_band (c : System4Config) (s : System5Config) (f j h : Nat)
 
 /-- At System 4's exit configuration the System 3 head is on the closing 1
     in state C. -/
-theorem rep3_exit (c3 : LConfig) (c4 : System4Config) (w h : Nat) (hrep : Rep3 c3 c4 w h)
+theorem rep3_exit (c3 : LConfig) (c4 : System4Config) (w h : Nat)
+    (hrep : Rep3 Closing.one c3 c4 w h)
     (hact : c4.active = c4.elems.length) (hst : c4.state = System4State.C) :
     ∃ L, c3 = ⟨L, 1, [], C⟩ := by
-  obtain ⟨⟨ls, rs, m, t, st, foc⟩, _, rfl, rfl⟩ := hrep
+  obtain ⟨⟨ls, rs, le, rc, st, foc⟩, hrc, _, rfl, rfl⟩ := hrep
+  simp only at hrc
+  subst hrc
   cases foc with
   | setA xl b xr S => exfalso; simp [AC.to4] at hact
   | setB x0 x' S => exfalso; simp [AC.to4] at hact
@@ -647,15 +650,19 @@ theorem takeWhile_map_val (P Q : List (Fin 3)) (hP : ∀ c ∈ P, c ≠ 0) :
 theorem decodeS4_state (E : List System4Elem) (a : Nat) (st st' : System4State) (b : Nat) :
     decodeS4 ⟨E, a, st⟩ b = decodeS4 ⟨E, a, st'⟩ b := rfl
 
-/-- At a System 4 configuration with the head on the leftmost element in
-    state B and a star after the leading sets, the wolfram23 decoder reads
-    the tape as the decoder of link C reads the System 4 tape. -/
-theorem rep3_decode (c3 : LConfig) (K : List (List Int)) (R : List System4Elem) (w h b : Nat)
-    (hK : K ≠ []) (hb : b ≤ h + 1)
-    (hrep : Rep3 c3 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ w h) :
+/-- At a System 4 configuration with the head on an element in state B, that
+    element leading a block of sets followed by a star, the wolfram23 decoder
+    reads the tape as the decoder of link C reads the block: the cells left of
+    the head play no part. -/
+theorem rep3_decode (c3 : LConfig) (Lp : List System4Elem) (K : List (List Int))
+    (R : List System4Elem) (w h b : Nat) (hK : K ≠ []) (hb : b ≤ h + 1)
+    (rc : Closing)
+    (hrep : Rep3 rc c3 ⟨Lp ++ sets K ++ System4Elem.star :: R, Lp.length, System4State.B⟩ w h) :
     decodeW23 (2 ^ w) b (toBi (phi2 (phi3 c3)))
       = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag := by
-  obtain ⟨⟨ls, rs, m, t, st, foc⟩, ⟨hN, hm, ht, hls, hrs, hL, hR, hfoc⟩, rfl, h4⟩ := hrep
+  obtain ⟨⟨ls, rs, le, rc', st, foc⟩, hrc, ⟨hN, hle, hls, hrs, hL, hR, hfoc⟩, rfl, h4⟩ := hrep
+  simp only at hrc
+  subst rc
   obtain ⟨K0, K', rfl⟩ := List.exists_cons_of_ne_nil hK
   cases foc with
   | setA xl bb xr S =>
@@ -671,24 +678,23 @@ theorem rep3_decode (c3 : LConfig) (K : List (List Int)) (R : List System4Elem) 
   | star =>
     simp only [AC.to4, System4Config.mk.injEq] at h4
     obtain ⟨helems, hact, -⟩ := h4
-    have hls0 : ls = [] := by simpa using hact.symm
-    subst hls0
-    simp [sets] at helems
+    rw [List.append_assoc] at helems
+    obtain ⟨-, h2⟩ := List.append_inj helems hact
+    simp [sets] at h2
   | off =>
     simp only [AC.to4, System4Config.mk.injEq] at h4
     obtain ⟨helems, hact, -⟩ := h4
-    have hls0 : ls = [] := by simpa using hact.symm
-    subst hls0
-    simp [sets] at helems
+    have := congrArg List.length helems
+    simp [sets] at this hact
+    omega
   | setB x0 x' S =>
     simp only [AC.to4, System4Config.mk.injEq] at h4
     obtain ⟨helems, hact, hst⟩ := h4
-    have hls0 : ls = [] := by simpa using hact.symm
-    subst hls0
     subst hst
-    simp only [List.reverse_nil, List.map_nil, List.nil_append, sets, List.map_cons, List.cons_append,
-      List.cons.injEq, System4Elem.set.injEq] at helems
-    obtain ⟨rfl, hrs'⟩ := helems
+    rw [List.append_assoc] at helems
+    obtain ⟨-, h2⟩ := List.append_inj helems hact
+    simp only [sets, List.map_cons, List.cons_append, List.cons.injEq, System4Elem.set.injEq] at h2
+    obtain ⟨rfl, hrs'⟩ := h2
     obtain ⟨ps, rs', rfl, hK', hR'⟩ := map_toElem_eq_sets K' rs R (by simpa [sets] using hrs'.symm)
     obtain ⟨-, hlen0, hnd0, hdec0⟩ := hfoc
     have hblocks : ∀ p ∈ ((x0 :: x', K0) :: ps), p.1.length = 2 ^ w ∧ Decodes p.1 p.2 (h + 1) := by
@@ -704,12 +710,11 @@ theorem rep3_decode (c3 : LConfig) (K : List (List Int)) (R : List System4Elem) 
       · exact ofBits_ne_zero x' c hc
       · obtain ⟨x, _, hx⟩ := List.mem_flatMap.mp hc
         exact ofBits_ne_zero x c hx
-    have htoL : (AC.toL ⟨[], ps.map (fun p => Item.set p.1 p.2) ++ Item.star :: rs', m, t,
+    have htoL : (AC.toL ⟨ls, ps.map (fun p => Item.set p.1 p.2) ++ Item.star :: rs', le, rc',
         System4State.B, Focus.setB x0 x' K0⟩)
-        = ⟨leftEndRev m t, toCell x0,
-           (ofBits x' ++ (ps.map Prod.fst).flatMap ofBits) ++ 0 :: (renderR true rs' ++ [1]), B⟩ := by
-      simp only [AC.toL, renderL_nil, List.nil_append, renderR_blocks, renderR_star, List.append_assoc,
-        List.cons_append, st3]
+        = ⟨renderL false ls ++ le.render, toCell x0,
+           (ofBits x' ++ (ps.map Prod.fst).flatMap ofBits) ++ 0 :: (renderR true rs' ++ rc'.render), B⟩ := by
+      simp only [AC.toL, renderR_blocks, renderR_star, List.append_assoc, List.cons_append, st3]
     rw [htoL, phi3_B, phi2_B]
     unfold decodeW23
     simp only [toBi]
@@ -721,6 +726,14 @@ theorem rep3_decode (c3 : LConfig) (K : List (List Int)) (R : List System4Elem) 
     unfold decodeS4
     rw [leadSets_sets (K0 :: K') (System4Elem.star :: R) (fun S => by simp)]
     simp only [List.map_cons, hK']
+
+/-- `rep3_decode` with the head on the leftmost element. -/
+theorem rep3_decode_zero (c3 : LConfig) (K : List (List Int)) (R : List System4Elem) (w h b : Nat)
+    (hK : K ≠ []) (hb : b ≤ h + 1) (rc : Closing)
+    (hrep : Rep3 rc c3 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ w h) :
+    decodeW23 (2 ^ w) b (toBi (phi2 (phi3 c3)))
+      = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag :=
+  rep3_decode c3 [] K R w h b hK hb rc (by simpa using hrep)
 
 /-- A represented nonempty working string gives a nonempty bag. -/
 theorem Represents_bag_ne_nil (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
@@ -926,7 +939,7 @@ theorem conjecture0_finite (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfi
     rw [hcd'] at hcd
     obtain rfl := Option.some.inj hcd
     refine ⟨h0le _ hd, ci, toBi (phi2 (phi3 c3d)), hci, (toBi_run start3 hst3 _ _ hrun0d).1, ?_⟩
-    rw [rep3_decode c3d (K0 :: K') _ w _ b (by simp) (by omega) hrep3d,
+    rw [rep3_decode_zero c3d (K0 :: K') _ w _ b (by simp) (by omega) _ hrep3d,
       decodeS4_state _ _ _ System4State.A, ← hE, ← hc4ieq]
     have hbagb : ∀ e ∈ si.bag, 2 * e - 2 < b := by
       intro e he

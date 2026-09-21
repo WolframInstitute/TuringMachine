@@ -97,6 +97,71 @@ def renderL : Bool → List Item → List (Fin 3)
 def leftEndRev (m t : Nat) : List (Fin 3) :=
   List.replicate t 1 ++ [2, 2] ++ List.replicate m 0
 
+/-- The left end of the tape beyond the items: the `0^m 2 2 1^t` of the finite
+    construction, which turns the head round once per zero; or arbitrary
+    cells, never reached because System 4 never turns at its left end
+    within the budget (the concatenated construction of `Smith.Infinite`,
+    whose blocks are guarded by stars). -/
+inductive LeftEnd : Type
+  | zeros (m t : Nat) : LeftEnd
+  | junk (L : List (Fin 3)) : LeftEnd
+
+/-- The cells of the left end, nearest the head first. -/
+def LeftEnd.render : LeftEnd → List (Fin 3)
+  | LeftEnd.zeros m t => leftEndRev m t
+  | LeftEnd.junk L => L
+
+/-- Whether the left end is junk. -/
+def LeftEnd.isJunk : LeftEnd → Bool
+  | LeftEnd.zeros _ _ => false
+  | LeftEnd.junk _ => true
+
+/-- The right end of the tape beyond the items: the closing `1` of the
+    finite construction, on which the head stops when System 4 leaves its
+    tape; or a `0` followed by arbitrary cells (the next block of the
+    concatenated construction), on which the head lands as on a star. -/
+inductive Closing : Type
+  | one : Closing
+  | zero (Rc : List (Fin 3)) : Closing
+
+/-- The cells of the right end, nearest the head first. -/
+def Closing.render : Closing → List (Fin 3)
+  | Closing.one => [1]
+  | Closing.zero Rc => 0 :: Rc
+
+/-- `SafeC h c`: within the next `h` System 4 steps the head is on the
+    leftmost element only in state C. Rule 1 at the leftmost element (the
+    turn) and rule 4 there (stuck) are the only steps that would look at
+    what lies left of the tape; rules 2, 3 and 5 do not. -/
+def SafeC (h : Nat) (c : System4Config) : Prop :=
+  ∀ j, j ≤ h → ∀ c', System4.nSteps c j = some c' → c'.active ≠ 0 ∨ c'.state = System4State.C
+
+theorem SafeC_step (h : Nat) (c c' : System4Config) (hs : System4.step c = some c')
+    (hS : SafeC (h + 1) c) : SafeC h c' := by
+  intro j hj c'' hc''
+  refine hS (j + 1) (by omega) c'' ?_
+  rw [System4.nSteps_succ, hs, Option.bind_some]
+  exact hc''
+
+theorem SafeC_now (h : Nat) (c : System4Config) (hS : SafeC h c) :
+    c.active ≠ 0 ∨ c.state = System4State.C :=
+  hS 0 (Nat.zero_le _) c rfl
+
+theorem SafeC_mono (h h' : Nat) (c : System4Config) (hS : SafeC h c) (hh : h' ≤ h) : SafeC h' c :=
+  fun j hj => hS j (le_trans hj hh)
+
+/-- The condition on the left end with `h` System 4 steps left: enough
+    zeros for the turns, or no turn at all. -/
+def LeftEnd.OK (h : Nat) (c4 : System4Config) : LeftEnd → Prop
+  | LeftEnd.zeros m t => h ≤ m ∧ 1 ≤ t
+  | LeftEnd.junk _ => SafeC h c4
+
+theorem LeftEnd.OK_step (le : LeftEnd) (h : Nat) (c4 c4' : System4Config)
+    (hs : System4.step c4 = some c4') (hOK : le.OK (h + 1) c4) : le.OK h c4' := by
+  cases le with
+  | zeros m t => exact ⟨by have := hOK.1; omega, hOK.2⟩
+  | junk L => exact SafeC_step h c4 c4' hs hOK
+
 /-- The first bit of a block. -/
 def firstTrue (x : Bits) : Prop := x.head? = some true
 
@@ -108,12 +173,15 @@ instance (x : Bits) : Decidable (lastTrue x) := by unfold lastTrue; infer_instan
 
 /-- The items left of the head, nearest first: a star stands in the place
     of the last cell of the set beyond it, which is a 2; the leftmost item
-    is a set. -/
-def LeftOK : List Item → Prop
+    is a set, or, when the left end is junk (`j`), a star that is never
+    reached. -/
+def LeftOK (j : Bool) : List Item → Prop
   | [] => True
-  | Item.star :: Item.set x S :: rest => lastTrue x ∧ LeftOK (Item.set x S :: rest)
-  | Item.star :: _ => False
-  | Item.set _ _ :: rest => LeftOK rest
+  | Item.star :: Item.set x S :: rest => lastTrue x ∧ LeftOK j (Item.set x S :: rest)
+  | Item.star :: [] => j = true
+  | Item.star :: Item.star :: _ => False
+  | Item.set _ _ :: rest => LeftOK j rest
+
 
 /-- The items right of the head, left to right: a star stands in the place
     of the first cell of the set after it, which is a 2; the last item is
@@ -139,6 +207,10 @@ def HeadFirstTrue : List Item → Prop
   | Item.set x _ :: _ => firstTrue x
   | _ => False
 
+/-- The star at the head stands in the place of the last cell of the set
+    left of it, or, with a junk left end, nothing is left of it. -/
+def LeftLast (j : Bool) (ls : List Item) : Prop := HeadLastTrue ls ∨ (ls = [] ∧ j = true)
+
 /-- What the head is on. -/
 inductive Focus : Type
   /-- State A, on the cell `b` of the block `xl.reverse ++ b :: xr`. -/
@@ -157,8 +229,8 @@ inductive Focus : Type
 structure AC where
   ls : List Item
   rs : List Item
-  m : Nat
-  t : Nat
+  le : LeftEnd
+  rc : Closing
   st : System4State
   foc : Focus
 
@@ -190,27 +262,32 @@ def AC.to4 (a : AC) : System4Config :=
 def AC.toL (a : AC) : LConfig :=
   match a.foc with
   | Focus.setA xl b xr _ =>
-      ⟨ofBits xl ++ renderL false a.ls ++ leftEndRev a.m a.t, toCell b,
-       ofBits xr ++ renderR false a.rs ++ [1], A⟩
+      ⟨ofBits xl ++ renderL false a.ls ++ a.le.render, toCell b,
+       ofBits xr ++ renderR false a.rs ++ a.rc.render, A⟩
   | Focus.setB x0 x' _ =>
-      ⟨renderL false a.ls ++ leftEndRev a.m a.t, toCell x0,
-       ofBits x' ++ renderR false a.rs ++ [1], st3 a.st⟩
+      ⟨renderL false a.ls ++ a.le.render, toCell x0,
+       ofBits x' ++ renderR false a.rs ++ a.rc.render, st3 a.st⟩
   | Focus.setT x1 x' _ =>
-      ⟨2 :: (renderL false a.ls ++ leftEndRev a.m a.t), toCell x1,
-       ofBits x' ++ renderR false a.rs ++ [1], B⟩
+      ⟨2 :: (renderL false a.ls ++ a.le.render), toCell x1,
+       ofBits x' ++ renderR false a.rs ++ a.rc.render, B⟩
   | Focus.star =>
       match a.st with
       | System4State.A =>
-          ⟨renderL true a.ls ++ leftEndRev a.m a.t, 0, renderR false a.rs ++ [1], A⟩
+          ⟨renderL true a.ls ++ a.le.render, 0, renderR false a.rs ++ a.rc.render, A⟩
       | System4State.B =>
-          ⟨renderL false a.ls ++ leftEndRev a.m a.t, 0, renderR true a.rs ++ [1], B⟩
+          ⟨renderL false a.ls ++ a.le.render, 0, renderR true a.rs ++ a.rc.render, B⟩
       | System4State.C =>
-          ⟨0 :: (renderL true a.ls ++ leftEndRev a.m a.t), 0, renderR true a.rs ++ [1], A⟩
+          ⟨0 :: (renderL true a.ls ++ a.le.render), 0, renderR true a.rs ++ a.rc.render, A⟩
   | Focus.off =>
-      ⟨renderL false a.ls ++ leftEndRev a.m a.t, 1, [], st3 a.st⟩
+      match a.rc with
+      | Closing.one => ⟨renderL false a.ls ++ a.le.render, 1, [], st3 a.st⟩
+      | Closing.zero Rc =>
+          match a.st with
+          | System4State.C => ⟨0 :: (renderL true a.ls ++ a.le.render), 0, Rc, A⟩
+          | _ => ⟨renderL false a.ls ++ a.le.render, 0, Rc, B⟩
 
 /-- The side conditions on the focus. -/
-def FocusOK (N k : Nat) (st : System4State) (ls rs : List Item) : Focus → Prop
+def FocusOK (N k : Nat) (j : Bool) (st : System4State) (ls rs : List Item) : Focus → Prop
   | Focus.setA xl b xr S => st = System4State.A ∧ ItemOK N k (Item.set (xl.reverse ++ b :: xr) S)
   | Focus.setB x0 x' S => st ≠ System4State.A ∧ ItemOK N k (Item.set (x0 :: x') S)
   | Focus.setT x1 x' S =>
@@ -220,21 +297,21 @@ def FocusOK (N k : Nat) (st : System4State) (ls rs : List Item) : Focus → Prop
       match st with
       | System4State.A => HeadLastTrue ls ∧ HeadSet rs
       | System4State.B => HeadSet ls ∧ HeadFirstTrue rs
-      | System4State.C => HeadLastTrue ls ∧ HeadFirstTrue rs
+      | System4State.C => LeftLast j ls ∧ HeadFirstTrue rs
   | Focus.off => True
 
 /-- The side conditions of an abstract configuration, for width `2^w` and
     `h` System 4 steps left. -/
 def AC.OK (w h : Nat) (a : AC) : Prop :=
-  h + 3 ≤ 2 ^ w ∧ h ≤ a.m ∧ 1 ≤ a.t ∧
+  h + 3 ≤ 2 ^ w ∧ a.le.OK h a.to4 ∧
   (∀ it ∈ a.ls, ItemOK (2 ^ w) (h + 1) it) ∧ (∀ it ∈ a.rs, ItemOK (2 ^ w) (h + 1) it) ∧
-  LeftOK a.ls ∧ RightOK a.rs ∧ FocusOK (2 ^ w) (h + 1) a.st a.ls a.rs a.foc
+  LeftOK a.le.isJunk a.ls ∧ RightOK a.rs ∧ FocusOK (2 ^ w) (h + 1) a.le.isJunk a.st a.ls a.rs a.foc
 
 /-- The relation of link D: the System 3 configuration `c3` stands for the
-    System 4 configuration `c4` with blocks of width `2^w` and `h` System 4
-    steps left. -/
-def Rep3 (c3 : LConfig) (c4 : System4Config) (w h : Nat) : Prop :=
-  ∃ a : AC, a.OK w h ∧ c3 = a.toL ∧ c4 = a.to4
+    System 4 configuration `c4` with blocks of width `2^w`, `h` System 4
+    steps left, and the right end `rc` beyond the items. -/
+def Rep3 (rc : Closing) (c3 : LConfig) (c4 : System4Config) (w h : Nat) : Prop :=
+  ∃ a : AC, a.rc = rc ∧ a.OK w h ∧ c3 = a.toL ∧ c4 = a.to4
 
 /-! ## Rendering lemmas -/
 
@@ -294,16 +371,25 @@ theorem renderL_of_headLastTrue (ls : List Item) (h : HeadLastTrue ls) :
     simp only [renderL_set_true, renderL_set_false, hx, ofBits_cons, toCell_true, List.tail_cons,
       List.cons_append]
 
-theorem LeftOK_star (ls : List Item) (h : LeftOK (Item.star :: ls)) : HeadLastTrue ls ∧ LeftOK ls := by
+theorem LeftOK_star (j : Bool) (ls : List Item) (h : LeftOK j (Item.star :: ls)) :
+    (HeadLastTrue ls ∧ LeftOK j ls) ∨ (ls = [] ∧ j = true) := by
   match ls, h with
-  | Item.set x S :: rest, h => exact ⟨h.1, h.2⟩
+  | [], h => exact Or.inr ⟨rfl, h⟩
+  | Item.set x S :: rest, h => exact Or.inl ⟨h.1, h.2⟩
+
+theorem LeftOK_of_leftLast (j : Bool) (ls : List Item) (hL : LeftOK j ls) (h : LeftLast j ls) :
+    LeftOK j (Item.star :: ls) := by
+  rcases h with h | ⟨rfl, rfl⟩
+  · match ls, h, hL with
+    | Item.set x S :: rest, h, hL => exact ⟨h, hL⟩
+  · rfl
 
 theorem RightOK_star (rs : List Item) (h : RightOK (Item.star :: rs)) : HeadFirstTrue rs ∧ RightOK rs := by
   match rs, h with
   | Item.set x S :: rest, h => exact ⟨h.1, h.2⟩
 
-theorem LeftOK_set (x : Bits) (S : List Int) (ls : List Item) :
-    LeftOK (Item.set x S :: ls) ↔ LeftOK ls := by
+theorem LeftOK_set (j : Bool) (x : Bits) (S : List Int) (ls : List Item) :
+    LeftOK j (Item.set x S :: ls) ↔ LeftOK j ls := by
   cases ls with
   | nil => rfl
   | cons it rest => cases it <;> rfl
@@ -453,46 +539,68 @@ the next block, or the 0 of a star. `landing` is the configuration reached,
 /-- The configuration after a scan that left the block `z` behind, exiting
     with parity `e` (state C when `e`), with `L` the cells left of the block
     and `rs` the items right of it. -/
-def landing (L : List (Fin 3)) (rs : List Item) (z : Bits) (e : Bool) : LConfig :=
+def landing (L : List (Fin 3)) (rs : List Item) (rc : Closing) (z : Bits) (e : Bool) : LConfig :=
   match rs with
-  | [] => ⟨(ofBits z).reverse ++ L, 1, [], stB e⟩
+  | [] =>
+      match rc with
+      | Closing.one => ⟨(ofBits z).reverse ++ L, 1, [], stB e⟩
+      | Closing.zero Rc =>
+          if e then ⟨0 :: ((ofBits z).reverse.tail ++ L), 0, Rc, A⟩
+          else ⟨(ofBits z).reverse ++ L, 0, Rc, B⟩
   | Item.set y _ :: rs' =>
-      ⟨(ofBits z).reverse ++ L, toCell (y.headD false), (ofBits y).tail ++ renderR false rs' ++ [1], stB e⟩
+      ⟨(ofBits z).reverse ++ L, toCell (y.headD false), (ofBits y).tail ++ renderR false rs' ++ rc.render, stB e⟩
   | Item.star :: rs' =>
-      if e then ⟨0 :: ((ofBits z).reverse.tail ++ L), 0, renderR true rs' ++ [1], A⟩
-      else ⟨(ofBits z).reverse ++ L, 0, renderR true rs' ++ [1], B⟩
+      if e then ⟨0 :: ((ofBits z).reverse.tail ++ L), 0, renderR true rs' ++ rc.render, A⟩
+      else ⟨(ofBits z).reverse ++ L, 0, renderR true rs' ++ rc.render, B⟩
 
 /-- A scan from the cell `a` over the block `x` lands as `landing` says. -/
-theorem scanRun (L : List (Fin 3)) (s a : Bool) (x : Bits) (rs : List Item)
+theorem scanRun (L : List (Fin 3)) (s a : Bool) (x : Bits) (rs : List Item) (rc : Closing)
     (hrs : ∀ y U, Item.set y U ∈ rs → y ≠ []) :
-    lnSteps sys3 ⟨L, toCell a, ofBits x ++ renderR false rs ++ [1], stB s⟩ (x.length + 1)
-      = some (landing L rs (scanFrom s (a :: x)) (s ^^ parity (a :: x))) := by
+    lnSteps sys3 ⟨L, toCell a, ofBits x ++ renderR false rs ++ rc.render, stB s⟩ (x.length + 1)
+      = some (landing L rs rc (scanFrom s (a :: x)) (s ^^ parity (a :: x))) := by
   cases rs with
   | nil =>
-    have := scanBlock L s a x 1 (by decide) []
-    simpa [landing] using this
+    cases rc with
+    | one =>
+      have := scanBlock L s a x 1 (by decide) []
+      simpa [landing, Closing.render] using this
+    | zero Rc =>
+      by_cases he : (s ^^ parity (a :: x)) = true
+      · have := scanBlock0C L s a x Rc he
+        rw [he]
+        simpa [landing, Closing.render, List.tail_reverse] using this
+      · rw [Bool.not_eq_true] at he
+        have := scanBlock0B L s a x Rc he
+        rw [he]
+        simpa [landing, Closing.render] using this
   | cons it rs' =>
     cases it with
     | set y U =>
       obtain ⟨y0, y', rfl⟩ := List.exists_cons_of_ne_nil (hrs y U List.mem_cons_self)
-      have := scanBlock L s a x (toCell y0) (toCell_ne_zero y0) (ofBits y' ++ renderR false rs' ++ [1])
+      have := scanBlock L s a x (toCell y0) (toCell_ne_zero y0) (ofBits y' ++ renderR false rs' ++ rc.render)
       simpa [landing] using this
     | star =>
       by_cases he : (s ^^ parity (a :: x)) = true
-      · have := scanBlock0C L s a x (renderR true rs' ++ [1]) he
+      · have := scanBlock0C L s a x (renderR true rs' ++ rc.render) he
         rw [he]
         simpa [landing, List.tail_reverse] using this
       · rw [Bool.not_eq_true] at he
-        have := scanBlock0B L s a x (renderR true rs' ++ [1]) he
+        have := scanBlock0B L s a x (renderR true rs' ++ rc.render) he
         rw [he]
         simpa [landing] using this
 
 /-- Moving one cell from the left context into the block. -/
-theorem landing_cons (L : List (Fin 3)) (rs : List Item) (b : Bool) (z : Bits) (hz : z ≠ [])
-    (e : Bool) : landing (toCell b :: L) rs z e = landing L rs (b :: z) e := by
+theorem landing_cons (L : List (Fin 3)) (rs : List Item) (rc : Closing) (b : Bool) (z : Bits)
+    (hz : z ≠ []) (e : Bool) : landing (toCell b :: L) rs rc z e = landing L rs rc (b :: z) e := by
   have hne : (ofBits z).reverse ≠ [] := by simpa [ofBits] using hz
   cases rs with
-  | nil => simp [landing]
+  | nil =>
+    cases rc with
+    | one => simp [landing]
+    | zero Rc =>
+      cases e with
+      | false => simp [landing]
+      | true => simp [landing, List.tail_append_of_ne_nil hne]
   | cons it rs' =>
     cases it with
     | set y U => simp [landing]
@@ -503,8 +611,9 @@ theorem landing_cons (L : List (Fin 3)) (rs : List Item) (b : Bool) (z : Bits) (
 
 /-- The abstract configuration after a scan: the block `z` with its set
     `S'` joins the left items, and the head is on the next item. -/
-def afterScan (ls rs : List Item) (m t : Nat) (z : Bits) (S' : List Int) (st' : System4State) : AC :=
-  ⟨Item.set z S' :: ls, rs.tail, m, t, st',
+def afterScan (ls rs : List Item) (le : LeftEnd) (rc : Closing) (z : Bits) (S' : List Int)
+    (st' : System4State) : AC :=
+  ⟨Item.set z S' :: ls, rs.tail, le, rc, st',
    match rs with
    | [] => Focus.off
    | Item.set y U :: _ => Focus.setB (y.headD false) y.tail U
@@ -514,13 +623,20 @@ theorem st3_eq_stB (st : System4State) (h : st ≠ System4State.A) :
     st3 st = stB (decide (st = System4State.C)) := by
   cases st <;> simp_all [st3, stB]
 
-theorem afterScan_toL (ls rs : List Item) (m t : Nat) (z : Bits) (S' : List Int)
+theorem afterScan_toL (ls rs : List Item) (le : LeftEnd) (rc : Closing) (z : Bits) (S' : List Int)
     (st' : System4State) (hst' : st' ≠ System4State.A)
     (hrs : ∀ y U, Item.set y U ∈ rs → y ≠ []) :
-    (afterScan ls rs m t z S' st').toL
-      = landing (renderL false ls ++ leftEndRev m t) rs z (decide (st' = System4State.C)) := by
+    (afterScan ls rs le rc z S' st').toL
+      = landing (renderL false ls ++ le.render) rs rc z (decide (st' = System4State.C)) := by
   cases rs with
-  | nil => simp [afterScan, AC.toL, landing, ofBits_reverse, st3_eq_stB st' hst']
+  | nil =>
+    cases rc with
+    | one => simp [afterScan, AC.toL, landing, ofBits_reverse, st3_eq_stB st' hst']
+    | zero Rc =>
+      cases st' with
+      | A => exact absurd rfl hst'
+      | B => simp [afterScan, AC.toL, landing, ofBits_reverse]
+      | C => simp [afterScan, AC.toL, landing, ofBits_reverse]
   | cons it rs' =>
     cases it with
     | set y U =>
@@ -532,32 +648,32 @@ theorem afterScan_toL (ls rs : List Item) (m t : Nat) (z : Bits) (S' : List Int)
       | B => simp [afterScan, AC.toL, landing, ofBits_reverse]
       | C => simp [afterScan, AC.toL, landing, ofBits_reverse]
 
-theorem afterScan_to4 (ls rs : List Item) (m t : Nat) (z : Bits) (S' : List Int)
+theorem afterScan_to4 (ls rs : List Item) (le : LeftEnd) (rc : Closing) (z : Bits) (S' : List Int)
     (st' : System4State) :
-    (afterScan ls rs m t z S' st').to4
+    (afterScan ls rs le rc z S' st').to4
       = ⟨ls.reverse.map Item.toElem ++ System4Elem.set S' :: rs.map Item.toElem,
          (ls.reverse.map Item.toElem).length + 1, st'⟩ := by
   cases rs with
   | nil => simp [afterScan, AC.to4, Item.toElem]
   | cons it rs' => cases it <;> simp [afterScan, AC.to4, Item.toElem]
 
-theorem afterScan_OK (w h : Nat) (ls rs : List Item) (m t : Nat) (z : Bits) (S' : List Int)
-    (st' : System4State) (hst' : st' ≠ System4State.A)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+theorem afterScan_OK (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (z : Bits)
+    (S' : List Int) (st' : System4State) (hst' : st' ≠ System4State.A)
+    (hN : h + 1 + 3 ≤ 2 ^ w) (hle : le.OK h (afterScan ls rs le rc z S' st').to4)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs)
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs)
     (hz : ItemOK (2 ^ w) (h + 1) (Item.set z S'))
     (hlast : z.getLast? = some (decide (st' = System4State.C))) :
-    (afterScan ls rs m t z S' st').OK w h := by
-  refine ⟨by omega, show h ≤ m by omega, ht, ?_, ?_, ?_, ?_, ?_⟩
+    (afterScan ls rs le rc z S' st').OK w h := by
+  refine ⟨by omega, hle, ?_, ?_, ?_, ?_, ?_⟩
   · intro it hit
     rcases List.mem_cons.mp hit with rfl | hit
     · exact hz
     · exact ItemOK_mono _ _ _ _ (hls it hit) (by omega)
   · intro it hit
     exact ItemOK_mono _ _ _ _ (hrs it (List.mem_of_mem_tail hit)) (by omega)
-  · show LeftOK (Item.set z S' :: ls)
-    exact (LeftOK_set z S' ls).mpr hL
+  · show LeftOK le.isJunk (Item.set z S' :: ls)
+    exact (LeftOK_set _ z S' ls).mpr hL
   · cases rs with
     | nil => trivial
     | cons it rs' =>
@@ -581,7 +697,7 @@ theorem afterScan_OK (w h : Nat) (ls rs : List Item) (m t : Nat) (z : Bits) (S' 
         | A => exact absurd rfl hst'
         | B => exact ⟨trivial, hfirst⟩
         | C =>
-          refine ⟨?_, hfirst⟩
+          refine ⟨Or.inl ?_, hfirst⟩
           show lastTrue z
           simpa [lastTrue] using hlast
 
@@ -590,8 +706,8 @@ theorem afterScan_OK (w h : Nat) (ls rs : List Item) (m t : Nat) (z : Bits) (S' 
 /-- The conclusion of every per-rule lemma: a run of System 3 from `c3` of
     at least one step reaches the System 3 side of an abstract configuration
     whose System 4 side is `c4'`. -/
-def Matches (w h : Nat) (c3 : LConfig) (c4' : System4Config) : Prop :=
-  ∃ k, 1 ≤ k ∧ ∃ a' : AC, lnSteps sys3 c3 k = some a'.toL ∧ c4' = a'.to4 ∧ a'.OK w h
+def Matches (w h : Nat) (rc : Closing) (c3 : LConfig) (c4' : System4Config) : Prop :=
+  ∃ k, 1 ≤ k ∧ ∃ a' : AC, a'.rc = rc ∧ lnSteps sys3 c3 k = some a'.toL ∧ c4' = a'.to4 ∧ a'.OK w h
 
 theorem items_ne_nil (w k : Nat) (rs : List Item) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) k it) :
     ∀ y U, Item.set y U ∈ rs → y ≠ [] := by
@@ -624,86 +740,92 @@ theorem ifBC_ne_A (S : List Int) :
   by_cases h0 : (0 : Int) ∈ S <;> simp [h0]
 
 /-- Rule 3 in state B: a scan of the block from state B. -/
-theorem case_scanB (w h : Nat) (ls rs : List Item) (m t : Nat) (x0 : Bool) (x' : Bits)
+theorem case_scanB (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (x0 : Bool) (x' : Bits)
     (S : List Int) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (x0 :: x') S))
-    (hs : System4.step (AC.mk ls rs m t System4State.B (Focus.setB x0 x' S)).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.B (Focus.setB x0 x' S)).toL c4' := by
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (x0 :: x') S))
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.B (Focus.setB x0 x' S)).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.B (Focus.setB x0 x' S)).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.B (Focus.setB x0 x' S)).toL c4' := by
   obtain ⟨hlen, hnd, hdec⟩ := hit
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   simp only [AC.to4] at hs
   rw [step_setB] at hs
   obtain rfl := Option.some.inj hs
   have hrs' := items_ne_nil w (h + 2) rs hrs
   have hpar := Decodes_parity _ _ _ hdec
   refine ⟨x'.length + 1, by omega,
-    afterScan ls rs m t (T (x0 :: x')) (decr S) (if (0 : Int) ∈ S then System4State.C else System4State.B),
-    ?_, ?_, ?_⟩
+    afterScan ls rs le rc (T (x0 :: x')) (decr S) (if (0 : Int) ∈ S then System4State.C else System4State.B),
+    rfl, ?_, ?_, ?_⟩
   · rw [afterScan_toL _ _ _ _ _ _ _ (ifCB_ne_A S) hrs', decide_ifCB]
-    show lnSteps sys3 ⟨renderL false ls ++ leftEndRev m t, toCell x0,
-      ofBits x' ++ renderR false rs ++ [1], stB false⟩ _ = _
-    rw [scanRun _ _ _ _ _ hrs', Bool.false_xor, hpar]
+    show lnSteps sys3 ⟨renderL false ls ++ le.render, toCell x0,
+      ofBits x' ++ renderR false rs ++ rc.render, stB false⟩ _ = _
+    rw [scanRun _ _ _ _ _ _ hrs', Bool.false_xor, hpar]
     rfl
   · rw [afterScan_to4]; rfl
-  · refine afterScan_OK w h ls rs m t _ _ _ (ifCB_ne_A S) hN hm ht hls hrs hL hR
-      ⟨by simpa using hlen, decr_nodup S hnd, Decodes_T _ _ hnd _ hdec⟩ ?_
+  · refine afterScan_OK w h ls rs le rc _ _ _ (ifCB_ne_A S) hN (by rw [afterScan_to4]; exact hle')
+      hls hrs hL hR ⟨by simpa using hlen, decr_nodup S hnd, Decodes_T _ _ hnd _ hdec⟩ ?_
     rw [T_getLast? _ (by simp), hpar, decide_ifCB]
 
 /-- Rule 3 in state C: a scan of the block from state C. -/
-theorem case_scanC (w h : Nat) (ls rs : List Item) (m t : Nat) (x0 : Bool) (x' : Bits)
+theorem case_scanC (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (x0 : Bool) (x' : Bits)
     (S : List Int) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (x0 :: x') S))
-    (hs : System4.step (AC.mk ls rs m t System4State.C (Focus.setB x0 x' S)).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.C (Focus.setB x0 x' S)).toL c4' := by
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (x0 :: x') S))
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.C (Focus.setB x0 x' S)).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.C (Focus.setB x0 x' S)).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.C (Focus.setB x0 x' S)).toL c4' := by
   obtain ⟨hlen, hnd, hdec⟩ := hit
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   simp only [AC.to4] at hs
   rw [step_setC] at hs
   obtain rfl := Option.some.inj hs
   have hrs' := items_ne_nil w (h + 2) rs hrs
   have hpar := Decodes_parity _ _ _ hdec
   refine ⟨x'.length + 1, by omega,
-    afterScan ls rs m t (scanFrom true (x0 :: x')) (decr S)
+    afterScan ls rs le rc (scanFrom true (x0 :: x')) (decr S)
       (if (0 : Int) ∈ S then System4State.B else System4State.C),
-    ?_, ?_, ?_⟩
+    rfl, ?_, ?_, ?_⟩
   · rw [afterScan_toL _ _ _ _ _ _ _ (ifBC_ne_A S) hrs', decide_ifBC]
-    show lnSteps sys3 ⟨renderL false ls ++ leftEndRev m t, toCell x0,
-      ofBits x' ++ renderR false rs ++ [1], stB true⟩ _ = _
-    rw [scanRun _ _ _ _ _ hrs', Bool.true_xor, hpar]
+    show lnSteps sys3 ⟨renderL false ls ++ le.render, toCell x0,
+      ofBits x' ++ renderR false rs ++ rc.render, stB true⟩ _ = _
+    rw [scanRun _ _ _ _ _ _ hrs', Bool.true_xor, hpar]
   · rw [afterScan_to4]; rfl
-  · refine afterScan_OK w h ls rs m t _ _ _ (ifBC_ne_A S) hN hm ht hls hrs hL hR
-      ⟨by simpa using hlen, decr_nodup S hnd,
+  · refine afterScan_OK w h ls rs le rc _ _ _ (ifBC_ne_A S) hN (by rw [afterScan_to4]; exact hle')
+      hls hrs hL hR ⟨by simpa using hlen, decr_nodup S hnd,
         Decodes_scanC w x0 x' hlen S hnd (h + 1) (by omega) hdec⟩ ?_
     rw [scanFrom_getLast? _ _ (by simp), hpar, decide_ifBC, Bool.true_xor]
 
 /-- Rule 3 in state C right after rule 5: the skipped-cell scan. -/
-theorem case_scanT (w h : Nat) (ls rs : List Item) (m t : Nat) (x1 : Bool) (x' : Bits)
+theorem case_scanT (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (x1 : Bool) (x' : Bits)
     (S : List Int) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hnd : S.Nodup) (hlen : (true :: x1 :: x').length = 2 ^ w)
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hnd : S.Nodup) (hlen : (true :: x1 :: x').length = 2 ^ w)
     (hdec : Decodes (true :: x1 :: x') (xorInsert 1 S) (h + 2))
-    (hs : System4.step (AC.mk ls rs m t System4State.C (Focus.setT x1 x' S)).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.C (Focus.setT x1 x' S)).toL c4' := by
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.C (Focus.setT x1 x' S)).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.C (Focus.setT x1 x' S)).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.C (Focus.setT x1 x' S)).toL c4' := by
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   simp only [AC.to4] at hs
   rw [step_setC] at hs
   obtain rfl := Option.some.inj hs
   have hrs' := items_ne_nil w (h + 2) rs hrs
   have hpar := Decodes_transient_parity _ _ _ hdec
   refine ⟨x'.length + 1, by omega,
-    afterScan ls rs m t (true :: scanFrom false (x1 :: x')) (decr S)
+    afterScan ls rs le rc (true :: scanFrom false (x1 :: x')) (decr S)
       (if (0 : Int) ∈ S then System4State.B else System4State.C),
-    ?_, ?_, ?_⟩
+    rfl, ?_, ?_, ?_⟩
   · rw [afterScan_toL _ _ _ _ _ _ _ (ifBC_ne_A S) hrs', decide_ifBC,
-      ← landing_cons _ _ true _ (by simp [scanFrom])]
-    show lnSteps sys3 ⟨toCell true :: (renderL false ls ++ leftEndRev m t), toCell x1,
-      ofBits x' ++ renderR false rs ++ [1], stB false⟩ _ = _
-    rw [scanRun _ _ _ _ _ hrs', Bool.false_xor, hpar]
+      ← landing_cons _ _ _ true _ (by simp [scanFrom])]
+    show lnSteps sys3 ⟨toCell true :: (renderL false ls ++ le.render), toCell x1,
+      ofBits x' ++ renderR false rs ++ rc.render, stB false⟩ _ = _
+    rw [scanRun _ _ _ _ _ _ hrs', Bool.false_xor, hpar]
   · rw [afterScan_to4]; rfl
-  · refine afterScan_OK w h ls rs m t _ _ _ (ifBC_ne_A S) hN hm ht hls hrs hL hR
-      ⟨by simpa using hlen, decr_nodup S hnd,
+  · refine afterScan_OK w h ls rs le rc _ _ _ (ifBC_ne_A S) hN (by rw [afterScan_to4]; exact hle')
+      hls hrs hL hR ⟨by simpa using hlen, decr_nodup S hnd,
         Decodes_transient w (x1 :: x') hlen S hnd (h + 1) (by omega) hdec⟩ ?_
     rw [decide_ifBC, ← hpar]
     simp only [scanFrom, List.getLast?_cons_cons]
@@ -776,14 +898,16 @@ theorem ItemOK_reverse_split (N k : Nat) (y : Bits) (T : List Int) (b : Bool) (y
   rw [this]; exact h
 
 /-- Rule 1: a set in state A. -/
-theorem case_setA (w h : Nat) (ls rs : List Item) (m t : Nat) (xl : Bits) (b : Bool) (xr : Bits)
+theorem case_setA (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (xl : Bits) (b : Bool) (xr : Bits)
     (S : List Int) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (xl.reverse ++ b :: xr) S))
-    (hs : System4.step (AC.mk ls rs m t System4State.A (Focus.setA xl b xr S)).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.A (Focus.setA xl b xr S)).toL c4' := by
-  simp only [AC.to4] at hs
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hit : ItemOK (2 ^ w) (h + 2) (Item.set (xl.reverse ++ b :: xr) S))
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.A (Focus.setA xl b xr S)).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.A (Focus.setA xl b xr S)).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.A (Focus.setA xl b xr S)).toL c4' := by
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
+  simp only [AC.to4] at hs hle
   have hrs2 : ∀ it ∈ Item.set (xl.reverse ++ b :: xr) S :: rs, ItemOK (2 ^ w) (h + 1) it := by
     intro it hit'
     rcases List.mem_cons.mp hit' with rfl | hit'
@@ -795,17 +919,27 @@ theorem case_setA (w h : Nat) (ls rs : List Item) (m t : Nat) (xl : Bits) (b : B
     simp only [List.reverse_nil, List.map_nil, List.nil_append, List.length_nil] at hs
     rw [step_setA_zero] at hs
     obtain rfl := Option.some.inj hs
-    obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
-    obtain ⟨x0, x', hx⟩ := List.exists_cons_of_ne_nil (l := xl.reverse ++ b :: xr) (by simp)
-    refine ⟨xl.length + 2 * t + 6, by omega, AC.mk [] rs m' (t + 1) System4State.B (Focus.setB x0 x' S),
-      ?_, ?_, ?_⟩
-    · simp only [AC.toL, renderL_nil, List.append_nil, List.nil_append, List.append_assoc, st3]
-      exact turnRun xl b xr m' t _ x0 x' hx
-    · simp [AC.to4]
-    · dsimp only [AC.OK]
-      refine ⟨by omega, by omega, by omega, by simp, ?_, trivial, hR, by decide, ?_⟩
-      · intro it hit'; exact ItemOK_mono _ _ _ _ (hrs it hit') (by omega)
-      · rw [← hx]; exact ItemOK_mono _ _ _ _ hit (by omega)
+    cases le with
+    | junk L =>
+      exfalso
+      have hS : SafeC (h + 1) ⟨System4Elem.set S :: List.map Item.toElem rs, 0, System4State.A⟩ := hle
+      rcases SafeC_now _ _ hS with h0 | h0
+      · exact h0 rfl
+      · cases h0
+    | zeros m t =>
+      obtain ⟨hm, ht⟩ : h + 1 ≤ m ∧ 1 ≤ t := hle
+      obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+      obtain ⟨x0, x', hx⟩ := List.exists_cons_of_ne_nil (l := xl.reverse ++ b :: xr) (by simp)
+      refine ⟨xl.length + 2 * t + 6, by omega,
+        AC.mk [] rs (LeftEnd.zeros m' (t + 1)) rc System4State.B (Focus.setB x0 x' S), rfl, ?_, ?_, ?_⟩
+      · simp only [AC.toL, LeftEnd.render, renderL_nil, List.append_nil, List.nil_append,
+          List.append_assoc, st3]
+        exact turnRun xl b xr m' t _ x0 x' hx
+      · simp [AC.to4]
+      · dsimp only [AC.OK]
+        refine ⟨by omega, ⟨by omega, by omega⟩, by simp, ?_, trivial, hR, by decide, ?_⟩
+        · intro it hit'; exact ItemOK_mono _ _ _ _ (hrs it hit') (by omega)
+        · rw [← hx]; exact ItemOK_mono _ _ _ _ hit (by omega)
   | cons it ls' =>
     have hLne : (it :: ls').reverse.map Item.toElem ≠ [] := by simp
     rw [step_setA _ _ _ hLne] at hs
@@ -819,43 +953,62 @@ theorem case_setA (w h : Nat) (ls rs : List Item) (m t : Nat) (xl : Bits) (b : B
         (by intro hnil; have h1 := item_len w _ y T hy0; rw [← List.length_reverse, hnil] at h1
             have h2 := Nat.one_le_two_pow (n := w); simp at h1; omega)
       refine ⟨xl.length + 1, by omega,
-        AC.mk ls' (Item.set (xl.reverse ++ b :: xr) S :: rs) m t System4State.A (Focus.setA yl b' [] T),
-        ?_, ?_, ?_⟩
+        AC.mk ls' (Item.set (xl.reverse ++ b :: xr) S :: rs) le rc System4State.A (Focus.setA yl b' [] T),
+        rfl, ?_, ?_, ?_⟩
       · have hrun := walkLeft (ofBits xl) (ofBits_ne_zero xl) (toCell b')
-          (ofBits yl ++ renderL false ls' ++ leftEndRev m t) (toCell b) (toCell_ne_zero b)
-          (ofBits xr ++ renderR false rs ++ [1])
+          (ofBits yl ++ renderL false ls' ++ le.render) (toCell b) (toCell_ne_zero b)
+          (ofBits xr ++ renderR false rs ++ rc.render)
         rw [length_ofBits] at hrun
         simp only [AC.toL, renderL_set_false, renderR_set_false, hy, ofBits_cons, ofBits_nil,
           List.nil_append, List.append_assoc, List.cons_append] at hrun ⊢
         rw [hrun, ofBits_zipper]
       · simp [AC.to4, Item.toElem]
       · dsimp only [AC.OK]
-        refine ⟨by omega, by omega, ht, hls', hrs2, (LeftOK_set y T ls').mp hL, hR2, rfl, ?_⟩
-        exact ItemOK_reverse_split _ _ y T b' yl hy (ItemOK_mono _ _ _ _ hy0 (by omega))
+        refine ⟨by omega, ?_, hls', hrs2, (LeftOK_set _ y T ls').mp hL, hR2, rfl, ?_⟩
+        · simp only [AC.to4]
+          simpa [Item.toElem] using hle'
+        · exact ItemOK_reverse_split _ _ y T b' yl hy (ItemOK_mono _ _ _ _ hy0 (by omega))
     | star =>
-      obtain ⟨hlast, hL'⟩ := LeftOK_star ls' hL
-      refine ⟨xl.length + 1, by omega,
-        AC.mk ls' (Item.set (xl.reverse ++ b :: xr) S :: rs) m t System4State.A Focus.star,
-        ?_, ?_, ?_⟩
-      · have hrun := walkLeft (ofBits xl) (ofBits_ne_zero xl) 0
-          (renderL true ls' ++ leftEndRev m t) (toCell b) (toCell_ne_zero b)
-          (ofBits xr ++ renderR false rs ++ [1])
-        rw [length_ofBits] at hrun
-        simp only [AC.toL, renderL_star, renderR_set_false, List.append_assoc, List.cons_append] at hrun ⊢
-        rw [hrun, ofBits_zipper]
-      · simp [AC.to4, Item.toElem]
-      · dsimp only [AC.OK]
-        exact ⟨by omega, by omega, ht, hls', hrs2, hL', hR2, hlast, trivial⟩
+      rcases LeftOK_star _ ls' hL with ⟨hlast, hL'⟩ | ⟨rfl, hj⟩
+      · refine ⟨xl.length + 1, by omega,
+          AC.mk ls' (Item.set (xl.reverse ++ b :: xr) S :: rs) le rc System4State.A Focus.star,
+          rfl, ?_, ?_, ?_⟩
+        · have hrun := walkLeft (ofBits xl) (ofBits_ne_zero xl) 0
+            (renderL true ls' ++ le.render) (toCell b) (toCell_ne_zero b)
+            (ofBits xr ++ renderR false rs ++ rc.render)
+          rw [length_ofBits] at hrun
+          simp only [AC.toL, renderL_star, renderR_set_false, List.append_assoc, List.cons_append] at hrun ⊢
+          rw [hrun, ofBits_zipper]
+        · simp [AC.to4, Item.toElem]
+        · dsimp only [AC.OK]
+          refine ⟨by omega, ?_, hls', hrs2, hL', hR2, hlast, trivial⟩
+          simp only [AC.to4]
+          simpa [Item.toElem] using hle'
+      · exfalso
+        cases le with
+        | zeros m t => cases hj
+        | junk L =>
+          have hS : SafeC h ⟨[System4Elem.star] ++ System4Elem.set S :: List.map Item.toElem rs,
+              [System4Elem.star].length - 1, System4State.A⟩ := by
+            have := hle'
+            simp only [Item.toElem, List.map_cons, List.map_nil, List.singleton_append,
+              List.length_singleton, Nat.sub_self] at this ⊢
+            exact this
+          rcases SafeC_now _ _ hS with h0 | h0
+          · exact h0 rfl
+          · cases h0
 
 /-! ## Rules 2, 4, 5: one step at a star -/
 
 /-- Rule 2: a star in state A. -/
-theorem case_starA (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+theorem case_starA (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (c4' : System4Config)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hlast : HeadLastTrue ls) (hset : HeadSet rs)
-    (hs : System4.step (AC.mk ls rs m t System4State.A Focus.star).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.A Focus.star).toL c4' := by
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hlast : HeadLastTrue ls) (hset : HeadSet rs)
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.A Focus.star).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.A Focus.star).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.A Focus.star).toL c4' := by
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   match rs, hset with
   | Item.set y U :: rs', _ =>
     simp only [AC.to4] at hs
@@ -863,24 +1016,27 @@ theorem case_starA (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Con
     obtain rfl := Option.some.inj hs
     have hy0 := hrs (Item.set y U) List.mem_cons_self
     obtain ⟨y0, y', rfl⟩ := List.exists_cons_of_ne_nil (items_ne_nil w _ _ hrs y U List.mem_cons_self)
-    refine ⟨1, le_refl 1, AC.mk ls rs' m t System4State.B (Focus.setB y0 y' U), ?_, ?_, ?_⟩
+    refine ⟨1, le_refl 1, AC.mk ls rs' le rc System4State.B (Focus.setB y0 y' U), rfl, ?_, ?_, ?_⟩
     · simp only [AC.toL, renderR_set_false, ofBits_cons, List.append_assoc, List.cons_append]
       rw [lnSteps_one, turnA, ← List.cons_append, renderL_of_headLastTrue ls hlast]
       rfl
     · simp [AC.to4, Item.toElem]
     · dsimp only [AC.OK]
-      refine ⟨by omega, by omega, ht, ?_, ?_, hL, (RightOK_set _ U rs').mp hR, ?_⟩
+      refine ⟨by omega, by simpa [AC.to4, Item.toElem] using hle', ?_, ?_, hL,
+        (RightOK_set _ U rs').mp hR, ?_⟩
       · intro it hit; exact ItemOK_mono _ _ _ _ (hls it hit) (by omega)
       · intro it hit; exact ItemOK_mono _ _ _ _ (hrs it (List.mem_cons_of_mem _ hit)) (by omega)
       · exact ⟨by decide, ItemOK_mono _ _ _ _ hy0 (by omega)⟩
 
 /-- Rule 4: a star in state B. -/
-theorem case_starB (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+theorem case_starB (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (c4' : System4Config)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hset : HeadSet ls) (hfirst : HeadFirstTrue rs)
-    (hs : System4.step (AC.mk ls rs m t System4State.B Focus.star).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.B Focus.star).toL c4' := by
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hset : HeadSet ls) (hfirst : HeadFirstTrue rs)
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.B Focus.star).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.B Focus.star).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.B Focus.star).toL c4' := by
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   match ls, hset with
   | Item.set y T :: ls', _ =>
     simp only [AC.to4] at hs
@@ -891,24 +1047,28 @@ theorem case_starB (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Con
     obtain ⟨b', yl, hy⟩ := List.exists_cons_of_ne_nil (l := y.reverse)
       (by intro hnil; have h1 := item_len w _ y T hy0; rw [← List.length_reverse, hnil] at h1
           have h2 := Nat.one_le_two_pow (n := w); simp at h1; omega)
-    refine ⟨1, le_refl 1, AC.mk ls' rs m t System4State.A (Focus.setA yl b' [] T), ?_, ?_, ?_⟩
+    refine ⟨1, le_refl 1, AC.mk ls' rs le rc System4State.A (Focus.setA yl b' [] T), rfl, ?_, ?_, ?_⟩
     · simp only [AC.toL, renderL_set_false, hy, ofBits_cons, ofBits_nil, List.nil_append,
         List.append_assoc, List.cons_append]
       rw [lnSteps_one, starB, ← List.cons_append, renderR_of_headFirstTrue rs hfirst]
     · simp [AC.to4, Item.toElem]
     · dsimp only [AC.OK]
-      refine ⟨by omega, by omega, ht, ?_, ?_, (LeftOK_set y T ls').mp hL, hR, rfl, ?_⟩
+      refine ⟨by omega, by simpa [AC.to4, Item.toElem] using hle', ?_, ?_,
+        (LeftOK_set _ y T ls').mp hL, hR, rfl, ?_⟩
       · intro it hit; exact ItemOK_mono _ _ _ _ (hls it (List.mem_cons_of_mem _ hit)) (by omega)
       · intro it hit; exact ItemOK_mono _ _ _ _ (hrs it hit) (by omega)
       · exact ItemOK_reverse_split _ _ y T b' yl hy (ItemOK_mono _ _ _ _ hy0 (by omega))
 
 /-- Rule 5: a star in state C. -/
-theorem case_starC (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Config)
-    (hN : h + 1 + 3 ≤ 2 ^ w) (hm : h + 1 ≤ m) (ht : 1 ≤ t)
+theorem case_starC (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) (c4' : System4Config)
+    (hN : h + 1 + 3 ≤ 2 ^ w)
     (hls : ∀ it ∈ ls, ItemOK (2 ^ w) (h + 2) it) (hrs : ∀ it ∈ rs, ItemOK (2 ^ w) (h + 2) it)
-    (hL : LeftOK ls) (hR : RightOK rs) (hlast : HeadLastTrue ls) (hfirst : HeadFirstTrue rs)
-    (hs : System4.step (AC.mk ls rs m t System4State.C Focus.star).to4 = some c4') :
-    Matches w h (AC.mk ls rs m t System4State.C Focus.star).toL c4' := by
+    (hL : LeftOK le.isJunk ls) (hR : RightOK rs) (hlast : LeftLast le.isJunk ls)
+    (hfirst : HeadFirstTrue rs)
+    (hle : le.OK (h + 1) (AC.mk ls rs le rc System4State.C Focus.star).to4)
+    (hs : System4.step (AC.mk ls rs le rc System4State.C Focus.star).to4 = some c4') :
+    Matches w h rc (AC.mk ls rs le rc System4State.C Focus.star).toL c4' := by
+  have hle' := LeftEnd.OK_step le h _ c4' hs hle
   match rs, hfirst with
   | Item.set y U :: rs', hfirst =>
     obtain ⟨y', rfl⟩ := firstTrue_cons y hfirst
@@ -920,21 +1080,21 @@ theorem case_starC (w h : Nat) (ls rs : List Item) (m t : Nat) (c4' : System4Con
     rw [step_starC] at hs
     obtain rfl := Option.some.inj hs
     refine ⟨1, le_refl 1,
-      AC.mk (Item.star :: ls) rs' m t System4State.C (Focus.setT y1 y'' (xorInsert 1 U)), ?_, ?_, ?_⟩
+      AC.mk (Item.star :: ls) rs' le rc System4State.C (Focus.setT y1 y'' (xorInsert 1 U)), rfl,
+      ?_, ?_, ?_⟩
     · simp only [AC.toL, renderR_set_true, renderL_star, ofBits_cons, List.tail_cons,
         List.append_assoc, List.cons_append]
       rw [lnSteps_one, turnA]
     · simp [AC.to4, Item.toElem]
     · dsimp only [AC.OK]
-      refine ⟨by omega, by omega, ht, ?_, ?_, ?_, (RightOK_set _ U rs').mp hR, rfl,
-        xorInsert_nodup 1 U hUnd, hlen, ?_⟩
+      refine ⟨by omega, by simpa [AC.to4, Item.toElem] using hle', ?_, ?_,
+        LeftOK_of_leftLast _ ls hL hlast,
+        (RightOK_set _ U rs').mp hR, rfl, xorInsert_nodup 1 U hUnd, hlen, ?_⟩
       · intro it hit
         rcases List.mem_cons.mp hit with rfl | hit
         · trivial
         · exact ItemOK_mono _ _ _ _ (hls it hit) (by omega)
       · intro it hit; exact ItemOK_mono _ _ _ _ (hrs it (List.mem_cons_of_mem _ hit)) (by omega)
-      · match ls, hlast, hL with
-        | Item.set z V :: ls'', hlast, hL => exact ⟨hlast, hL⟩
       · exact Decodes_xorInsert_twice _ _ hUnd _ (Decodes_mono _ _ _ _ hUdec (by omega))
 
 /-- Past the right end System 4 is stuck. -/
@@ -948,27 +1108,27 @@ theorem step_off (L : List System4Elem) (st : System4State) :
 /-- Every System 4 step from an abstract configuration is matched by a run
     of System 3 to the abstract configuration of the result. -/
 theorem ac_step (w h : Nat) (a : AC) (hOK : a.OK w (h + 1)) (c4' : System4Config)
-    (hs : System4.step a.to4 = some c4') : Matches w h a.toL c4' := by
-  obtain ⟨ls, rs, m, t, st, foc⟩ := a
-  obtain ⟨hN, hm, ht, hls, hrs, hL, hR, hfoc⟩ := hOK
+    (hs : System4.step a.to4 = some c4') : Matches w h a.rc a.toL c4' := by
+  obtain ⟨ls, rs, le, rc, st, foc⟩ := a
+  obtain ⟨hN, hle, hls, hrs, hL, hR, hfoc⟩ := hOK
   cases foc with
   | setA xl b xr S =>
     obtain ⟨rfl, hit⟩ := hfoc
-    exact case_setA w h ls rs m t xl b xr S c4' hN hm ht hls hrs hL hR hit hs
+    exact case_setA w h ls rs le rc xl b xr S c4' hN hls hrs hL hR hit hle hs
   | setB x0 x' S =>
     obtain ⟨hst, hit⟩ := hfoc
     cases st with
     | A => exact absurd rfl hst
-    | B => exact case_scanB w h ls rs m t x0 x' S c4' hN hm ht hls hrs hL hR hit hs
-    | C => exact case_scanC w h ls rs m t x0 x' S c4' hN hm ht hls hrs hL hR hit hs
+    | B => exact case_scanB w h ls rs le rc x0 x' S c4' hN hls hrs hL hR hit hle hs
+    | C => exact case_scanC w h ls rs le rc x0 x' S c4' hN hls hrs hL hR hit hle hs
   | setT x1 x' S =>
     obtain ⟨rfl, hnd, hlen, hdec⟩ := hfoc
-    exact case_scanT w h ls rs m t x1 x' S c4' hN hm ht hls hrs hL hR hnd hlen hdec hs
+    exact case_scanT w h ls rs le rc x1 x' S c4' hN hls hrs hL hR hnd hlen hdec hle hs
   | star =>
     cases st with
-    | A => exact case_starA w h ls rs m t c4' hN hm ht hls hrs hL hR hfoc.1 hfoc.2 hs
-    | B => exact case_starB w h ls rs m t c4' hN hm ht hls hrs hL hR hfoc.1 hfoc.2 hs
-    | C => exact case_starC w h ls rs m t c4' hN hm ht hls hrs hL hR hfoc.1 hfoc.2 hs
+    | A => exact case_starA w h ls rs le rc c4' hN hls hrs hL hR hfoc.1 hfoc.2 hle hs
+    | B => exact case_starB w h ls rs le rc c4' hN hls hrs hL hR hfoc.1 hfoc.2 hle hs
+    | C => exact case_starC w h ls rs le rc c4' hN hls hrs hL hR hfoc.1 hfoc.2 hle hs
   | off =>
     exfalso
     simp only [AC.to4] at hs
@@ -977,9 +1137,9 @@ theorem ac_step (w h : Nat) (a : AC) (hOK : a.OK w (h + 1)) (c4' : System4Config
 
 /-- Link D as a `ForwardSim`: System 3 tracks the fuelled System 4 through
     `Rep3`, the fuel being the budget of scans the blocks are good for. -/
-theorem sys4_sys3_forwardSim (w : Nat) :
-    ForwardSim (fueled system4Sys) (lsys sys3) (fun p c => Rep3 c p.1 w p.2) := by
-  rintro ⟨c4, n⟩ c3 ⟨a, hOK, rfl, rfl⟩ p hstep
+theorem sys4_sys3_forwardSim (w : Nat) (rc : Closing) :
+    ForwardSim (fueled system4Sys) (lsys sys3) (fun p c => Rep3 rc c p.1 w p.2) := by
+  rintro ⟨c4, n⟩ c3 ⟨a, rfl, hOK, rfl, rfl⟩ p hstep
   cases n with
   | zero => rw [fueled_step_zero] at hstep; exact absurd hstep (by simp)
   | succ h =>
@@ -989,8 +1149,8 @@ theorem sys4_sys3_forwardSim (w : Nat) :
     | some c4' =>
       rw [hs, Option.map_some] at hstep
       obtain rfl : p = (c4', h) := (Option.some.inj hstep).symm
-      obtain ⟨k, hk, a', hrun, rfl, hOK'⟩ := ac_step w h a hOK c4' hs
-      exact ⟨k, hk, a'.toL, hrun, a', hOK', rfl, rfl⟩
+      obtain ⟨k, hk, a', hrc, hrun, rfl, hOK'⟩ := ac_step w h a hOK c4' hs
+      exact ⟨k, hk, a'.toL, hrun, a', hrc, hOK', rfl, rfl⟩
 
 /-! ## The initial tape
 
@@ -1140,7 +1300,7 @@ theorem RightOK_map (w : Nat) (l : List System4Elem) (hadj : noAdjacentStars l =
     left end `0^h 2 2 1`, the head on the first cell of the block of `S0`
     in state A. -/
 def initAC (w h : Nat) (S0 : List Int) (rest : List System4Elem) : AC :=
-  ⟨[], rest.map (toItem (2 ^ w)), h, 1, System4State.A,
+  ⟨[], rest.map (toItem (2 ^ w)), LeftEnd.zeros h 1, Closing.one, System4State.A,
    Focus.setA [] ((encSet (2 ^ w) S0).headD false) (encSet (2 ^ w) S0).tail S0⟩
 
 theorem encSet_cons (w : Nat) (S : List Int) :
@@ -1166,7 +1326,7 @@ theorem initAC_OK (w h : Nat) (S0 : List Int) (rest : List System4Elem)
     have := (List.all_eq_true.mp hnd) _ hS
     simpa [System4Elem.setNodup] using this
   dsimp only [AC.OK, initAC]
-  refine ⟨hN, le_refl h, le_refl 1, by simp, ?_, trivial, ?_, rfl, ?_⟩
+  refine ⟨hN, ⟨le_refl h, le_refl 1⟩, by simp, ?_, trivial, ?_, rfl, ?_⟩
   · intro it hit
     obtain ⟨e, he, rfl⟩ := List.mem_map.mp hit
     cases e with
@@ -1188,17 +1348,17 @@ theorem rep3_init (w h : Nat) (S0 : List Int) (rest : List System4Elem)
     (hwf : System4Config.WellFormed ⟨System4Elem.set S0 :: rest, 0, System4State.A⟩)
     (hlast : (System4Elem.set S0 :: rest).getLast? ≠ some System4Elem.star)
     (hb : ∀ S, System4Elem.set S ∈ System4Elem.set S0 :: rest → ∀ e ∈ S, 0 ≤ e ∧ e.toNat < 2 ^ w) :
-    Rep3 (initAC w h S0 rest).toL ⟨System4Elem.set S0 :: rest, 0, System4State.A⟩ w h :=
-  ⟨initAC w h S0 rest, initAC_OK w h S0 rest hN hwf hlast hb, rfl, (initAC_to4 w h S0 rest).symm⟩
+    Rep3 Closing.one (initAC w h S0 rest).toL ⟨System4Elem.set S0 :: rest, 0, System4State.A⟩ w h :=
+  ⟨initAC w h S0 rest, rfl, initAC_OK w h S0 rest hN hwf hlast hb, rfl, (initAC_to4 w h S0 rest).symm⟩
 
 /-! ## T3: System 4 to System 0 -/
 
 /-- Links D and E composed: System 0 tracks the fuelled System 4 through
     `Rep3` and the relabelings `phi2`, `phi3`. -/
-theorem sys4_sys0_forwardSim (w : Nat) :
+theorem sys4_sys0_forwardSim (w : Nat) (rc : Closing) :
     ForwardSim (fueled system4Sys) (lsys sys0)
-      (fun p c0 => ∃ c3, Rep3 c3 p.1 w p.2 ∧ c0 = phi2 (phi3 c3)) :=
-  ForwardSim_congr (ForwardSim_comp (sys4_sys3_forwardSim w) sys3_sys0_forwardSim)
+      (fun p c0 => ∃ c3, Rep3 rc c3 p.1 w p.2 ∧ c0 = phi2 (phi3 c3)) :=
+  ForwardSim_congr (ForwardSim_comp (sys4_sys3_forwardSim w rc) sys3_sys0_forwardSim)
     (fun _ _ => Iff.rfl)
 
 /-- T3 in finite form: a System 4 run of `n <= h` steps from a well-formed
@@ -1216,8 +1376,8 @@ theorem conjecture3_finite (w h n : Nat) (S0 : List Int) (rest : List System4Ele
     ∃ times : Nat → Nat, times 0 = 0 ∧ (∀ i, i < n → times i < times (i + 1)) ∧
       ∀ i, i ≤ n → ∃ ci c3i, System4.nSteps ⟨System4Elem.set S0 :: rest, 0, System4State.A⟩ i = some ci ∧
         lnSteps sys0 (phi2 (phi3 (initAC w h S0 rest).toL)) (times i) = some (phi2 (phi3 c3i)) ∧
-        Rep3 c3i ci w (h - i) := by
-  obtain ⟨times, h0, hmono, htr⟩ := ForwardSim_nSteps (sys4_sys0_forwardSim w) n
+        Rep3 Closing.one c3i ci w (h - i) := by
+  obtain ⟨times, h0, hmono, htr⟩ := ForwardSim_nSteps (sys4_sys0_forwardSim w Closing.one) n
     (⟨System4Elem.set S0 :: rest, 0, System4State.A⟩, h) (phi2 (phi3 (initAC w h S0 rest).toL))
     ⟨(initAC w h S0 rest).toL, rep3_init w h S0 rest hN hwf hlast hb, rfl⟩
     (c', h - n) (by rw [fueled_nSteps _ _ _ _ hn, system4Sys_nSteps, hrun]; rfl)
