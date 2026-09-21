@@ -29,15 +29,15 @@ htmlSplit := .never
 
 # Orientation
 
-`Smith/Conjecture0.lean` composes the four chapters from
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) composes the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through
 {ref "system5-to-system4"}[System 5 to System 4],
 {ref "system4-to-system3"}[System 4 to System 3] and
-{ref "systems-3-2-1-0"}[Systems 3, 2, 1 and 0] into `Smith.conjecture0_finite`:
+{ref "systems-3-2-1-0"}[Systems 3, 2, 1 and 0] into {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`]:
 for a two-colour cyclic tag system, an initial word and a budget, there is a
 finite wolfram23 tape from which the run reproduces the working strings of the
 cyclic tag run at strictly increasing times, read by the decoder
-`Smith.decodeW23`, stays on the tape until then, and afterwards steps onto the
+{bpref "Smith.decodeW23"}[`Smith.decodeW23`], stays on the tape until then, and afterwards steps onto the
 cell right of the tape, a 0, in state A. This is Smith's Conjecture 0 (p. 4)
 "for an arbitrary number of steps", with two corrections recorded below.
 
@@ -113,12 +113,12 @@ Induction on `ys`: inserting `y` by `xorInsert` adds or removes `y` and leaves
 the membership of every other integer unchanged (`xorInsert_mem_other_iff`).
 :::
 
-`Smith.conjecture5_finite_exact` (the chapter on cyclic tag to System 5) gives an
+{bpref "Smith.conjecture5_finite_exact"}[`Smith.conjecture5_finite_exact`] (the chapter on cyclic tag to System 5) gives an
 empty rule list at the end of the budget, which the exit of the terminal phase of
-T2 needs. `Smith.repS4_terminal` (the chapter on System 5 to System 4, proved in
-`Smith/Conjecture0.lean`): with the rules exhausted, System 4 decrements
-(`Smith.repS4_dStep`) until 1 is in the bag, then exits in state C
-(`Smith.repS4_exit`), by induction on a bound of a bag element: if some bag
+T2 needs. {bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`] (the chapter on System 5 to System 4, proved in
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean)): with the rules exhausted, System 4 decrements
+({bpref "Smith.repS4_dStep"}[`Smith.repS4_dStep`]) until 1 is in the bag, then exits in state C
+({bpref "Smith.repS4_exit"}[`Smith.repS4_exit`]), by induction on a bound of a bag element: if some bag
 element is at most `M + 1`, at most `M` decrements happen before the exit.
 
 :::lemma_ "Smith.RepS4_decode_band" (parent := "t4_conjecture0") (lean := "Smith.RepS4_decode_band")
@@ -198,7 +198,7 @@ and the configuration in the shape claimed.
 :::
 
 After the relabelings the wolfram23 step from that configuration is
-`Smith.wolfram23_exit_step` (the chapter on the machine model): `B2 -> 0RA` onto
+{bpref "Smith.wolfram23_exit_step"}[`Smith.wolfram23_exit_step`] (the chapter on the machine model): `B2 -> 0RA` onto
 the implicit blank. This is Smith's exit condition, and it holds because
 System 3's rule `C10 -> A00>` reads the implicit 0 as its right neighbour.
 
@@ -383,7 +383,7 @@ chapter on {ref "open-items"}[open items] lists this as the main open item.
   of the first block, as in Smith's `s42s0-3.pl` output; the leftmost cell is a
   0, as the conjecture says, but the tape started on it in state A walks off its
   left end in three steps (the chapter on
-  {ref "system4-to-system3"}[System 4 to System 3]). `docs/PLAN.md` section 2 T4
+  {ref "system4-to-system3"}[System 4 to System 3]). [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 T4
   still says "started on its leftmost cell in state A" and must be corrected
   (the chapter on {ref "open-items"}[open items]).
 - The run must be assumed to last the budget without emptying the word: an
@@ -394,12 +394,12 @@ chapter on {ref "open-items"}[open items] lists this as the main open item.
 
 - "Never visits a cell outside the tape" is `biSize` constant, since a wolfram23
   step onto an implicit blank grows the explicit tape and the zipper run is
-  defined (`Smith.lnSteps_length`, `Smith.toBi_run`).
+  defined ({bpref "Smith.lnSteps_length"}[`Smith.lnSteps_length`], {bpref "Smith.toBi_run"}[`Smith.toBi_run`]).
 - The times `times` and `T` are existential, with no closed form and no event in
   the wolfram23 run that marks them. Nothing is stated about `decodeW23` at other
   times; on the D9 test tape it returns `some` at several unscheduled times as
   well.
-- The D9 vectors of `Vectors/SmithVectors.lean` exercise `decodeW23` on System 3
+- The D9 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) exercise `decodeW23` on System 3
   tapes built by `initAC`, with negative instances (a state-A head, an odd parity
   position, a tape without whole blocks). No vector runs `conjecture0_finite` end
   to end; with `w = h4 + 3 * f + 6` the block width of the smallest instance is
@@ -407,7 +407,7 @@ chapter on {ref "open-items"}[open items] lists this as the main open item.
 
 # Depends on
 
-The module is `Smith/Conjecture0.lean` (`Smith.Conjecture0`), which imports
+The module is [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) (`Smith.Conjecture0`), which imports
 `Smith.Conjecture3`, `Smith.ConjectureFive` and `Smith.Wolfram23Bridge`. The
 chapter depends on the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through

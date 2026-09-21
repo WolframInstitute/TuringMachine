@@ -38,11 +38,11 @@ consumes: a two-colour cyclic tag system that simulates a given Turing machine,
 with a decoder. It is a genuine construction, not an appeal to the literature: a
 2-tag system after Cocke and Minsky (1964; Minsky 1967, section 14.6) in a phase
 design of our own, carried onto a finite alphabet, then onto a cyclic tag system
-by Cook's encoding (`TagSystem/TagToCTS.lean`, which predates the rebuild and is
+by Cook's encoding ([`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean), which predates the rebuild and is
 used unchanged).
 
-The class of machines is the binary machines: `TagSystem.WF` restricts the
-transition table to bits and `TagSystem.ValidCfg` the tape to bits. A k-symbol
+The class of machines is the binary machines: {bpref "TagSystem.WF"}[`TagSystem.WF`] restricts the
+transition table to bits and {bpref "TagSystem.ValidCfg"}[`TagSystem.ValidCfg`] the tape to bits. A k-symbol
 machine must be encoded in binary before this theorem applies; that reduction is
 not formalized ({ref "open-items"}[the chapter on open items]).
 
@@ -50,10 +50,10 @@ not formalized ({ref "open-items"}[the chapter on open items]).
 
 :::group "t7_rounds"
 A 2-tag system over any alphabet and its runs described by rounds
-(`TagSystem/TagRounds.lean`, `TagSystem/Basic.lean`).
+([`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagRounds.lean), [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean)).
 :::
 
-`TagSystem/TagRounds.lean` treats a 2-tag system over any alphabet.
+[`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagRounds.lean) treats a 2-tag system over any alphabet.
 
 :::definition "TagSystem.stepP" (parent := "t7_rounds") (lean := "TagSystem.stepP")
 The 2-tag step with productions `P`, on a word over any alphabet: read the first
@@ -67,7 +67,7 @@ than two symbols has no step.
 :::
 
 :::definition "TagSystem.Tag.step" (parent := "t7_rounds") (lean := "TagSystem.Tag.step")
-The step of a tag system `ts : Tag k` of `TagSystem/Basic.lean` on a word over
+The step of a tag system `ts : Tag k` of [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean) on a word over
 `Fin k`: read the first symbol, delete the first two, append `ts.productions` of
 the symbol read.
 :::
@@ -131,10 +131,10 @@ then the rest read from its first or second symbol by the run's parity).
 
 :::group "t7_cocke_minsky"
 The 2-tag system that simulates a binary Turing machine, in three or five rounds
-per machine step (`TagSystem/CockeMinsky.lean`).
+per machine step ([`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/CockeMinsky.lean)).
 :::
 
-`TagSystem/CockeMinsky.lean`. The configuration `(q, left, head, right)` of the
+[`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/CockeMinsky.lean). The configuration `(q, left, head, right)` of the
 machine is the word
 
 ```
@@ -330,10 +330,10 @@ a Python simulation of random machines before it was proved.
 :::group "t7_cts"
 The tag system on the finite alphabet `Fin (1 + 84 * S)`, Cook's encoding into
 a cyclic tag system, and the two forward simulations
-(`TagSystem/TMToCTS.lean`, `TagSystem/TagToCTS.lean`).
+([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean), [`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean)).
 :::
 
-`TagSystem/TMToCTS.lean`.
+[`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean).
 
 :::definition "TagSystem.enc" (parent := "t7_cts") (lean := "TagSystem.enc")
 `enc S` sends the symbols ({uses "TagSystem.Sym"}[]) whose state is below `S`
@@ -467,7 +467,7 @@ as a cyclic tag configuration over `1 + 84 * S` symbols
 Both simulations are stated as forward simulations ({bpref "Smith.ForwardSim"}[],
 the calculus of {ref "cts-to-system5"}[the chapter on cyclic tag to System 5])
 between step systems ({bpref "Smith.StepSys"}[]): the machine is the step system
-`TagSystem.tmSys tm` (its `nSteps` is `BiTM.nSteps`, `TagSystem.tmSys_nSteps`),
+`TagSystem.tmSys tm` (its `nSteps` is {bpref "BiTM.nSteps"}[`BiTM.nSteps`], `TagSystem.tmSys_nSteps`),
 the cyclic tag system is `Smith.ctsSys` of it, and the tag system on the finite
 alphabet is `TagSystem.tagSysK tm S`.
 
@@ -504,7 +504,7 @@ As for {uses "TagSystem.tm_cts_forwardSim"}[] without the last transport:
 {uses "TagSystem.step_valid"}[].
 :::
 
-The tag-level simulation `TagSystem.tm_tag_forwardSim` is what
+The tag-level simulation {bpref "TagSystem.tm_tag_forwardSim"}[`TagSystem.tm_tag_forwardSim`] is what
 {ref "universality"}[the chapter on the composition] uses, because the number of
 cyclic tag cycles must be the number of tag steps.
 
@@ -512,7 +512,7 @@ cyclic tag cycles must be the number of tag steps.
 
 :::group "t7_decoder"
 The decoder of the cyclic tag word, its completeness and the soundness of its
-block stage; T7 in the finite form (`TagSystem/TMToCTS.lean`).
+block stage; T7 in the finite form ([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean)).
 :::
 
 `TagSystem.decodeCTS S d` reads the one-hot blocks of the cyclic tag word back
@@ -630,9 +630,9 @@ run, which is valid with state below `numStates`;
 
 - Binary machines only. `WF` quantifies over `s < 2` and never reads
   `numSymbols`; a machine with `numSymbols := 17` and junk on symbols 2 and up is
-  `WF` if its bit rows are. The docs of `docs/PLAN.md` section 2 that say "every
+  `WF` if its bit rows are. The docs of [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 that say "every
   well-formed TM" overstate this ({ref "open-items"}[the chapter on open items]).
-- The halt row. `BiTM.step` returns `none` in state 0 before consulting the
+- The halt row. {bpref "BiTM.step"}[`BiTM.step`] returns `none` in state 0 before consulting the
   table, but `WF` requires the row of state 0 to be in range, because the tag
   productions keep applying `tm.transition 0 _` after the machine has halted and
   `prod_OK` needs the states to stay bounded. A machine whose halt row is out of
@@ -641,14 +641,14 @@ run, which is valid with state below `numStates`;
 - The tag system is stated for machine steps only; a halted machine makes none,
   and nothing relates the tag system's own halting to the machine's.
 - `decodeCTS` is proved complete (it inverts the encoder:
-  `TagSystem.decodeCTS_word`), and its block stage is also sound since
-  2026-09-22: `TagSystem.symbolDecode` accepts exactly the one-hot blocks of
-  length `k` (`TagSystem.symbolDecode_sound`) and `TagSystem.tagWordDecode`
-  exactly their concatenations (`TagSystem.tagWordDecode_sound`), so a word with
+  {bpref "TagSystem.decodeCTS_word"}[`TagSystem.decodeCTS_word`]), and its block stage is also sound since
+  2026-09-22: {bpref "TagSystem.symbolDecode"}[`TagSystem.symbolDecode`] accepts exactly the one-hot blocks of
+  length `k` ({bpref "TagSystem.symbolDecode_sound"}[`TagSystem.symbolDecode_sound`]) and {bpref "TagSystem.tagWordDecode"}[`TagSystem.tagWordDecode`]
+  exactly their concatenations ({bpref "TagSystem.tagWordDecode_sound"}[`TagSystem.tagWordDecode_sound`]), so a word with
   a short last block or a stray bit is rejected. The later stages
   (`decodeWord`, `cfgOfNums`) are used for completeness only. Only completeness
   is used by the headline.
-- The header of `TagSystem/TagToCTS.lean` used to say the cyclic tag system has
+- The header of [`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean) used to say the cyclic tag system has
   `k` appendants; the definition and its lemma say `2k` (the header does too
   since 2026-09-22), and the factor 2 is load-bearing in
   {ref "universality"}[the chapter on the composition].
@@ -658,6 +658,6 @@ run, which is valid with state below `numStates`;
 This chapter depends on the modules `TagSystem.Basic`, `TagSystem.TagRounds`,
 `TagSystem.CockeMinsky`, `TagSystem.TagToCTS`, `TagSystem.TMToCTS`,
 `Smith.Simulation` (for `ForwardSim`) and `BiTM.Basic`. From the other chapters
-it uses the machine model (`TM.Machine`, `BiTM.Config`, `BiTM.step`,
-`BiTM.nSteps`) and the simulation calculus (`Smith.StepSys`, `Smith.ForwardSim`,
-`Smith.ForwardSim_nSteps`).
+it uses the machine model ({bpref "TM.Machine"}[`TM.Machine`], {bpref "BiTM.Config"}[`BiTM.Config`], {bpref "BiTM.step"}[`BiTM.step`],
+{bpref "BiTM.nSteps"}[`BiTM.nSteps`]) and the simulation calculus ({bpref "Smith.StepSys"}[`Smith.StepSys`], {bpref "Smith.ForwardSim"}[`Smith.ForwardSim`],
+{bpref "Smith.ForwardSim_nSteps"}[`Smith.ForwardSim_nSteps`]).

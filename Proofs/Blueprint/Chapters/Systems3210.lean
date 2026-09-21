@@ -33,9 +33,9 @@ htmlSplit := .never
 Smith's Conjectures 0 to 3 differ only in the machine (p. 3-5). System 1 is
 System 0 with the `B2` rule split by the right neighbour; System 2 adds a state C
 that is state B with the active cell swapped; System 3 is System 2 with every cell
-left of the head swapped. `Smith/Systems123.lean` proves each relabeling as a
+left of the head swapped. [`Smith/Systems123.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Systems123.lean) proves each relabeling as a
 forward simulation in the direction the chain needs, from the higher system to the
-lower. `Smith/LoopFree.lean` and `Smith/Wolfram23Bridge.lean` prove Smith's
+lower. [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean) and [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean) prove Smith's
 loop-freeness argument (p. 21-22), T5. Loop-freeness is proved but not used by the
 chain: the schedules of the chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] to
@@ -338,22 +338,22 @@ contradiction.
 From every valid configuration the wolfram23 run reaches a configuration with one
 more explicit cell, that is, the head leaves the initial finite tape; and no valid
 configuration is periodic, since `biSize` never decreases along a run. This is the
-formal counterpart of the refutations in `docs/REVIEW.md` section 4.1 (the old
+formal counterpart of the refutations in [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/REVIEW.md) section 4.1 (the old
 step-faithful predicates needed a periodic configuration) and settles, in Smith's
 direction, what the old code base treated as open.
 
 # Notes and caveats
 
 - T5 is standalone. `grep` shows `sys0_leaves`, `wolfram23_leaves` and
-  `wolfram23_not_periodic` are referenced only in `Smith/LoopFree.lean` and
-  `Smith/Wolfram23Bridge.lean`. `docs/PLAN.md` section 2 used to say T6 "follows
+  `wolfram23_not_periodic` are referenced only in [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean) and
+  [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean). [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 used to say T6 "follows
   from T4 and T5"; the {ref "infinite-form"}[infinite form] does not use T5,
   because it has explicit exit times. Smith needs T5 because his Conjecture 0
   does not come with a schedule.
 - The exit time is existential (bounded by the measure); no closed form is
   stated.
-- `Smith/Conjecture3.lean` used to import `LoopFree` only for `Smith.lnSteps_add`;
-  the lemma lives in `Smith/Lookahead.lean` since 2026-09-22 and the import is gone
+- [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) used to import `LoopFree` only for {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`];
+  the lemma lives in [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean) since 2026-09-22 and the import is gone
   (the chapter on {ref "system4-to-system3"}[System 4 to System 3]).
 
 # Depends on
@@ -367,5 +367,5 @@ chapter on {ref "cts-to-system5"}[cyclic tag to System 5] (`ForwardSim`,
 `ForwardSim_comp`) and on the machine model of the chapter on the
 {ref "machine-model"}[machine model] (`LConfig`, `lstep`, `lnSteps`, `sys0` to
 `sys3`, `toBi`, `ofBi`, `biSize`); the bridge theorems also use `lnSteps_length`
-of `Smith/Wolfram23Bridge.lean`, introduced in the chapter on
+of [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean), introduced in the chapter on
 {ref "conjecture0"}[Conjecture 0].

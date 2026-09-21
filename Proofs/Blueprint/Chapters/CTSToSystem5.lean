@@ -39,10 +39,10 @@ htmlSplit := .never
 System 5 (p. 16-17, `system5.pl` p. 30-32) is Smith's first abstraction: a bag of
 integers and a list of rules, each rule a list of integers. Every step decrements
 the bag and increments the rules; when a 0 appears in the bag it is removed and the
-first rule is XOR-merged into the bag (`BiTM.System5.step`, `BiTM.xorMerge`).
+first rule is XOR-merged into the bag ({bpref "BiTM.System5.step"}[`BiTM.System5.step`], {bpref "BiTM.xorMerge"}[`BiTM.xorMerge`]).
 Smith's Conjecture 5 says a System 5 program emulates a cyclic tag system for an
-arbitrary number of steps. The formal T1 is `Smith.conjecture5_finite` and its
-rule-counting variant `Smith.conjecture5_finite_exact`.
+arbitrary number of steps. The formal T1 is {bpref "Smith.conjecture5_finite"}[`Smith.conjecture5_finite`] and its
+rule-counting variant {bpref "Smith.conjecture5_finite_exact"}[`Smith.conjecture5_finite_exact`].
 
 This chapter also introduces the simulation calculus shared by every link.
 
@@ -58,7 +58,7 @@ per-step lemmas and the finite form of Conjecture 5.
 
 # The simulation calculus
 
-`Smith/Simulation.lean`. A step system is a partial step function, and `nSteps`
+[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean). A step system is a partial step function, and `nSteps`
 iterates it.
 
 :::definition "Smith.StepSys" (parent := "simulation_calculus") (lean := "Smith.StepSys")
@@ -132,8 +132,8 @@ The clause `1 <= k` forbids a target that stands still. It does not by itself ma
 a simulation meaningful: a relation that ignores the source is a `ForwardSim` for
 any target that never gets stuck. The content of each link is in its relation,
 which is a decoder graph or an encoding invariant, and the headline conclusions
-are stated as decoder equalities. `docs/PLAN.md` section 6 says this, and the
-docstring of `ForwardSim` in `Smith/Simulation.lean` now says it too (item 7 of
+are stated as decoder equalities. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 6 says this, and the
+docstring of `ForwardSim` in [`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean) now says it too (item 7 of
 the {ref "open-items"}[chapter on open items]).
 
 # Doubling
@@ -271,7 +271,7 @@ integer, with the empty tail.
 
 # The step lemmas
 
-`Smith/Conjecture5.lean` proves the per-step lemma in the two cases of the head
+[`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture5.lean) proves the per-step lemma in the two cases of the head
 bit: one step of a doubled cyclic tag system is emulated by `x + gap b` steps of
 System 5, where `x` is the smallest bag integer and `b` the leading bit of the
 working string (p. 19-20). In both cases the first `x - 1` steps are pure
@@ -504,23 +504,23 @@ string, whatever the cyclic tag system, the phase and the budget
 - `System5.step` is `none` when the bag or the rule list is empty. The review ran
   Smith's `system5.pl` and found the Lean and Perl runs agree step for step on
   the p. 31 example (36 iterations); the difference from Smith's prose about the
-  terminal step is routed around on the System 4 side (`Smith.repS4_terminal`,
+  terminal step is routed around on the System 4 side ({bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`],
   the {ref "system5-to-system4"}[chapter on System 5 to System 4]).
 - The p. 29 program (`cy2s5.pl 3 01 1 10`) is run through both step cases by
-  `decide` in `Smith/Conjecture5.lean` and `Vectors/SmithVectors.lean` (D1 to D3).
+  `decide` in [`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture5.lean) and [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) (D1 to D3).
 
 # Depends on
 
 The modules of this chapter are `Smith.Simulation`, `Smith.Doubling`,
-`Smith.Represents`, `Smith.System5Runs`, `Smith.Conjecture5`,
+{bpref "Smith.Represents"}[`Smith.Represents`], `Smith.System5Runs`, `Smith.Conjecture5`,
 `Smith.ConjectureFive`, `BiTM.System5`, `BiTM.CTSToSystem5`, `BiTM.XorMerge` and
 `TagSystem.Basic`. The cyclic tag systems themselves (`TagSystem.CTS`,
 `TagSystem.CTSConfig`, `TagSystem.CTS.step`, `TagSystem.CTS.nSteps`) are those of
-`TagSystem/Basic.lean`, the target of the {ref "tm-to-cts"}[chapter on the machine reduction].
+[`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean), the target of the {ref "tm-to-cts"}[chapter on the machine reduction].
 Nothing in this chapter depends on a node of another chapter. Downstream,
-`Smith.conjecture4_cts` of the chapter on System 5 to System 4 consumes
-`Smith.conjecture5_finite`, `Smith.system4_emulation` and
-`Smith.conjecture0_finite` of the chapter on Conjecture 0 consume
-`Smith.conjecture5_finite_exact`, and the decoders of the chapters on Conjecture 0
-and on the infinite form (`Smith.decodeW23`, `Smith.decodeTM`) end in
-`Smith.decodeBag`.
+{bpref "Smith.conjecture4_cts"}[`Smith.conjecture4_cts`] of the chapter on System 5 to System 4 consumes
+{bpref "Smith.conjecture5_finite"}[`Smith.conjecture5_finite`], {bpref "Smith.system4_emulation"}[`Smith.system4_emulation`] and
+{bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`] of the chapter on Conjecture 0 consume
+{bpref "Smith.conjecture5_finite_exact"}[`Smith.conjecture5_finite_exact`], and the decoders of the chapters on Conjecture 0
+and on the infinite form ({bpref "Smith.decodeW23"}[`Smith.decodeW23`], {bpref "Smith.decodeTM"}[`Smith.decodeTM`]) end in
+{bpref "Smith.decodeBag"}[`Smith.decodeBag`].

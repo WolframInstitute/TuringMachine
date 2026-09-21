@@ -30,16 +30,16 @@ htmlSplit := .never
 
 # Orientation
 
-This is the deepest link of Smith's proof (TM23Proof.pdf p. 6-15, Lemma 0, Lemma 1
-and "why the initial condition works"). System 3 (`Smith.sys3`, a lookahead machine
+This is the deepest link of Smith's proof ([TM23Proof.pdf](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf) p. 6-15, Lemma 0, Lemma 1
+and "why the initial condition works"). System 3 ({bpref "Smith.sys3"}[`Smith.sys3`], a lookahead machine
 of {ref "machine-model"}[the chapter on the machine model]) emulates System 4 with
 each set represented by a block of `2^w` cells of 1s and 2s and each star by a 0
-that stands in for a neighbouring cell. Three modules: `Smith/ParityBlocks.lean`
-(the parity theory of a block), `Smith/System3Runs.lean` (the runs of System 3 over
-a block), `Smith/Conjecture3.lean` (the relation, the per-rule lemmas, the initial
-tape, T3). The result is `Smith.sys4_sys3_forwardSim`, and with
-{ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0] `Smith.sys4_sys0_forwardSim`
-and `Smith.conjecture3_finite`.
+that stands in for a neighbouring cell. Three modules: [`Smith/ParityBlocks.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ParityBlocks.lean)
+(the parity theory of a block), [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System3Runs.lean) (the runs of System 3 over
+a block), [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) (the relation, the per-rule lemmas, the initial
+tape, T3). The result is {bpref "Smith.sys4_sys3_forwardSim"}[`Smith.sys4_sys3_forwardSim`], and with
+{ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0] {bpref "Smith.sys4_sys0_forwardSim"}[`Smith.sys4_sys0_forwardSim`]
+and {bpref "Smith.conjecture3_finite"}[`Smith.conjecture3_finite`].
 
 :::group "parity-blocks"
 The parity theory of a block of 1s and 2s: the scan transducer, the rows of the
@@ -148,7 +148,7 @@ scans. This is the whole of "Lemma 1" and of the choice of `w`.
 
 # The runs of System 3
 
-The run lemmas of `Smith/System3Runs.lean` are stated as equations on
+The run lemmas of [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System3Runs.lean) are stated as equations on
 `Smith.lnSteps sys3`, the `n`-step run of System 3 of
 {ref "machine-model"}[the chapter on the machine model].
 
@@ -644,10 +644,10 @@ is `h - i`.
 - `Rep3` is stated on the System 3 tape and leaves the swap of the cells left of the
   head to `phi3` ({ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0]), so
   Smith's `s42s0-3.pl 3` output is `phi3` of `initAC`'s tape.
-- T3 does not use loop-freeness: `Smith/Conjecture3.lean` used to import
-  `Smith/LoopFree.lean` only for the generic run lemma `Smith.lnSteps_add`, which
-  lives in `Smith/Lookahead.lean` since 2026-09-22.
-- The D8 vectors of `Vectors/SmithVectors.lean` run a six-step System 4 program
+- T3 does not use loop-freeness: [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) used to import
+  [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean) only for the generic run lemma {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`], which
+  lives in [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean) since 2026-09-22.
+- The D8 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) run a six-step System 4 program
   through System 3 by `decide`.
 
 # Depends on
@@ -659,11 +659,11 @@ for `System4.step`, `decr` and `xorInsert`;
 
 In the graph, the nodes of this chapter use these nodes of other chapters:
 
-- `Smith.sys3`, `Smith.sys0`, `Smith.lstep`, `Smith.lnSteps` and `Smith.LConfig`
+- {bpref "Smith.sys3"}[`Smith.sys3`], {bpref "Smith.sys0"}[`Smith.sys0`], {bpref "Smith.lstep"}[`Smith.lstep`], {bpref "Smith.lnSteps"}[`Smith.lnSteps`] and {bpref "Smith.LConfig"}[`Smith.LConfig`]
   from {ref "machine-model"}[the chapter on the machine model];
-- `Smith.ForwardSim`, `Smith.ForwardSim_comp`, `Smith.ForwardSim_nSteps` and
-  `Smith.fueled` from {ref "cts-to-system5"}[the chapter on cyclic tag to System 5];
-- `BiTM.System4.step` and `BiTM.System4Config.WellFormed` from
+- {bpref "Smith.ForwardSim"}[`Smith.ForwardSim`], {bpref "Smith.ForwardSim_comp"}[`Smith.ForwardSim_comp`], {bpref "Smith.ForwardSim_nSteps"}[`Smith.ForwardSim_nSteps`] and
+  {bpref "Smith.fueled"}[`Smith.fueled`] from {ref "cts-to-system5"}[the chapter on cyclic tag to System 5];
+- {bpref "BiTM.System4.step"}[`BiTM.System4.step`] and {bpref "BiTM.System4Config.WellFormed"}[`BiTM.System4Config.WellFormed`] from
   {ref "system5-to-system4"}[the chapter on System 5 to System 4];
-- `Smith.phi2`, `Smith.phi3` and `Smith.sys3_sys0_forwardSim` from
+- {bpref "Smith.phi2"}[`Smith.phi2`], {bpref "Smith.phi3"}[`Smith.phi3`] and {bpref "Smith.sys3_sys0_forwardSim"}[`Smith.sys3_sys0_forwardSim`] from
   {ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0].

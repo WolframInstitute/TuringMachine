@@ -32,7 +32,12 @@ REVIEW.md.
 
 Chapters import the proof modules and link each statement to its declaration with
 `(lean := "Full.Name")`, so the site renders the real signatures and their Lean
-status; blueprint labels are the full Lean names. Chapter cross references use
+status; blueprint labels are the full Lean names. Mentions of declarations in prose
+are `{bpref}` links to their nodes; mentions of source files are links to the file on
+GitHub (`https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/...`;
+change `lean-proofs` to `main` in the chapters when the branch is merged), and mentions
+of Smith's paper link to its public copy at
+<https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf>. Chapter cross references use
 `{ref "tag"}[text]` with the tags `overview`, `machine-model`, `tm-to-cts`,
 `cts-to-system5`, `system5-to-system4`, `system4-to-system3`, `systems-3-2-1-0`,
 `conjecture0`, `universality`, `infinite-form`, `open-items`. The Markdown chapters that

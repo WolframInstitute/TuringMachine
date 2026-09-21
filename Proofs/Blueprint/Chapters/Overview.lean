@@ -27,10 +27,10 @@ htmlSplit := .never
 
 # Orientation
 
-The headline theorem is `Smith.wolfram23_universal` in `Smith/Universality.lean`.
+The headline theorem is {bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] in [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean).
 In one sentence: for every well-formed binary Turing machine, every valid
 configuration and every finite run of `n` steps, there is a finite tape from which
-Wolfram's 2-state 3-colour machine (`BiTM.wolfram23`) reproduces the `n + 1`
+Wolfram's 2-state 3-colour machine ({bpref "BiTM.wolfram23"}[`BiTM.wolfram23`]) reproduces the `n + 1`
 configurations of that run, read off the tape by a fixed decoder at strictly
 increasing times, with the run confined to the tape until it leaves it to the right
 in state A.
@@ -38,8 +38,8 @@ in state A.
 This is Smith's Conjecture 0 in its finite form (p. 4, "for an arbitrary number of
 steps"), composed with a Cocke-Minsky reduction from Turing machines to cyclic tag
 systems. The tape it exhibits depends on the run length. The infinite form (one
-initial condition that emulates forever, p. 21-22) is `Smith.wolfram23_infinite` in
-`Smith/Infinite.lean`: one right-infinite tape per machine and input, from which
+initial condition that emulates forever, p. 21-22) is {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`] in
+[`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean): one right-infinite tape per machine and input, from which
 wolfram23 runs for ever and reproduces every prefix of the run of the machine; the
 chapter on the infinite form describes its construction. The chapter on open items
 lists what remains open: the tapes of both theorems are existential, with no
@@ -67,16 +67,16 @@ a 0, in state A.
 
 Read clause by clause:
 
-- `tm : Machine` is a Turing machine in the shared model of `TM/Defs.lean`
+- `tm : Machine` is a Turing machine in the shared model of [`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/Defs.lean)
   ({bpref "TM.Machine"}[]): states and symbols are natural numbers, state 0 halts.
-  `TagSystem.WF` says that from a state below `numStates`, reading a bit, the machine
-  writes a bit and moves to a state below `numStates`. `TagSystem.ValidCfg` says the
+  {bpref "TagSystem.WF"}[`TagSystem.WF`] says that from a state below `numStates`, reading a bit, the machine
+  writes a bit and moves to a state below `numStates`. {bpref "TagSystem.ValidCfg"}[`TagSystem.ValidCfg`] says the
   tape of `c` holds bits. So the class of machines is the binary machines, not all
   machines (the chapters on the machine reduction and on open items).
 - `hrun` gives the run of `n` steps that is to be reproduced. The tape `start` is
   chosen after `n` and `hrun`: it is one tape per machine, configuration and budget.
-- `start` is a `BiTM.Config` ({bpref "BiTM.Config"}[]): a finite zipper with implicit
-  blanks on both sides, valid (`BiTM.IsValidWolfram23Cfg`: states A or B, symbols 0,
+- `start` is a {bpref "BiTM.Config"}[`BiTM.Config`] ({bpref "BiTM.Config"}[]): a finite zipper with implicit
+  blanks on both sides, valid ({bpref "BiTM.IsValidWolfram23Cfg"}[`BiTM.IsValidWolfram23Cfg`]: states A or B, symbols 0,
   1, 2) and in state A (`state = 1`).
 - `times` is a strictly increasing schedule on `[0, n]`, all below the exit time `T`.
   At time `times i` the wolfram23 configuration decodes, by
@@ -84,7 +84,7 @@ Read clause by clause:
   configuration of the run without trailing blanks. The decoder is a fixed function
   of three parameters (the number of states, the block width `2^w`, the band `b`); it
   does not see `tm`, `c` or the run.
-- Confinement: up to time `T` the number of explicit cells, `Smith.biSize`, never
+- Confinement: up to time `T` the number of explicit cells, {bpref "Smith.biSize"}[`Smith.biSize`], never
   changes. A wolfram23 step onto an implicit blank grows the explicit tape by one
   cell, so this says the head never leaves the initial tape before `T`.
 - Exit: at time `T + 1` the head is on the cell right of the tape, a 0, in state A,
@@ -166,14 +166,14 @@ $ lake env lean /tmp/ax.lean
 The same three axioms for {bpref "Smith.conjecture0_finite"}[], {bpref "TagSystem.t7_finite"}[],
 {bpref "Smith.sys4_sys3_forwardSim"}[], {bpref "Smith.conjecture4_finite"}[],
 {bpref "Smith.conjecture5_finite_exact"}[] and {bpref "Smith.sys3_sys0_forwardSim"}[]. No `sorry`
-anywhere in `Smith/`, `TagSystem/`, `BiTM/`, `TM/`; `native_decide` only in `Vectors/`,
+anywhere in [`Smith/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/), [`TagSystem/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/), [`BiTM/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/), [`TM/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/); `native_decide` only in [`Vectors/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/),
 which nothing imports.
 
 # How to read this blueprint
 
 The chapters from the machine model to the composition follow the chain from the
 Turing machine to wolfram23, which is the order of the composition, not the order in
-which the links were proved (that order is in `docs/PLAN.md` section 5). Each chapter
+which the links were proved (that order is in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 5). Each chapter
 has: an orientation paragraph; the mathematics in prose with the formal statements
 linked to their declarations; notes and caveats. A reader checking a single link
 needs only that chapter, its module, and the chapter on the machine model. The

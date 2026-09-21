@@ -37,7 +37,7 @@ solution of the problem posed in the introduction, and it is the form that answe
 the objection of {ref "universality"}[the chapter on the composition] that a
 budget-indexed family of tapes is not one encoding.
 
-This chapter states what is proved (`Smith/Infinite.lean`, `Smith/Guards.lean`,
+This chapter states what is proved ([`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean), [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean),
 2026-09-22), describes the construction, and says what remains existential. The
 narrative was written before the proof and guided it; the sections below were
 reconciled with the source when the theorem landed.
@@ -53,9 +53,9 @@ overview]. Read clause by clause:
 - `t : Nat -> Nat` is the tape right of the head, a stream of cells, all 0, 1 or 2.
   `istart t` is the configuration `(state B, left [], head 2, right t)`: the head on a
   2 in state B at the left end. `IConfig` is a wolfram23 configuration whose right
-  tape is a stream; `istep` and `inSteps` are `BiTM.step` and `BiTM.nSteps` with the
+  tape is a stream; `istep` and `inSteps` are {bpref "BiTM.step"}[`BiTM.step`] and {bpref "BiTM.nSteps"}[`BiTM.nSteps`] with the
   stream in place of the list (the left tape is a list with an implicit blank beyond,
-  as in `BiTM.Config`).
+  as in {bpref "BiTM.Config"}[`BiTM.Config`]).
 - At every time the run is defined (`inSteps_valid`: wolfram23 never halts on a
   configuration whose cells are below 3, `IValid`) and does not move left from an
   empty left tape: the head never leaves the tape to the left, so the implicit blank
@@ -178,7 +178,7 @@ only has to tolerate arbitrary cells beyond the guards.
 ## The block on the System 4 side
 
 :::group "guards"
-The guarded System 4 tapes of `Smith/Guards.lean`: the block, its entry through the
+The guarded System 4 tapes of [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean): the block, its entry through the
 guards, the padded tracking of the program's run, one guard consumed per turn.
 :::
 
@@ -440,7 +440,7 @@ takes at least one System 3 step).
 
 # Tests
 
-`Vectors/InfiniteVectors.lean` (E1-E8, all by kernel `decide`). E1-E5: D9's program
+[`Vectors/InfiniteVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/InfiniteVectors.lean) (E1-E8, all by kernel `decide`). E1-E5: D9's program
 `{0, 2} * {}` in a block with `n = 7`, `r = 5`, width `2^5`, band 4. E1: the System 4
 entry in 10 steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
 stuck alone at 14, `SafeC`. E2: the System 3 run from `entry3`, the decode at 160
@@ -463,7 +463,7 @@ leftmost cell. E7: two blocks of different widths (`2^5` then `2^6`): `segCells`
 at 1365 and the entry into block 2. E8: the machine-independent side conditions of
 `BlockSpec` on the E1 block, the System 4 decode at `dt 0`, the halting reading of the
 block index (`Nat.findGreatest` on the one-step machine `tmH` of
-`Vectors/TMToCTSVectors.lean`) and the theorem instantiated on `tmH`.
+[`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean)) and the theorem instantiated on `tmH`.
 
 # What remains existential
 

@@ -28,10 +28,10 @@ htmlSplit := .never
 
 # Orientation
 
-`Smith/Universality.lean` composes T7
+[`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean) composes T7
 ({ref "tm-to-cts"}[the chapter on the machine reduction]) with T4
 ({ref "conjecture0"}[the chapter on Conjecture 0]) into
-`Smith.wolfram23_universal`, stated in full in {ref "overview"}[the overview].
+{bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`], stated in full in {ref "overview"}[the overview].
 This chapter records how the composition is made, what the decoder is, and
 which of the referee's objections the statement answers and which it does not.
 
@@ -143,7 +143,7 @@ Left open by the statement (the independent review of 2026-09-21;
   `n + 1` configurations have been laid out in advance; what distinguishes
   wolfram23 is the proof term (Smith's encoders), not the statement. The infinite
   form ({ref "infinite-form"}[the chapter on the infinite form], proved:
-  `Smith.wolfram23_infinite`) removes the budget: one right-infinite tape per
+  {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`]) removes the budget: one right-infinite tape per
   `(M, x)` with the whole run decodable. It does not remove the precomputed-tape
   objection, which applies to it in the same way (an infinite tape can hold the
   whole run in advance); only a closed-form initial condition with a size bound
@@ -152,9 +152,9 @@ Left open by the statement (the independent review of 2026-09-21;
 - Decoding up to `canon`, at existential times, with nothing said about other
   times.
 - The name `wolfram23_universal` claims more than the statement, as did the
-  phrase "universality in the literal sense" of the M8 notes in `docs/PLAN.md`
+  phrase "universality in the literal sense" of the M8 notes in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md)
   (since removed; the chapter on open items, item 17). The docstring of the
-  theorem in the module (lines 52-60 of `Smith/Universality.lean`) states the
+  theorem in the module (lines 52-60 of [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean)) states the
   `n`-step form correctly.
 
 # Notes and caveats
@@ -165,23 +165,23 @@ Left open by the statement (the independent review of 2026-09-21;
   encoding of a configuration word, at least `2 * 4 * (1 + 84 S)` bits, hence a
   block of width at least `2^13` for `S = 2`, whose rendering builds its parity
   rows by iteration. `undbl` is covered by `undbl_dbl` and by the vectors of
-  `Vectors/TMToCTSVectors.lean` (it inverts `dbl`, rejects an odd word and a word
+  [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean) (it inverts `dbl`, rejects an odd word and a word
   that is not doubled); `decodeW23` by the D9 vectors of
-  `Vectors/SmithVectors.lean`; `decodeCTS`, and the last two stages of `decodeTM`
-  on the doubled encoding of a configuration, by `Vectors/TMToCTSVectors.lean`. On
+  [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean); `decodeCTS`, and the last two stages of `decodeTM`
+  on the doubled encoding of a configuration, by [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean). On
   the D9 positive tape `decodeTM` returns `none` because the word there has odd
   length (one symbol); on the D10 tape it passes `undbl` with the word `0`, which
-  `decodeCTS 2` rejects (`Vectors/SmithVectors.lean` D10). A hand-picked positive
+  `decodeCTS 2` rejects ([`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) D10). A hand-picked positive
   instance for `decodeTM` is still wanted; the chapter on open items (item 9)
   records it as out of reach of `decide` on a rendered tape.
-- `docs/PLAN.md`'s M8 row named the type `BiTM.Machine`; the type is
-  `TM.Machine` (the row has since been corrected; the chapter on open items,
+- [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md)'s M8 row named the type `BiTM.Machine`; the type is
+  {bpref "TM.Machine"}[`TM.Machine`] (the row has since been corrected; the chapter on open items,
   item 18).
 
 # Depends on
 
 This chapter depends on the module `Smith.Universality`, and through it on
 {ref "tm-to-cts"}[the chapter on the machine reduction] (T7:
-`TagSystem.tm_tag_forwardSim`, `TagSystem.cts_of_tag`,
-`TagSystem.decodeCTS_word`) and {ref "conjecture0"}[the chapter on Conjecture 0]
-(T4: `Smith.conjecture0_finite`, `Smith.decodeW23`).
+{bpref "TagSystem.tm_tag_forwardSim"}[`TagSystem.tm_tag_forwardSim`], {bpref "TagSystem.cts_of_tag"}[`TagSystem.cts_of_tag`],
+{bpref "TagSystem.decodeCTS_word"}[`TagSystem.decodeCTS_word`]) and {ref "conjecture0"}[the chapter on Conjecture 0]
+(T4: {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`], {bpref "Smith.decodeW23"}[`Smith.decodeW23`]).

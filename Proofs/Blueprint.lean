@@ -34,17 +34,17 @@ open Informal
 A machine-checked development of Alex Smith's 2007 proof that Wolfram's 2-state
 3-colour Turing machine emulates every two-colour cyclic tag system, extended by
 a Cocke-Minsky reduction from binary Turing machines to cyclic tag systems. The
-two headline theorems are `Smith.wolfram23_universal` (the finite form: for
+two headline theorems are {bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] (the finite form: for
 every run of a machine there is a finite tape that reproduces it) and
-`Smith.wolfram23_infinite` (the infinite form: one right-infinite tape per
+{bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`] (the infinite form: one right-infinite tape per
 machine and input on which the emulation runs for ever).
 
 Each chapter states the mathematics of one link of the chain in words, links
 the statements that carry it to their Lean declarations, and says what is
 proved, what is assumed, and what is left out. The reader who wants the
 theorems reads the overview; the reader who wants to audit one link reads that
-chapter and opens the module it names. Page numbers refer to Smith's paper,
-`docs/TM23Proof.pdf`.
+chapter and opens the module it names. Page numbers refer to [Smith's paper](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf)
+(TM23Proof.pdf, his submission for the Wolfram 2,3 Turing machine prize).
 
 {include 0 Blueprint.Chapters.Overview}
 {include 0 Blueprint.Chapters.MachineModel}
