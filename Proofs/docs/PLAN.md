@@ -5,7 +5,9 @@ Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 res
 notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
 (see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 done
 2026-09-21 (see "M5 notes" in section 5); M6 done 2026-09-21 (see "M6 notes" in section 5);
-M4b done 2026-09-21 (see "M4b notes" in section 5); M8 is next.
+M4b done 2026-09-21 (see "M4b notes" in section 5); M8 done 2026-09-21 (see "M8 notes" in
+section 5): the headline theorem `wolfram23_universal` is proved. M7 (T6) is optional and
+not started.
 
 ## 1. Where we are
 
@@ -1070,6 +1072,57 @@ simulation is stated for machine steps, and a halted machine makes none.
 
 Left undone in M4b: the reduction to two symbols; a decidable `WF` for
 `numSymbols`; the tag system's own halting is not related to the machine's.
+
+### M8 notes (done 2026-09-21)
+
+One module, `Smith/Universality.lean` (about 120 lines). Zero `sorry`, no
+`native_decide`; `#print axioms wolfram23_universal` shows only `propext,
+Classical.choice, Quot.sound`. `lake build` is 852 jobs.
+
+The statement, `wolfram23_universal`: for a well-formed binary Turing machine
+`tm` (`TagSystem.WF`: from a state below `numStates` reading a bit it writes a
+bit and moves to a state below `numStates`), a configuration `c` whose tape
+holds bits (`ValidCfg`) with state below `numStates`, and a run `BiTM.nSteps
+tm c n = some c'`, there are a wolfram23 configuration `start`, a block width
+`2^w`, a band `b`, strictly increasing times `times i` and an exit time `T`
+such that `start` is valid (`IsValidWolfram23Cfg`) and in state A; at time
+`times i` the wolfram23 tape decodes by `decodeTM tm.numStates (2^w) b` to
+the `i`-th configuration of the run of `tm`, without trailing blanks
+(`canon`); up to time `T` the run of wolfram23 keeps the size of its explicit
+tape (it visits no cell outside the initial tape); and at time `T + 1` its
+head is on the cell right of the tape, a 0, in state A (Smith's exit
+condition). The statement mentions `BiTM.Machine`, `BiTM.Config`,
+`BiTM.nSteps`, `wolfram23`, the decoder and the two well-formedness
+predicates, as the milestone table asks.
+
+The proof composes T7 and T4 by their schedules. `tm_tag_forwardSim` gives
+the tag steps `tt i` of the machine's run; the cyclic tag system of T7 makes
+exactly one cycle of its `2 (1 + 84 S)` appendants per tag step
+(`cts_of_tag`, `tagToCTS_appendants_length`), so `conjecture0_finite` is
+applied with the budget of `tt n` cycles, its run being the cyclic tag run
+of `2 (1 + 84 S) tt n` steps, whose last word is the encoding of the last
+configuration word and is nonempty (`length_word`). At cyclic tag time
+`2 (1 + 84 S) tt i` the cyclic tag configuration is `ctsOfCfg S c_i`, and the
+decoders compose: `decodeW23` returns `dbl` of its data, `undbl` (the inverse
+of `dbl` on doubled words, `none` elsewhere) returns the data, `decodeCTS`
+returns `canon c_i` (`decodeCTS_word`). The confinement and exit clauses are
+those of `conjecture0_finite` unchanged.
+
+What the theorem does and does not say. It is universality in the literal
+sense of section 2: an arbitrary binary machine is simulated step for step,
+with a computable decoder, from a finite initial tape, and the run is
+confined to that tape until it leaves it in state A. The initial tape is
+existential in the statement (it is the composite of the encoders `initAC`,
+`system5ToSystem4`, `ctsToSystem5`, `tagToCTS`, `tagK`, applied to parameters
+`f`, `w`, `h4` chosen in the proof of `conjecture0_finite`); a closed-form
+`IC` would be a corollary of unfolding those choices. The times are
+existential. The machine has two symbols; the reduction of `k`-symbol
+machines is not formalized (M4b notes). The decoder needs the parameters
+`numStates`, `2^w`, `b`, which the theorem provides; it returns `none` on
+tapes that are not encodings, as its components do, and the regression
+vectors of D8, D9 and `Tests/TMToCTSVectors.lean` exercise it. Smith's
+infinite form (T6, the concatenation of initial conditions that emulates
+forever) is not attempted; it is optional (M7).
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

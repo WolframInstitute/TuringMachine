@@ -59,6 +59,16 @@ proved by a genuine Cocke-Minsky construction (`TagSystem/TagRounds.lean`,
 replaces the halting-oracle "faithful Cocke-Minsky" theorem section 4.1
 rejects. PLAN.md, "M4b notes", is the current record.
 
+Status note (after milestone M8, 2026-09-21): the headline theorem of PLAN.md
+section 2, T8, is proved: `Smith.wolfram23_universal` in
+`Smith/Universality.lean`, with axioms `propext, Classical.choice, Quot.sound`
+and no `sorry` or `native_decide` in its dependency cone. This supersedes the
+bottom line of section 1 (the tautological `not_halts_wolfram23_valid`, the
+four uncloseable sorries, the archived halting-oracle encoding). Section 1 to
+8 below are kept as the record of the state on 2026-09-14 and of the reasons
+for the plan; PLAN.md, "M0 notes" to "M8 notes", is the record of what was
+built.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`
