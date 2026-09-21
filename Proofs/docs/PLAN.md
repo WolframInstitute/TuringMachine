@@ -3,8 +3,8 @@
 Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 resolved on
 2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
 notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
-(see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 and
-M4b are next.
+(see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 done
+2026-09-21 (see "M5 notes" in section 5); M6 and M4b are next.
 
 ## 1. Where we are
 
@@ -790,6 +790,117 @@ measure, but no closed form is stated); `exitRight` is defined but nothing yet
 relates the exit state of System 3 to that of System 0 through the
 relabelings, which link F's "exit in state A" will need; the relabelings are
 proved only in the direction the chain uses.
+
+### M5 notes (done 2026-09-21)
+
+Three modules, all lakefile roots, about 1900 lines together:
+`Smith/ParityBlocks.lean` (the parity theory of a block), `Smith/System3Runs.lean`
+(the runs of System 3 over a block), `Smith/Conjecture3.lean` (the relation, the
+per-rule lemmas, the initial tape, T3). Zero `sorry`, no `native_decide`;
+`#print axioms` of `sys4_sys3_forwardSim`, `sys4_sys0_forwardSim`,
+`conjecture3_finite` and `rep3_init` shows only `propext, Classical.choice,
+Quot.sound`. `lake build` is 679 jobs. The D8 vectors of `Tests/SmithVectors.lean`
+run a six-step System 4 program through System 3 by `decide`.
+
+Parity blocks (`Smith/ParityBlocks.lean`). A block of 1s and 2s is `Bits` (`2`
+is `true`). A System 3 scan in state B or C is the prefix-XOR transducer
+`scanFrom s`; `T = scanFrom false` is Smith's operator, and the C-scan is the
+B-scan of the block with its first bit toggled (`scanC_eq_T_toggle`, Lemma
+0.5-0.8 in one line). `parAt x k` is the parity of the block after `k` scans,
+and `parAt_xor` says it is linear. Smith's strings for the one-element sets
+(p. 8) are the rows `row n i` of the rule-60 automaton, `row n (i + 1) = stepR
+(row n i)` with `T (row n (i + 1)) = row n i`; at width `2^w` the rows have
+period `2^w` by the Frobenius identity `stepR^[2^w] x = shiftR^[2^w] x xor x`
+(`stepR_iterate_two_pow`, an induction on `w` with `shiftR^[2^w]` killing the
+block), which gives Lemma 1 as `parAt_row : parAt (row (2^w) i) k = decide (k =
+i)` for `i, k < 2^w`. So the block of a set is the XOR of the rows of its
+elements, and it decodes to the set on the next `2^w` scans; this is the whole
+of Smith's "Lemma 1" and of the choice of `w`.
+
+The runs (`Smith/System3Runs.lean`): `walkLeft` (state A walks left over 1s and
+2s onto the first other cell, Lemma 0.1), `turnA` (`A0 -> B2>`), `starB` (`B0 ->
+A2<`), `scanBlock` (a scan over a block followed by a non-zero cell leaves
+`scanFrom s` behind and exits in the state given by the parity), `scanBlock0B`
+and `scanBlock0C` (a scan followed by a 0: an exit in B lands on the 0 in B; an
+exit that would be in C turns the last cell, a 2, into a 0 and lands on the 0 in
+state A, the two 0s of Smith's star active in state C, p. 11 and 13).
+
+The relation (`Smith/Conjecture3.lean`). Rather than a predicate on pairs of
+tapes, an abstract configuration `AC` (items left of the head nearest first,
+items right of it, the left end `0^m 2 2 1^t`, the System 4 state, and a
+`Focus`) from which both `AC.to4` and `AC.toL` are computed; `Rep3 c3 c4 w h`
+is "some `AC` satisfying `AC.OK w h` maps to both". `AC.OK`: every block has
+width `2^w` and decodes to its set on the next `h + 1` scans (`Decodes`), `h`
+being the System 4 fuel; `h + 3 <= 2^w`; `h <= m`; the star-side rule (a star
+left of the head, or at the head in state A or C, stands in the place of the
+last cell of the set before it, which is a 2; a star right of the head, or at
+the head in state B or C, in the place of the first cell of the set after it,
+which is a 2: `LeftOK`, `RightOK`, `HeadLastTrue`, `HeadFirstTrue`); and the
+head shapes: `setA` (state A, anywhere in the block, held as a zipper), `setB`
+(state B or C, first cell), `setT` (System 4 in state C right after rule 5,
+System 3 in state B on the second cell, the block decoding to the set with 1
+toggled), `star`, `off` (head on the closing 1 after System 4's head left the
+tape). The star-side rule and the `setT` shape were found and validated by a
+Python checker of the relation along `system4.pl` runs before anything was
+proved; the checker's first version had the active set on the wrong side of
+the rule, which is the kind of error the formalization is for.
+
+The per-rule lemmas, each a `Matches` witness (a System 3 run of at least one
+step to the `AC.toL` of an `AC` whose `AC.to4` is the System 4 result): rule 1
+is `walkLeft` over `p + 1` steps onto the previous block's last cell or a
+star's 0, or, at the left end, `turnRun` (`p + 2t + 6` steps: walk, `turnA`,
+scan back over `2 2 1^t` which becomes `2 1 1^t`, so `t` grows by one and `m`
+drops by one); rule 2 is one `turnA`; rule 4 one `starB`; rule 5 one `turnA`
+onto the second cell of the next block; rule 3 is `scanRun`, a scan of `2^w`
+cells (or `2^w - 1` from `setT`) landing as `landing` says on the closing 1,
+the next block's first cell, or a star (`afterScan_toL`, `afterScan_to4`,
+`afterScan_OK` repack the result once for all three starts). The parity side:
+`Decodes_T` (B-scan decodes the decremented set), `Decodes_scanC` (the C-scan
+too, because the first-bit toggle is `xorB` with `unit`, whose parity is at
+scan 0 only), `Decodes_transient` (the skipped-cell scan after rule 5: the
+block's first bit is kept, so the result is `true :: T tail`, and toggling 1
+before the decrement is toggling 0 after it), and `Decodes_parity` (the first
+scan decides `0 in S`, which is what makes System 3's exit state agree with
+System 4's toggle). `ac_step` dispatches on the focus and the state, and
+
+    sys4_sys3_forwardSim (w) : ForwardSim (fueled system4Sys) (lsys sys3) (fun p c => Rep3 c p.1 w p.2)
+
+The initial tape: `encSet` is Smith's block (`s42s0-3.pl`): the XOR of the
+rows of the elements and of the last row (all 2s), plus the row `2^w - 2` when
+the first cell would be a 1; the two extra rows have their parity at scans
+`2^w - 1` and `2^w - 2`, outside the window, and make the first cell a 2 so
+that a star may stand in its place (`firstTrue_encSet`, `Decodes_encSet`).
+`initAC w h S0 rest` is the abstract configuration of a well-formed tape with
+the head on its leftmost element in state A, left end `0^h 2 2 1`;
+`rep3_init` is the initial condition, under `h + 3 <= 2^w`, no star last, and
+every set element in `[0, 2^w)`. Composed with M4's `sys3_sys0_forwardSim`,
+
+    sys4_sys0_forwardSim (w) : ForwardSim (fueled system4Sys) (lsys sys0)
+      (fun p c0 => exists c3, Rep3 c3 p.1 w p.2 /\ c0 = phi2 (phi3 c3))
+
+and `conjecture3_finite` is T3 in the finite form of `conjecture4_finite`: a
+System 4 run of `n <= h` steps is tracked by the System 0 run from
+`phi2 (phi3 (initAC w h S0 rest).toL)` at strictly increasing times, the
+configurations standing in `Rep3` with the budget counting down.
+
+Design notes. The relation is stated on the System 3 tape directly and the
+swap of the cells left of the head is left to `phi3`, so Smith's `s42s0-3.pl 3`
+output is `phi3` of `initAC`'s tape, not the tape itself. Blocks are kept as
+plain `Bits` inside items and decomposed only at the focus; left items are
+rendered by `ofBits x.reverse`, so a set is split at its last bit by `x.reverse
+= b :: xl` and never by `getLast`. `Item.set` carries both the block and the
+System 4 set, which removes the `Forall2` between item lists and element lists
+that a first version had. The width condition is `h + 3 <= 2^w`, weaker than
+Smith's `2^w >= 3f` because the fuel, not `f`, bounds the scans; the link to
+`f` is made when T2 and T3 are composed (M6), where `2^w` must also exceed
+every set element, which `conjecture4_finite`'s bounds give in terms of `f`.
+
+Left undone in M5: the exit event (the head leaving the tape in state C at
+the end of the System 4 run, T4's "first exit to the right") is present as the
+`off` focus of `Rep3` but not yet turned into an `exitRight` statement for
+System 3 or System 0; the System 4 side of the composition (T2's `RepS4` and
+`decodeS4`) is not yet threaded through `Rep3` to a decoder on the System 0
+tape; both are M6.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

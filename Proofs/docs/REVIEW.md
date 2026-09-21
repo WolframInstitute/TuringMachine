@@ -36,6 +36,13 @@ section 5 are stale. T5, loop-freeness, is proved (`Smith/LoopFree.lean`,
 direction the periodicity question that section 4.1 says the old code treated as
 open, and confirms the refutation of the step-faithful predicates recorded there.
 
+Status note (after milestone M5, 2026-09-21): the System 4 -> System 3 link, the
+part of the chain section 2 calls the hardest and section 5 marks as missing, is
+proved (`Smith/ParityBlocks.lean`, `Smith/System3Runs.lean`,
+`Smith/Conjecture3.lean`: `sys4_sys3_forwardSim`, and with M4
+`sys4_sys0_forwardSim`, `conjecture3_finite`). PLAN.md, "M5 notes", is the
+current record; the table of section 5 is stale for Systems 3 and 4.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`

@@ -29,6 +29,7 @@ import BiTM.System5ToSystem4
 import BiTM.System4
 import BiTM.Wolfram23Valid
 import Smith.Conjecture4
+import Smith.Conjecture3
 
 namespace Tests
 
@@ -351,6 +352,61 @@ example : System4.nSteps s4D4 8
     = some ⟨Smith.sets [[0], [], []] ++ starredEmptyPairs 14
               ++ Smith.encBlocks [[1, 4], [1, 6], [], []] 16 0,
             0, System4State.A⟩ := by
+  decide
+
+/-! ## D8: the System 3 emulation of a System 4 run (M5)
+
+The System 4 tape `[{1,2}, *, {3}]` in state A at its left end takes six
+steps: the turn (rule 1), a scan of `{1,2}` to `{0,1}` in state B (rule 3),
+the deletion of the star (rule 4), the turn, a scan of `{0,1}` to `{0}` that
+toggles the state to C, and a scan of `{3}` to `{2}` after which the head is
+off the tape.  With blocks of width 16 (`w = 4`, budget 6) `initAC` gives the
+System 3 tape `0^6 2 2 1 | 2112 2^12 | 0 | 121 121 ... | 1`, and the System 3
+run visits, at the times `conjecture3_finite` schedules (the turn `p + 2t + 6`
+with `p = 0, t = 1`, then `p = 15, t = 2`; the scans 16; rule 4 one step), a
+head in state B on the first cell of the active block, on the star's 0 in
+state B, in state A on the last cell of the first block, in state C on the
+first cell of the last block, and finally on the closing 1 in state C with
+nothing to its right; the run is stuck there.  The blocks decode to their
+sets on the six scans of the window. -/
+
+def s4D8 : System4Config :=
+  ⟨[System4Elem.set [1, 2], System4Elem.star, System4Elem.set [3]], 0, System4State.A⟩
+
+def s3D8 : Smith.LConfig := (Smith.initAC 4 6 [1, 2] [System4Elem.star, System4Elem.set [3]]).toL
+
+example : s4D8.WellFormed := by decide
+
+example : s3D8.toList
+    = [0, 0, 0, 0, 0, 0, 2, 2, 1] ++ [2, 1, 1, 2] ++ List.replicate 12 2 ++ [0]
+      ++ [1, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2] ++ [1] := by decide
+
+example : Smith.Decodes (Smith.encSet 16 [1, 2]) [1, 2] 6 := by decide
+example : Smith.Decodes (Smith.encSet 16 [3]) [3] 6 := by decide
+example : Smith.Decodes (Smith.encSet 16 []) [] 6 := by decide
+example : Smith.firstTrue (Smith.encSet 16 [1, 2]) ∧ Smith.firstTrue (Smith.encSet 16 [3]) := by decide
+
+example : (System4.nSteps s4D8 6).map (fun c => (c.elems, c.active, c.state))
+    = some ([System4Elem.set [0], System4Elem.set [2]], 2, System4State.C) := by decide
+
+example : (Smith.lnSteps Smith.sys3 s3D8 8).map (fun c => (c.head, c.state))
+    = some (2, Smith.LState.B) := by decide
+example : (Smith.lnSteps Smith.sys3 s3D8 24).map (fun c => (c.head, c.state))
+    = some (0, Smith.LState.B) := by decide
+example : (Smith.lnSteps Smith.sys3 s3D8 25).map (fun c => (c.head, c.right.length, c.state))
+    = some (1, 17, Smith.LState.A) := by decide
+example : (Smith.lnSteps Smith.sys3 s3D8 50).map (fun c => (c.head, c.state))
+    = some (2, Smith.LState.B) := by decide
+example : (Smith.lnSteps Smith.sys3 s3D8 66).map (fun c => (c.head, c.state))
+    = some (2, Smith.LState.C) := by decide
+example : (Smith.lnSteps Smith.sys3 s3D8 82).map (fun c => (c.head, c.right, c.state))
+    = some (1, [], Smith.LState.C) := by decide
+example : Smith.lnSteps Smith.sys3 s3D8 83 = none := by decide
+
+/-- The block of `{0}` left behind after the second scan of the first block
+    still decodes to `{0}` on the four scans of the remaining budget. -/
+example : (Smith.lnSteps Smith.sys3 s3D8 66).map
+      (fun c => decide (Smith.Decodes (Smith.toBits (c.left.take 16).reverse) [0] 4)) = some true := by
   decide
 
 end Tests
