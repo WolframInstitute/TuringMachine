@@ -659,7 +659,8 @@ theorem rep3_decode (c3 : LConfig) (Lp : List System4Elem) (K : List (List Int))
     (rc : Closing)
     (hrep : Rep3 rc c3 ⟨Lp ++ sets K ++ System4Elem.star :: R, Lp.length, System4State.B⟩ w h) :
     decodeW23 (2 ^ w) b (toBi (phi2 (phi3 c3)))
-      = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag := by
+      = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag ∧
+    0 ∈ (toBi (phi2 (phi3 c3))).right := by
   obtain ⟨⟨ls, rs, le, rc', st, foc⟩, hrc, ⟨hN, hle, hls, hrs, hL, hR, hfoc⟩, rfl, h4⟩ := hrep
   simp only at hrc
   subst rc
@@ -716,6 +717,7 @@ theorem rep3_decode (c3 : LConfig) (Lp : List System4Elem) (K : List (List Int))
            (ofBits x' ++ (ps.map Prod.fst).flatMap ofBits) ++ 0 :: (renderR true rs' ++ rc'.render), B⟩ := by
       simp only [AC.toL, renderR_blocks, renderR_star, List.append_assoc, List.cons_append, st3]
     rw [htoL, phi3_B, phi2_B]
+    refine ⟨?_, by simp [toBi]⟩
     unfold decodeW23
     simp only [toBi]
     rw [takeWhile_map_val _ _ hP]
@@ -733,7 +735,7 @@ theorem rep3_decode_zero (c3 : LConfig) (K : List (List Int)) (R : List System4E
     (hrep : Rep3 rc c3 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ w h) :
     decodeW23 (2 ^ w) b (toBi (phi2 (phi3 c3)))
       = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag :=
-  rep3_decode c3 [] K R w h b hK hb rc (by simpa using hrep)
+  (rep3_decode c3 [] K R w h b hK hb rc (by simpa using hrep)).1
 
 /-- A represented nonempty working string gives a nonempty bag. -/
 theorem Represents_bag_ne_nil (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
@@ -761,6 +763,145 @@ theorem toBi_valid (c : LConfig) (hc : c.state ≠ C) : IsValidWolfram23Cfg (toB
 theorem biNSteps_one (cfg : BiTM.Config) : BiTM.nSteps wolfram23 cfg 1 = BiTM.step wolfram23 cfg := by
   simp only [BiTM.nSteps]
   cases BiTM.step wolfram23 cfg <;> rfl
+
+/-! ## The System 4 emulation of a cyclic tag run
+
+The System 4 side of T4, shared by the finite form below and by the
+infinite form of `Smith.Infinite`: the encoder tape of link C runs, at
+strictly increasing times, through configurations whose head has just
+turned at the left end (on the first set in state B, a star after the
+leading conglomerate), which decode to the cyclic tag configurations, and
+then exits in state C. -/
+
+theorem system4_emulation (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfig)
+    (hrun : C0.nSteps cfg (C0.appendants.length * N) = some c') (hne : c'.data ≠ []) :
+    ∃ (s0 : System5Config) (f b T4 : Nat) (cE : System4Config) (times : Nat → Nat),
+      s0 = ctsToSystem5 C0 cfg N ∧ 1 ≤ f ∧
+      (∀ e ∈ s0.bag, 1 ≤ e ∧ e < f) ∧ (∀ r ∈ s0.rules, ∀ k ∈ r, 0 ≤ k ∧ k < f) ∧
+      System4.nSteps (system5ToSystem4 s0 f) T4 = some cE ∧
+      cE.state = System4State.C ∧ cE.active = cE.elems.length ∧
+      (∀ i, i < C0.appendants.length * N → times i < times (i + 1)) ∧
+      (∀ i, i ≤ C0.appendants.length * N → times i + 1 ≤ T4 ∧
+        ∃ ci K R, C0.nSteps cfg i = some ci ∧ K ≠ [] ∧
+          System4.nSteps (system5ToSystem4 s0 f) (times i + 1)
+            = some ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ ∧
+          (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag
+            = some (dbl ci.data)) := by
+  obtain ⟨n, hn⟩ : ∃ n, n = C0.appendants.length * N := ⟨_, rfl⟩
+  rw [← hn] at hrun ⊢
+  obtain ⟨s0, hs0⟩ : ∃ s0, s0 = ctsToSystem5 C0 cfg N := ⟨_, rfl⟩
+  obtain ⟨t5, h50, h5mono, h5tr⟩ := conjecture5_finite_exact C0 cfg N n (le_of_eq hn) c' hrun
+  rw [← hs0] at h5tr
+  obtain ⟨cn, sn, hcn, hsn, hrep5n, hlenn⟩ := h5tr n (le_refl n)
+  rw [hrun] at hcn
+  obtain rfl := Option.some.inj hcn
+  have hrules_n : sn.rules = [] := by
+    have h0 : sn.rules.length = 0 := by rw [hlenn, ← hn]; simp
+    exact List.length_eq_zero_iff.mp h0
+  obtain ⟨B0, hB0, hbound0⟩ := exists_Bound5 s0
+  have hboundn := Bound5_nSteps s0 B0 (t5 n) sn hbound0 hsn
+  have hbagne : sn.bag ≠ [] :=
+    Represents_bag_ne_nil sn (double C0) (dblCfg _) _ hrep5n (by simpa [dblCfg] using hne)
+  obtain ⟨e0, he0⟩ := List.exists_mem_of_ne_nil sn.bag hbagne
+  obtain ⟨M, hM⟩ : ∃ M : Nat, M = (B0 + t5 n).toNat := ⟨_, rfl⟩
+  obtain ⟨H, hH⟩ : ∃ H : Nat, H = t5 n + M + 1 := ⟨_, rfl⟩
+  obtain ⟨f, hf⟩ : ∃ f : Nat, f = B0.toNat + 2 * H + 2 * t5 n + 5 := ⟨_, rfl⟩
+  obtain ⟨b, hb⟩ : ∃ b : Nat, b = 2 * f - 2 * t5 n - 2 := ⟨_, rfl⟩
+  have hB0n := Int.self_le_toNat B0
+  have hf1 : 1 ≤ f := by omega
+  have hbag1 : ∀ e ∈ s0.bag, 1 ≤ e ∧ e < f := by
+    intro e he
+    have h1 := ctsToSystem5_bag_ge_one C0 cfg N e (hs0 ▸ he)
+    have h2 := hbound0.1 e he
+    constructor <;> omega
+  have hrules0 : ∀ r ∈ s0.rules, r.Nodup ∧ ∀ k ∈ r, 0 ≤ k ∧ k + 2 * H < f := by
+    intro r hr
+    refine ⟨ctsToSystem5_rules_nodup C0 cfg N r (hs0 ▸ hr), fun k hk => ?_⟩
+    have h1 := ctsToSystem5_rules_ge_three C0 cfg N r (hs0 ▸ hr) k hk
+    have h2 := hbound0.2 r hr k hk
+    constructor <;> omega
+  have hrules0' : ∀ r ∈ s0.rules, ∀ k ∈ r, 0 ≤ k ∧ k < f := by
+    intro r hr k hk
+    have := (hrules0 r hr).2 k hk
+    constructor <;> omega
+  obtain ⟨t4, h40, h4mono, h4tr⟩ := conjecture4_finite s0 f H (t5 n)
+    (hs0 ▸ ctsToSystem5_bag_nodup C0 cfg N) hbag1 hrules0 (by omega) (by omega) sn hsn
+  obtain ⟨sL, c4L, hsL, hc4L, hrepL⟩ := h4tr (t5 n) (le_refl _)
+  rw [hsn] at hsL
+  obtain rfl := Option.some.inj hsL
+  have hrepL' : RepS4 c4L sn f (t5 n) (1 + M) := by
+    have : H - t5 n = 1 + M := by omega
+    rw [this] at hrepL; exact hrepL
+  have he0le : e0 ≤ (M : Int) + 1 := by
+    have := hboundn.1 e0 he0
+    have := Int.self_le_toNat (B0 + t5 n)
+    omega
+  obtain ⟨k, cE, hrunE, hstE, hactE, hnoneE⟩ :=
+    repS4_terminal M c4L sn f (t5 n) 1 hrepL' hrules_n ⟨e0, he0, he0le⟩
+  obtain ⟨K, hKne, -, hc4Leq, -⟩ := hrepL
+  have hk1 : 1 ≤ k := by
+    cases k with
+    | zero =>
+      rw [System4.nSteps_zero] at hrunE
+      obtain rfl := Option.some.inj hrunE
+      rw [hc4Leq] at hstE
+      cases hstE
+    | succ k => omega
+  obtain ⟨T4, hT4⟩ : ∃ T4, T4 = t4 (t5 n) + k := ⟨_, rfl⟩
+  have hrunT4 : System4.nSteps (system5ToSystem4 s0 f) T4 = some cE := by
+    rw [hT4, System4.nSteps_add, hc4L, Option.bind_some, hrunE]
+  have h4le : ∀ j, j ≤ t5 n → t4 j ≤ t4 (t5 n) := by
+    intro j hj
+    rcases Nat.lt_or_eq_of_le hj with hlt | rfl
+    · exact le_of_lt (strictMono_of_succ t4 (t5 n) h4mono j _ hlt (le_refl _))
+    · exact le_refl _
+  have h5le : ∀ i, i ≤ n → t5 i ≤ t5 n := by
+    intro i hi
+    rcases Nat.lt_or_eq_of_le hi with hlt | rfl
+    · exact le_of_lt (strictMono_of_succ t5 n h5mono i n hlt (le_refl _))
+    · exact le_refl _
+  refine ⟨s0, f, b, T4, cE, fun i => t4 (t5 i), hs0, hf1, hbag1, hrules0', hrunT4, hstE, hactE, ?_, ?_⟩
+  · intro i hi
+    exact strictMono_of_succ t4 (t5 n) h4mono _ _ (h5mono i hi) (h5le (i + 1) hi)
+  · intro i hi
+    obtain ⟨ci, si, hci, hsi, hrep5i, -⟩ := h5tr i hi
+    obtain ⟨si', c4i, hsi', hc4i, hrep4i⟩ := h4tr (t5 i) (h5le i hi)
+    rw [hsi] at hsi'
+    obtain rfl := Option.some.inj hsi'
+    have hd : t4 (t5 i) + 1 ≤ T4 := by
+      have := h4le (t5 i) (h5le i hi)
+      omega
+    have hrep4i' := hrep4i
+    obtain ⟨K, hKne, -, hc4ieq, hjh, -, -, -, -⟩ := hrep4i
+    obtain ⟨K0, K', rfl⟩ := List.exists_cons_of_ne_nil hKne
+    obtain ⟨g, hg⟩ : ∃ g, f - 2 * t5 i = g + 1 := ⟨f - 2 * t5 i - 1, by omega⟩
+    have hE : sets (K0 :: K') ++ starredEmptyPairs (f - 2 * t5 i) ++ encBlocks si.rules f (2 * t5 i)
+        = sets (K0 :: K') ++ System4Elem.star ::
+            (System4Elem.set [] :: (starredEmptyPairs g ++ encBlocks si.rules f (2 * t5 i))) := by
+      rw [hg, starredEmptyPairs_succ]
+      simp only [List.append_assoc, List.cons_append]
+    have hcd' : System4.nSteps (system5ToSystem4 s0 f) (t4 (t5 i) + 1)
+        = some ⟨sets (K0 :: K') ++ System4Elem.star ::
+            (System4Elem.set [] :: (starredEmptyPairs g ++ encBlocks si.rules f (2 * t5 i))), 0,
+            System4State.B⟩ := by
+      rw [System4.nSteps_add, hc4i, Option.bind_some, System4.nSteps_one, hc4ieq, hE]
+      show System4.step ⟨System4Elem.set K0 :: (sets K' ++ System4Elem.star ::
+        (System4Elem.set [] :: (starredEmptyPairs g ++ encBlocks si.rules f (2 * t5 i)))), 0,
+        System4State.A⟩ = _
+      rw [step_setA_zero]
+      rfl
+    refine ⟨hd, ci, K0 :: K', _, hci, by simp, hcd', ?_⟩
+    rw [decodeS4_state _ _ _ System4State.A, ← hE, ← hc4ieq]
+    have hbagb : ∀ e ∈ si.bag, 2 * e - 2 < b := by
+      intro e he
+      have h1 := (Bound5_nSteps s0 B0 (t5 i) si hbound0 hsi).1 e he
+      have h2 := h5le i hi
+      omega
+    obtain ⟨l, hl, hlperm⟩ := RepS4_decode_band c4i si f (t5 i) (H - t5 i) hrep4i' b
+      (by have := h5le i hi; omega) hbagb
+    rw [hl, Option.bind_some]
+    obtain ⟨⟨a, hasc, hperm⟩, -⟩ := hrep5i
+    exact decodeBag_of_perm l _ a hasc (hlperm.trans hperm)
 
 /-! ## T4: the finite form of Conjecture 0 -/
 
