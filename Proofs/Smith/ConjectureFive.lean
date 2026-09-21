@@ -87,7 +87,7 @@ theorem represents_forwardSim (C0 : CTS) :
         rintro rfl
         rw [ctsSys_step, CTS_step_nil] at hc
         exact absurd hc (by simp)
-      obtain ⟨k, hk, s', hrun, c2, hstep2, hrep⟩ :=
+      obtain ⟨k, hk, s', hrun, c2, hstep2, hrep, -⟩ :=
         represents_step_double C0 { data := data, phase := ph } n s hne hR
       rw [ctsSys_step] at hc
       obtain rfl : c2 = c1 := Option.some.inj (hstep2.symm.trans hc)
@@ -155,6 +155,84 @@ theorem conjecture5_finite (C0 : CTS) (cfg : CTSConfig) (N n : Nat)
     rw [hcj, Option.map_some] at hsrc
     obtain rfl : pj = (cj, C0.appendants.length * N - j) := (Option.some.inj hsrc).symm
     exact ⟨cj, sj, rfl, by rw [← system5Sys_nSteps]; exact htgt, hrel⟩
+
+/-! ## T1 with the rule count
+
+`Represents` leaves the rules beyond the budget unconstrained.  The per-step
+lemmas pop exactly two rules per appendant, so on the encoder output, whose
+rule list has two rules per appendant of budget, the rule list is always
+exactly twice the budget long; at the end of the budget it is empty, which is
+the terminal event of the System 4 emulation (T2's exit in state C). -/
+
+/-- `Represents` with the rule list exactly two rules per appendant of
+    budget long. -/
+def RepresentsExact (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat) : Prop :=
+  Represents s C c b ∧ s.rules.length = 2 * b
+
+theorem represents_exact_forwardSim (C0 : CTS) :
+    ForwardSim (fueled (ctsSys (double C0))) system5Sys
+      (fun p s => RepresentsExact s (double C0) p.1 p.2) := by
+  rintro ⟨⟨data, ph⟩, f⟩ s ⟨hR, hlen⟩ p hstep
+  cases f with
+  | zero => rw [fueled_step_zero] at hstep; exact absurd hstep (by simp)
+  | succ n =>
+    rw [fueled_step_succ] at hstep
+    cases hc : (ctsSys (double C0)).step { data := data, phase := ph } with
+    | none => rw [hc] at hstep; exact absurd hstep (by simp)
+    | some c1 =>
+      rw [hc, Option.map_some] at hstep
+      obtain rfl : p = (c1, n) := (Option.some.inj hstep).symm
+      have hne : data ≠ [] := by
+        rintro rfl
+        rw [ctsSys_step, CTS_step_nil] at hc
+        exact absurd hc (by simp)
+      obtain ⟨k, hk, s', hrun, c2, hstep2, hrep, hlen'⟩ :=
+        represents_step_double C0 { data := data, phase := ph } n s hne hR
+      rw [ctsSys_step] at hc
+      obtain rfl : c2 = c1 := Option.some.inj (hstep2.symm.trans hc)
+      exact ⟨k, hk, s', by rw [system5Sys_nSteps]; exact hrun, hrep, by omega⟩
+
+theorem cts_system5_exact_forwardSim (C0 : CTS) :
+    ForwardSim (fueled (ctsSys C0)) system5Sys
+      (fun p s => RepresentsExact s (double C0) (dblCfg p.1) (2 * p.2)) := by
+  refine ForwardSim_congr
+    (ForwardSim_comp (double_forwardSim_fueled C0) (represents_exact_forwardSim C0))
+    (fun p s => ⟨fun hrep => ⟨(dblCfg p.1, 2 * p.2), rfl, hrep⟩, ?_⟩)
+  rintro ⟨q, rfl, hrep⟩
+  exact hrep
+
+theorem ctsToSystem5_representsExact (C : CTS) (cfg : CTSConfig) (N : Nat) :
+    RepresentsExact (ctsToSystem5 C cfg N) (double C) (dblCfg cfg)
+      (2 * (C.appendants.length * N)) := by
+  refine ⟨ctsToSystem5_represents C cfg N, ?_⟩
+  rw [ctsToSystem5_rules_eq, ctsRulesToSystem5Rules_length, Nat.mul_assoc]
+  omega
+
+/-- T1 with the rule count: the schedule of `conjecture5_finite`, and at
+    every scheduled time the rule list is exactly twice the remaining
+    budget long; at the end of the budget it is empty. -/
+theorem conjecture5_finite_exact (C0 : CTS) (cfg : CTSConfig) (N n : Nat)
+    (hn : n ≤ C0.appendants.length * N) (c' : CTSConfig)
+    (hrun : C0.nSteps cfg n = some c') :
+    ∃ times : Nat → Nat, times 0 = 0 ∧ (∀ j, j < n → times j < times (j + 1)) ∧
+      ∀ j, j ≤ n → ∃ cj sj, C0.nSteps cfg j = some cj ∧
+        System5.nSteps (ctsToSystem5 C0 cfg N) (times j) = some sj ∧
+        Represents sj (double C0) (dblCfg cj) (2 * (C0.appendants.length * N - j)) ∧
+        sj.rules.length = 2 * (2 * (C0.appendants.length * N - j)) := by
+  obtain ⟨times, h0, hmono, htrack⟩ := ForwardSim_nSteps (cts_system5_exact_forwardSim C0) n
+    (cfg, C0.appendants.length * N) (ctsToSystem5 C0 cfg N)
+    (ctsToSystem5_representsExact C0 cfg N) (c', C0.appendants.length * N - n)
+    (by rw [fueled_nSteps _ _ _ _ hn, ctsSys_nSteps, hrun]; rfl)
+  refine ⟨times, h0, hmono, ?_⟩
+  intro j hj
+  obtain ⟨pj, sj, hsrc, htgt, hrel, hlen⟩ := htrack j hj
+  rw [fueled_nSteps _ _ _ _ (Nat.le_trans hj hn), ctsSys_nSteps] at hsrc
+  cases hcj : C0.nSteps cfg j with
+  | none => rw [hcj] at hsrc; exact absurd hsrc (by simp)
+  | some cj =>
+    rw [hcj, Option.map_some] at hsrc
+    obtain rfl : pj = (cj, C0.appendants.length * N - j) := (Option.some.inj hsrc).symm
+    exact ⟨cj, sj, rfl, by rw [← system5Sys_nSteps]; exact htgt, hrel, hlen⟩
 
 /-- The decoded form of T1: at every scheduled time the System 5 bag
     decodes, through `decodeBag` of `Smith.System5Runs`, to the doubled

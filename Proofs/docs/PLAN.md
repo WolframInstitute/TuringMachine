@@ -4,7 +4,8 @@ Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 res
 2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
 notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
 (see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 done
-2026-09-21 (see "M5 notes" in section 5); M6 and M4b are next.
+2026-09-21 (see "M5 notes" in section 5); M6 done 2026-09-21 (see "M6 notes" in section 5);
+M4b and M8 are next.
 
 ## 1. Where we are
 
@@ -901,6 +902,88 @@ the end of the System 4 run, T4's "first exit to the right") is present as the
 System 3 or System 0; the System 4 side of the composition (T2's `RepS4` and
 `decodeS4`) is not yet threaded through `Rep3` to a decoder on the System 0
 tape; both are M6.
+
+### M6 notes (done 2026-09-21)
+
+One module, `Smith/Conjecture0.lean` (about 950 lines), plus a rule-count clause
+added to the M2 step lemmas. Zero `sorry`, no `native_decide`; `#print axioms
+conjecture0_finite` shows only `propext, Classical.choice, Quot.sound`. `lake
+build` is 680 jobs. The D9 vectors of `Tests/SmithVectors.lean` exercise the
+decoder by `decide`, with negative instances.
+
+The statement, `conjecture0_finite`: for a two-colour cyclic tag system `C0`, an
+initial configuration `cfg` and a budget `N` such that the run lasts the
+`appendants.length * N` steps of the budget and leaves a nonempty word, there
+are a wolfram23 configuration `start`, a width `2^w`, a band `b`, strictly
+increasing times `times i` and an exit time `T` with: `start` valid and in state
+A; at time `times i` the tape decodes by `decodeW23 (2^w) b` to `dbl` of the
+`i`-th working string; up to time `T` the explicit tape keeps its size, so no
+cell outside the initial tape is visited; and at time `T + 1` the head is on the
+cell right of the tape, a 0, in state A. That last clause is Smith's exit
+condition (p. 4: "the first cell to become active after the emulation has
+finished is the cell to the right of the initial condition, and if that cell is
+a 0 it becomes active in state A"), and it holds for the composed encoders
+because System 3's exit `C1 -> A00>` reads the implicit 0 as its right
+neighbour, which is `B2 -> A0>` of wolfram23 after the relabelings.
+
+Two corrections to the T4 statement of section 2. The head does not start on
+the leftmost cell of the tape but on the first cell of the first block, as in
+Smith's `s42s0-3.pl` output (the marker `A` sits after the left end `0^m 2 2 1`;
+the leftmost cell is a 0, as the conjecture says, and it is never visited: the
+turns consume at most `h` of the `m >= h` zeros). And the run must be assumed
+to last the budget without emptying the word: an emptied word empties the
+System 5 bag, System 4 then sweeps forever and never exits.
+
+The pieces. `Bound5`: the integers of a System 5 configuration grow by at most
+one per step (`xorMerge_mem_or` for the pop), which bounds the terminal
+decrements and the band. `RepresentsExact` (in `Smith/ConjectureFive.lean`):
+`Represents` plus "the rule list is exactly two rules per appendant of budget";
+the M2 step lemmas now also return `s'.rules.length + 2 = s.rules.length` (the
+witness they construct pops exactly the leading pair), so
+`conjecture5_finite_exact` gives an empty rule list at the end of the budget,
+which is the terminal event T2's exit needs; `Represents` alone leaves the
+rules beyond the budget unconstrained. `repS4_terminal`: with the rules
+exhausted, `repS4_dStep` until 1 is in the bag, then `repS4_exit`, by
+induction on a bound of a bag element. `RepS4_decode_band`: the decoder of
+link C below a fixed band, which lies under the debris (`b + 2j + 2 <= 2f`) and
+holds every bag position (`2e - 2 < b`); the band is `2f - 2L - 2` for the
+System 5 run length `L`, and `f` is chosen above `B0 + 2L` so that the bag,
+bounded by `B0 + L`, fits under it. `system5ToSystem4_wellFormed`,
+`system5ToSystem4_last_set`, `system5ToSystem4_elem_lt`: what `rep3_init`
+needs of the encoder tape (no adjacent stars by an append lemma over the
+block structure; every set integer below `3f + 3`).
+
+The decoder `decodeW23 N b cfg`: the head cell and the cells right of it up
+to the first 0 are the blocks of the leading conglomerate (the star after the
+leading sets is a 0 standing in for the first cell of the next set, so the run
+of nonzero cells is exactly `|K| * N` long); `decodeBlocks` checks that they
+are 1s and 2s making whole blocks, XORs the blocks (`xorBlocks`), takes the
+parity set of the XOR below `b` (`parAt`), and reads it as link C does
+(`x / 2 + 1` on an even set, `none` otherwise); `decodeBag` of link B then
+reads the working string. `rep3_decode`: at a System 4 configuration
+`<sets K ++ star :: R, 0, B>`, the configuration one step after every
+scheduled time of T2 (the head has turned and is on the first cell of the
+first block in System 3's state B, where `phi3` leaves the head and the cells
+to its right alone), `decodeW23` agrees with `decodeS4`; the decoding times
+are therefore the T2 times plus one System 4 step, carried to System 0 by the
+T3 schedule. `rep3_exit`: at System 4's exit configuration `Rep3` forces the
+`off` focus, so the System 3 head is on the closing 1 in state C.
+
+The assembly composes the finite forms (T1 exact, `conjecture4_finite` with
+budget `H = L + M + 1`, `repS4_terminal`, `conjecture3_finite` with fuel
+`h4 = T4 + b`, `toBi_run`) by their schedules rather than by `ForwardSim_comp`,
+because the fuel lives in a different source system at each link. The
+parameters are picked in order: `M = (B0 + L).toNat`, `H`, `f = B0.toNat + 2H
++ 2L + 5`, `b`, then the System 4 exit time `T4`, `h4`, and `w = h4 + 3f + 6`
+(so `2^w > w` covers both `h4 + 3` and `3f + 3`). "Never visits a cell outside
+the tape" is `biSize` constant, since a wolfram23 step onto an implicit blank
+grows the explicit tape (`toBi_exit`), and the zipper run is defined.
+
+Left undone in M6: the decoder returns the doubled word `dbl w`; undoubling
+is a one-line inverse not yet written. The phase of the cyclic tag
+configuration is not decoded (it is `(cfg.phase + i) % appendants.length`).
+The times are existential (`times`, `T`) with no closed form. T6, the infinite
+form, is not attempted (optional M7).
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

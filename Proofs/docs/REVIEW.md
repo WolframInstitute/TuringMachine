@@ -43,6 +43,15 @@ proved (`Smith/ParityBlocks.lean`, `Smith/System3Runs.lean`,
 `sys4_sys0_forwardSim`, `conjecture3_finite`). PLAN.md, "M5 notes", is the
 current record; the table of section 5 is stale for Systems 3 and 4.
 
+Status note (after milestone M6, 2026-09-21): T4, the finite form of
+Conjecture 0 with Smith's exit condition and a decoder, is proved
+(`Smith/Conjecture0.lean`: `conjecture0_finite`, axioms `propext,
+Classical.choice, Quot.sound`). This is the theorem section 1 says the code
+base did not have (its `not_halts_wolfram23_valid` was a tautology); it is
+Smith's theorem, cyclic tag emulation, and is not named universality (T8
+composes it with T7, which is M4b/M8). PLAN.md, "M6 notes", is the current
+record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`

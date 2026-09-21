@@ -30,6 +30,7 @@ import BiTM.System4
 import BiTM.Wolfram23Valid
 import Smith.Conjecture4
 import Smith.Conjecture3
+import Smith.Conjecture0
 
 namespace Tests
 
@@ -408,5 +409,49 @@ example : Smith.lnSteps Smith.sys3 s3D8 83 = none := by decide
 example : (Smith.lnSteps Smith.sys3 s3D8 66).map
       (fun c => decide (Smith.Decodes (Smith.toBits (c.left.take 16).reverse) [0] 4)) = some true := by
   decide
+
+/-! ## D9: the wolfram23 decoder (M6)
+
+`decodeW23 N b` reads the blocks from the head cell up to the first 0, XORs
+them, takes the parity set below the band `b`, reads it as the bag by
+`x / 2 + 1` and the bag as the working string by `decodeBag`.  On the tape of
+`initAC 3 3 [0, 2] [*, {}]` (one block of width 8 for the set `{0, 2}`, whose
+bag is `{1, 2}`, the pairs of the word `0`) it decodes to `[false]` once the
+head has turned (8 System 3 steps: state B on the first cell), and on the tape
+of `initAC 3 3 [0, 2] [{2, 4}, *, {}]` (conglomerate `{0, 2} xor {2, 4} =
+{0, 4}`, bag `{1, 3}`, word `1`) to `[true]`.  Negative instances: at time 0
+the head is in state A, where `phi3` swaps the head cell, and the block no
+longer decodes; the set `{1}` puts the parity at an odd position, which is
+not a bag; a tape whose cells do not make whole blocks. -/
+
+def s3D9 : Smith.LConfig := (Smith.initAC 3 3 [0, 2] [System4Elem.star, System4Elem.set []]).toL
+
+def s3D9b : Smith.LConfig :=
+  (Smith.initAC 3 3 [0, 2] [System4Elem.set [2, 4], System4Elem.star, System4Elem.set []]).toL
+
+def s3D9c : Smith.LConfig := (Smith.initAC 3 3 [1] [System4Elem.star, System4Elem.set []]).toL
+
+example : (Smith.lnSteps Smith.sys3 s3D9 8).map
+    (fun c => Smith.decodeW23 8 4 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some (some [false]) := by
+  decide
+
+example : (Smith.lnSteps Smith.sys3 s3D9b 8).map
+    (fun c => Smith.decodeW23 8 6 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some (some [true]) := by
+  decide
+
+example : Smith.decodeW23 8 4 (Smith.toBi (Smith.phi2 (Smith.phi3 s3D9))) = none := by decide
+
+example : (Smith.lnSteps Smith.sys3 s3D9c 8).map
+    (fun c => Smith.decodeW23 8 4 (Smith.toBi (Smith.phi2 (Smith.phi3 c)))) = some none := by
+  decide
+
+example : Smith.decodeW23 8 4 ⟨1, [], 2, [1, 1, 0]⟩ = none := by decide
+
+/-- The exit of System 3 from the `off` configuration is a two-cell rule
+    reading the implicit 0, and wolfram23 makes the step `B2 -> 0, R, A`
+    after the relabelings. -/
+example : Smith.lstep Smith.sys3 ⟨[2, 1, 1, 2, 2, 0], 1, [], Smith.LState.C⟩ = none := by decide
+example : BiTM.step wolfram23 (Smith.toBi (Smith.phi2 (Smith.phi3 ⟨[2, 1, 1, 2, 2, 0], 1, [], Smith.LState.C⟩)))
+    = some ⟨1, [0, 1, 2, 2, 1, 1, 0], 0, []⟩ := by decide
 
 end Tests

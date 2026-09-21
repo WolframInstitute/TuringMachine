@@ -438,7 +438,8 @@ theorem represents_step_false_time (C : CTS) (w : List Bool) (p n : Nat)
     ∃ (k : Nat) (x : Int), 1 ≤ x ∧ (k : Int) = x + 1 ∧
       x ∈ s.bag ∧ (∀ y ∈ s.bag, x ≤ y) ∧
       ∃ s', System5.nSteps s k = some s' ∧
-        Represents s' C { data := w, phase := (p + 1) % C.appendants.length } n := by
+        Represents s' C { data := w, phase := (p + 1) % C.appendants.length } n ∧
+        s'.rules.length + 2 = s.rules.length := by
   obtain ⟨x, a', i, i', r1, r2, rest, hx1, hasc, hperm, hxle, hbound, -, hr12,
     hr2ge, hr2nd, hii', hrules⟩ := Represents_cons_decomp C false w p n s h
   rw [show gap false = 1 from rfl] at hasc hperm
@@ -501,8 +502,8 @@ theorem represents_step_false_time (C : CTS) (w : List Bool) (p n : Nat)
   have hrun : System5.nSteps s (k1 + 1) = some cfg2 := by
     rw [System5.nSteps_add, hrun1, Option.bind_some, System5.nSteps_one, hstep2]
   refine ⟨k1 + 1, x, hx1, by push_cast; omega, hxmem, hxle,
-          cfg2, hrun, ⟨a'.map (· - (x + 1)), ?_, ?_⟩,
-          i' + (x + 1), rest.map (List.map (· + (x + 1))), ?_, ?_⟩
+          cfg2, hrun, ⟨⟨a'.map (· - (x + 1)), ?_, ?_⟩,
+          i' + (x + 1), rest.map (List.map (· + (x + 1))), ?_, ?_⟩, ?_⟩
   · have hA := pairsAsc_map_sub (x + 1) w a' (x + 1) hasc
     rwa [show x + 1 - (x + 1) = (0 : Int) from by omega] at hA
   · show cfg2.bag.Perm (pairsOf w (a'.map (· - (x + 1))))
@@ -514,6 +515,8 @@ theorem represents_step_false_time (C : CTS) (w : List Bool) (p n : Nat)
     omega
   · show cfg2.rules = _
     rw [hrules2, map_shift_comp, List.map_append, appendantsFrom_mod, ruleBlocks_shift]
+  · rw [hrules2, hrules]
+    simp
 
 /-- The per-step lemma in the shape PLAN.md section 3 asks for: one cyclic
     tag step is emulated by at least one System 5 step, with the relation
@@ -522,7 +525,7 @@ theorem represents_step_false (C : CTS) (w : List Bool) (p n : Nat) (s : System5
     (h : Represents s C { data := false :: w, phase := p } (n + 1)) :
     ∃ k, 1 ≤ k ∧ ∃ s', System5.nSteps s k = some s' ∧
       Represents s' C { data := w, phase := (p + 1) % C.appendants.length } n := by
-  obtain ⟨k, x, hx1, hkx, -, -, s', hrun, hrep⟩ := represents_step_false_time C w p n s h
+  obtain ⟨k, x, hx1, hkx, -, -, s', hrun, hrep, -⟩ := represents_step_false_time C w p n s h
   exact ⟨k, by omega, s', hrun, hrep⟩
 
 /-! ## The appendant a 1-head step appends
@@ -720,7 +723,8 @@ theorem represents_step_true_time (C : CTS) (w : List Bool) (p n : Nat) (s : Sys
       x ∈ s.bag ∧ (∀ y ∈ s.bag, x ≤ y) ∧
       ∃ s', System5.nSteps s k = some s' ∧
         Represents s' C { data := w ++ dbl a,
-                          phase := (p + 1) % C.appendants.length } n := by
+                          phase := (p + 1) % C.appendants.length } n ∧
+        s'.rules.length + 2 = s.rules.length := by
   obtain ⟨x, a', i, i', r1, r2, rest, hx1, hasc, hperm, hxle, hbound, henc, hr12,
     hr2ge, hr2nd, hii', hrules⟩ := Represents_cons_decomp C true w p n s h
   rw [show gap true = 2 from rfl] at hasc hperm
@@ -825,8 +829,8 @@ theorem represents_step_true_time (C : CTS) (w : List Bool) (p n : Nat) (s : Sys
     rw [hr2eq] at hbp
     exact hbp
   refine ⟨k1 + k2, x, hx1, by push_cast; omega, hxmem, hxle, _, hrun,
-          ⟨a'.map (· - (x + 2)) ++ startsOf a (i + x), ?_, ?_⟩,
-          i' + (x + 2), rest.map (List.map (· + (x + 2))), ?_, ?_⟩
+          ⟨⟨a'.map (· - (x + 2)) ++ startsOf a (i + x), ?_, ?_⟩,
+          i' + (x + 2), rest.map (List.map (· + (x + 2))), ?_, ?_⟩, ?_⟩
   · show pairsAsc 0 (w ++ dbl a) (a'.map (· - (x + 2)) ++ startsOf a (i + x)) = true
     refine pairsAsc_append 0 (i + x - 1) w (dbl a) (a'.map (· - (x + 2))) (startsOf a (i + x))
       (by omega) ?_ ?_ (pairsAsc_dbl_startsOf a (i + x - 1) (i + x) (by omega))
@@ -856,6 +860,8 @@ theorem represents_step_true_time (C : CTS) (w : List Bool) (p n : Nat) (s : Sys
         = (ruleBlocks (appendantsFrom C ((p + 1) % C.appendants.length) n) (i' + (x + 2))).1
             ++ rest.map (List.map (· + (x + 2)))
     rw [map_shift_comp, List.map_append, appendantsFrom_mod, ruleBlocks_shift]
+  · rw [hrules]
+    simp
 
 /-- The 1-head per-step lemma in the shape PLAN.md section 3 asks for. -/
 theorem represents_step_true (C : CTS) (w : List Bool) (p n : Nat) (s : System5Config)
@@ -864,7 +870,7 @@ theorem represents_step_true (C : CTS) (w : List Bool) (p n : Nat) (s : System5C
     ∃ k, 1 ≤ k ∧ ∃ s', System5.nSteps s k = some s' ∧
       Represents s' C { data := w ++ dbl a,
                         phase := (p + 1) % C.appendants.length } n := by
-  obtain ⟨k, x, hx1, hkx, -, -, s', hrun, hrep⟩ :=
+  obtain ⟨k, x, hx1, hkx, -, -, s', hrun, hrep, -⟩ :=
     represents_step_true_time C w p n s a happ h
   exact ⟨k, by omega, s', hrun, hrep⟩
 
@@ -882,19 +888,19 @@ theorem represents_step_double_time (C0 : CTS) (b : Bool) (w : List Bool) (p n :
       x ∈ s.bag ∧ (∀ y ∈ s.bag, x ≤ y) ∧
       ∃ s', System5.nSteps s k = some s' ∧
         ∃ c', (double C0).step { data := b :: w, phase := p } = some c' ∧
-          Represents s' (double C0) c' n := by
+          Represents s' (double C0) c' n ∧ s'.rules.length + 2 = s.rules.length := by
   cases b with
   | false =>
-    obtain ⟨k, x, hx1, hkx, hxmem, hxle, s', hrun, hrep⟩ :=
+    obtain ⟨k, x, hx1, hkx, hxmem, hxle, s', hrun, hrep, hlen⟩ :=
       represents_step_false_time (double C0) w p n s h
     exact ⟨k, x, hx1, by rw [show gap false = (1 : Int) from rfl]; exact hkx, hxmem, hxle,
-      s', hrun, _, CTS_step_cons (double C0) false w p, hrep⟩
+      s', hrun, _, CTS_step_cons (double C0) false w p, hrep, hlen⟩
   | true =>
     obtain ⟨a, ha⟩ := double_currentAppendant_dbl C0 p
-    obtain ⟨k, x, hx1, hkx, hxmem, hxle, s', hrun, hrep⟩ :=
+    obtain ⟨k, x, hx1, hkx, hxmem, hxle, s', hrun, hrep, hlen⟩ :=
       represents_step_true_time (double C0) w p n s a ha h
     refine ⟨k, x, hx1, by rw [show gap true = (2 : Int) from rfl]; exact hkx, hxmem, hxle,
-      s', hrun, _, CTS_step_cons (double C0) true w p, ?_⟩
+      s', hrun, _, CTS_step_cons (double C0) true w p, ?_, hlen⟩
     show Represents s' (double C0)
       { data := w ++ (double C0).currentAppendant p,
         phase := (p + 1) % (double C0).appendants.length } n
@@ -914,15 +920,16 @@ theorem represents_step_double (C0 : CTS) (c : CTSConfig) (n : Nat) (s : System5
     (hne : c.data ≠ [])
     (h : Represents s (double C0) c (n + 1)) :
     ∃ k, 1 ≤ k ∧ ∃ s', System5.nSteps s k = some s' ∧
-      ∃ c', (double C0).step c = some c' ∧ Represents s' (double C0) c' n := by
+      ∃ c', (double C0).step c = some c' ∧ Represents s' (double C0) c' n ∧
+        s'.rules.length + 2 = s.rules.length := by
   obtain ⟨data, p⟩ := c
   cases data with
   | nil => exact absurd rfl hne
   | cons b w =>
-    obtain ⟨k, x, hx1, hkx, -, -, s', hrun, c', hstep, hrep⟩ :=
+    obtain ⟨k, x, hx1, hkx, -, -, s', hrun, c', hstep, hrep, hlen⟩ :=
       represents_step_double_time C0 b w p n s h
     have hg := gap_pos b
-    exact ⟨k, by omega, s', hrun, c', hstep, hrep⟩
+    exact ⟨k, by omega, s', hrun, c', hstep, hrep, hlen⟩
 
 /-! ## The TM23Proof.pdf p. 29 instance
 
@@ -1129,7 +1136,9 @@ theorem ex_step_double_pdf29 :
       System5.nSteps { bag := [1, 3, 4, 6],
                        rules := [[25, 28, 31, 32], [23, 26, 29, 30], [], []] } k = some s' ∧
       ∃ c', (double exCTS).step { data := [true, true], phase := 2 } = some c' ∧
-        Represents s' (double exCTS) c' 1 :=
+        Represents s' (double exCTS) c' 1 ∧
+        s'.rules.length + 2
+          = ([[25, 28, 31, 32], [23, 26, 29, 30], [], []] : List (List Int)).length :=
   represents_step_double exCTS { data := [true, true], phase := 2 } 1 _ (by decide)
     ex_represents_after_four
 
