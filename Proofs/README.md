@@ -24,7 +24,8 @@ tape of cells 0, 1, 2 from which `BiTM.wolfram23`, started at its left end, runs
 ever, never leaves the tape to the left, and for every `k` reproduces the first `k`
 configurations of the run of the machine (as many of them as exist) at strictly
 increasing times, read off a window of the tape by `Smith.decodeTM`. No budget and no
-hypothesis on halting; the block sizes are still existential.
+hypothesis on halting; the block sizes are still existential, and neither statement
+bounds the work of the encoder (`blueprint/11-open-items.md` item 1).
 `blueprint/01-overview.md` states exactly what is and is not proved;
 `blueprint/11-open-items.md` lists the gaps.
 

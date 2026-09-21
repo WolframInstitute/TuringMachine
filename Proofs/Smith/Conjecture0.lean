@@ -653,14 +653,15 @@ theorem decodeS4_state (E : List System4Elem) (a : Nat) (st st' : System4State) 
 /-- At a System 4 configuration with the head on an element in state B, that
     element leading a block of sets followed by a star, the wolfram23 decoder
     reads the tape as the decoder of link C reads the block: the cells left of
-    the head play no part. -/
+    the head play no part; a 0 (the star) lies right of the head, and wolfram23
+    is in state B. -/
 theorem rep3_decode (c3 : LConfig) (Lp : List System4Elem) (K : List (List Int))
     (R : List System4Elem) (w h b : Nat) (hK : K ≠ []) (hb : b ≤ h + 1)
     (rc : Closing)
     (hrep : Rep3 rc c3 ⟨Lp ++ sets K ++ System4Elem.star :: R, Lp.length, System4State.B⟩ w h) :
     decodeW23 (2 ^ w) b (toBi (phi2 (phi3 c3)))
       = (decodeS4 ⟨sets K ++ System4Elem.star :: R, 0, System4State.B⟩ b).bind decodeBag ∧
-    0 ∈ (toBi (phi2 (phi3 c3))).right := by
+    0 ∈ (toBi (phi2 (phi3 c3))).right ∧ (toBi (phi2 (phi3 c3))).state = 2 := by
   obtain ⟨⟨ls, rs, le, rc', st, foc⟩, hrc, ⟨hN, hle, hls, hrs, hL, hR, hfoc⟩, rfl, h4⟩ := hrep
   simp only at hrc
   subst rc
@@ -717,7 +718,7 @@ theorem rep3_decode (c3 : LConfig) (Lp : List System4Elem) (K : List (List Int))
            (ofBits x' ++ (ps.map Prod.fst).flatMap ofBits) ++ 0 :: (renderR true rs' ++ rc'.render), B⟩ := by
       simp only [AC.toL, renderR_blocks, renderR_star, List.append_assoc, List.cons_append, st3]
     rw [htoL, phi3_B, phi2_B]
-    refine ⟨?_, by simp [toBi]⟩
+    refine ⟨?_, by simp [toBi], rfl⟩
     unfold decodeW23
     simp only [toBi]
     rw [takeWhile_map_val _ _ hP]

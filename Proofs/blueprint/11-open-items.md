@@ -23,10 +23,15 @@ marked "done" were applied after T6 landed; the rest are open.
    (`[[BiTM.step]]` is `none` in state 0 and the Cocke-Minsky step lemmas need `q != 0`);
    (v) a definition `IC tm c n` from those bounds and the theorem restated with
    `start = IC tm c n`, or at least `biSize start <= F tm c n` for a closed form `F`. A
-   merely computable `IC` that runs the systems would not answer the objection.
+   merely computable `IC` that runs the systems would not answer the objection. This
+   item applies to T6 as much as to T8: the conclusion of `[[Smith.wolfram23_infinite]]`
+   is met by a machine that only moves right over an infinite tape holding the run in
+   advance, and its `forall tm c, exists t` form would even admit one dovetailed tape
+   for all machines and inputs (chapter 10, "What remains existential").
 2. The infinite form T6 (chapter 10): done 2026-09-22, `[[Smith.wolfram23_infinite]]`.
    One right-infinite tape per machine and input, no budget and no hypothesis on
-   halting. It does not by itself give a closed form for the size of block `k`.
+   halting. It does not by itself give a closed form for the size of block `k`, nor
+   answer item 1.
 3. Binary machines (minor). `[[TagSystem.WF]]` covers two-symbol machines; the reduction
    of k-symbol machines, or a bridge to Mathlib's `Turing.TM0`, is not formalized.
    Wording of `docs/PLAN.md` section 2 T7/T8 ("well-formed binary TM"): done.

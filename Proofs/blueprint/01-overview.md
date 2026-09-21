@@ -78,7 +78,8 @@ Read clause by clause:
   formalized.
 - The decoder recovers configurations up to trailing blanks (`canon`).
 - The infinite form is `[[Smith.wolfram23_infinite]]` (chapter 10): one tape per machine
-  and input, no budget; its block sizes are existential too.
+  and input, no budget; its block sizes are existential too, and neither statement
+  bounds the work of the encoder (chapter 11 item 1).
 
 ## The chain
 

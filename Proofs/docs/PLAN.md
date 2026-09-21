@@ -1174,11 +1174,14 @@ nothing to the left, `t` to the right), (i) at every time the run of
 wolfram23 is defined and does not move left from an empty left tape (the
 head never leaves the tape to the left, so the implicit blank on the left
 is never read), and (ii) for every `k` there are a width `2^w`, a band `b`,
-a window `W` and times `times i` such that `times` is strictly increasing
-on `i < k` as long as step `i + 1` of `tm` exists, and for every `i <= k` at
-which the run of `tm` is defined, the `W` cells right of the head at time
-`times i` decode by `decodeTM numStates (2^w) b` to the `i`-th configuration
-of `tm` without trailing blanks. No budget and no hypothesis on halting:
+a window `W` and times `times i`, the last later than `k`, such that
+`times` is strictly increasing on `i < k` as long as step `i + 1` of `tm`
+exists, and for every `i <= k` at which the run of `tm` is defined,
+wolfram23 is in state B at time `times i` and the cells right of the head,
+on the window `W` and on every larger window, decode by `decodeTM numStates
+(2^w) b` to the `i`-th configuration of `tm` without trailing blanks (the
+larger windows say the decoder read the whole leading conglomerate). No
+budget and no hypothesis on halting:
 block `k` emulates the longest run of
 at most `k` steps (classically, `Nat.findGreatest`), so a halting machine's
 run is reproduced in full by every block from some point on, and a
@@ -1235,8 +1238,15 @@ Parameters of block `k` (`block_exists`): `T4` and `b` from
 decoding times `dt i = 2r + padT (t4 (2 (1 + 84 S) tt i))`. All of them are
 computed from the emulation's own run lengths, as in T4: the block sizes
 remain existential and without a closed form (`blueprint/11-open-items.md`
-item 1); T6 removes the dependence of the tape on the budget, which is
-what one tape per machine and input means, and nothing more.
+item 1). T6 removes the dependence of the tape on the budget and nothing
+more: its statement, like T8's, does not bound the work of the encoder, so
+its conclusion is also met by a machine that only moves right over a tape
+holding the run in advance, and its `forall tm c, exists t` form would
+admit one dovetailed tape for all machines and inputs; what distinguishes
+wolfram23 is the construction in the proof (blueprint chapter 10, "What
+remains existential"). The review of T6 (2026-09-22, six lenses, three
+refuters per finding) found no soundness problem; it asked for the state
+and window clauses above, for `k < times k`, and for the vectors E6-E8.
 
 Corrections to section 2's T6 (applied): "follows from T4 and T5" was
 wrong on both counts, T4's tapes do not chain and T5 is not used; the tape
@@ -1244,20 +1254,29 @@ type is a stream right of the head with `BiTM.step`'s semantics
 (`IConfig`, `istep`), not `Int -> Fin 3`; the machine is a binary Turing
 machine through T7, not a CTS.
 
-Tests (`Tests/InfiniteVectors.lean`, E1-E5): D9's program `{0, 2} * {}` in a
-block with `n = 7`, `r = 5`, width `2^5`, band 4: the System 4 entry in 10
-steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
+Tests (`Tests/InfiniteVectors.lean`, E1-E8). E1-E5: D9's program `{0, 2} * {}`
+in a block with `n = 7`, `r = 5`, width `2^5`, band 4: the System 4 entry in
+10 steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
 stuck alone at 14, `SafeC`; the System 3 run from `entry3`: decode at 160
 (`[false]`, as D9), exit at 224 in the shape of `rep3_exit_zero`; two blocks
 chained through `start3`: decodes at 161 and 385, exits at 225 and 449;
 wolfram23 from `startFin`: decodes at 335 and 793, exit at 917 on the last
-cell in state A, size 450 kept through 917 steps and 451 at 918, no left
-move from an empty left tape; the infinite tape: `tape` at the block
+cell in state A, size 450 kept through 917 steps and 451 at 918, the head on
+the first cell only at time 0; the infinite tape: `tape` at the block
 boundaries, `truncI 449 (istart (tape bd)) = startFin bd 1`, the infinite
-run decoding on a window of 64 cells at 335 and 793 and entering block 2 at
-918 where the finite run leaves its tape. Kernel `decide` (`decide +kernel`)
-closes all of them in about a minute; plain `decide` hits the elaborator's
-recursion limit on the longer runs.
+run decoding on a window of 64 cells and on the theorem's window 450 at 335
+and 793 and entering block 2 at 918 where the finite run leaves its tape.
+E6: the program `{0} {0, 1} * {2}`, which turns once at its left end, in a
+block with `n = 12`, `r = 10`, width `2^6`: the turn as `pad_turn` states it
+(block time 24 to 28, the innermost guard `{10}` merged as `{9}`), the exit
+at 31 as `padCfg 12 10 1`, the System 3 exit after 1218 steps, the head
+never back on the leftmost cell. E7: blocks of widths `2^5` then `2^6`
+chained: `segCells`, `tape`, decodes at 335 and 1113, exit at 1365. E8:
+`BlockSpec`'s machine-independent conditions on the E1 block, the System 4
+decode at `dt 0`, `Nat.findGreatest` on the one-step machine `tmH`, the
+theorem instantiated on `tmH`. Kernel `decide` (`decide +kernel`) closes all
+of them in about two minutes; plain `decide` hits the elaborator's recursion
+limit on the longer runs.
 
 Left undone. Closed-form block sizes (item 1 of the open items); a single
 schedule `times` independent of `k` (each block re-emulates from the start,

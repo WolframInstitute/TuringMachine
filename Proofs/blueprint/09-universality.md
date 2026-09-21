@@ -58,10 +58,12 @@ Left open by the statement (the independent review of 2026-09-21; chapter 11):
   universality asks for one encoding of `(M, x)` independent of the running time. The
   conclusion template is satisfied by a machine that only moves right over a tape on
   which the `n + 1` configurations have been laid out in advance; what distinguishes
-  wolfram23 is the proof term (Smith's encoders), not the statement. Two remedies: the
-  infinite form (chapter 10, proved: `[[Smith.wolfram23_infinite]]`), one right-infinite
-  tape per `(M, x)` with the whole run decodable; and a closed-form initial condition
-  with a size bound (chapter 11, open).
+  wolfram23 is the proof term (Smith's encoders), not the statement. The infinite form
+  (chapter 10, proved: `[[Smith.wolfram23_infinite]]`) removes the budget: one
+  right-infinite tape per `(M, x)` with the whole run decodable. It does not remove the
+  precomputed-tape objection, which applies to it in the same way (an infinite tape can
+  hold the whole run in advance); only a closed-form initial condition with a size
+  bound would (chapter 11 item 1, open).
 - Binary machines only.
 - Decoding up to `canon`, at existential times, with nothing said about other times.
 - The name `wolfram23_universal` and the M8 notes' "universality in the literal sense"

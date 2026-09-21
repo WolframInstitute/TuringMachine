@@ -76,7 +76,9 @@ right-infinite tape per machine and input, no budget and no hypothesis on
 halting; the blocks are guarded System 4 tapes chained through rule 5, not
 T4's finite initial conditions, which do not chain. What it does not give:
 a closed-form size for block `k` (the parameters come from the emulation's
-own run lengths, as in T4), a single schedule of times across blocks. The
+own run lengths, as in T4), a single schedule of times across blocks, and,
+like T8, any bound on the encoder, so its statement alone does not exclude
+a tape holding the run in advance (blueprint chapter 10). The
 independent review of 2026-09-21 (`blueprint/11-open-items.md`) found no
 soundness problem in M0-M8; its documentation corrections are applied in
 PLAN.md sections 1, 2, 5 and 8 and in the module headers it names. PLAN.md,

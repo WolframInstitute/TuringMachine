@@ -24,11 +24,11 @@ theorem wolfram23_infinite (tm : Machine) (hwf : WF tm) (c : Config) (hv : Valid
     ∃ t : Nat → Nat, (∀ i, t i < 3) ∧
       (∀ τ, ∃ d, inSteps wolfram23 (istart t) τ = some d ∧
         (d.left = [] → (wolfram23.transition d.state d.head).dir = Dir.R)) ∧
-      ∀ k, ∃ (w b W : Nat) (times : Nat → Nat),
+      ∀ k, ∃ (w b W : Nat) (times : Nat → Nat), k < times k ∧
         (∀ i, i < k → (BiTM.nSteps tm c (i + 1)).isSome → times i < times (i + 1)) ∧
         (∀ i ci, i ≤ k → BiTM.nSteps tm c i = some ci → ∃ d,
-          inSteps wolfram23 (istart t) (times i) = some d ∧
-          decodeTM tm.numStates (2 ^ w) b (truncI W d) = some (canon ci))
+          inSteps wolfram23 (istart t) (times i) = some d ∧ d.state = 2 ∧
+          ∀ W', W ≤ W' → decodeTM tm.numStates (2 ^ w) b (truncI W' d) = some (canon ci))
 ```
 
 Read clause by clause:
@@ -46,18 +46,23 @@ Read clause by clause:
   a configuration whose cells are below 3, `[[Smith.IValid]]`) and does not move left
   from an empty left tape: the head never leaves the tape to the left, so the implicit
   blank on the left is never read and the tape is genuinely one-sided.
-- For every `k`: a width `2^w`, a band `b`, a window `W` and times `times i`. The times
-  are strictly increasing on `i < k` for as long as the run of `tm` continues (if `tm`
-  halts at step `m < k`, the clause is silent beyond `m`; in the proof the times are
-  constant there). For every `i <= k` at which the run of `tm` is defined, the infinite
-  configuration at `times i`, truncated to the `W` cells right of the head
-  (`[[Smith.truncI]]`), decodes by `[[Smith.decodeTM]]` (chapter 09) to the `i`-th
-  configuration without trailing blanks (`[[TagSystem.canon]]`).
+- For every `k`: a width `2^w`, a band `b`, a window `W` and times `times i`, the last
+  of them later than `k` (the emulation advances along the tape). The times are strictly
+  increasing on `i < k` for as long as the run of `tm` continues (if `tm` halts at step
+  `m < k`, the clause is silent beyond `m`; in the proof the times are constant there).
+  For every `i <= k` at which the run of `tm` is defined, wolfram23 is in state B at
+  `times i` and the infinite configuration, truncated to the `W` cells right of the
+  head (`[[Smith.truncI]]`) or to any larger window, decodes by `[[Smith.decodeTM]]`
+  (chapter 09) to the `i`-th configuration without trailing blanks
+  (`[[TagSystem.canon]]`). The "any larger window" clause says that the decoder, which
+  reads up to the first 0 right of the head, has read the whole leading conglomerate:
+  the window does not cut it.
 
-One tape per machine and input, as the standard notion of universality asks. The
-parameters `w`, `b`, `W` and the schedule vary with `k`, as in Smith's construction
-(his `w_n` grows along the tape, p. 25): block `k` re-emulates the run from the start
-with its own width and band, so the decode of step `i` recurs in every block `k >= i`.
+One tape per machine and input, with no budget in the statement. The parameters `w`,
+`b`, `W` and the schedule vary with `k`, as in Smith's construction (his `w_n` grows
+along the tape, p. 25): block `k` re-emulates the run from the start with its own width
+and band, so the decode of step `i` recurs in every block `k >= i`. What the statement
+does not say is discussed under "What remains existential" below.
 
 ## Smith's argument and why the finite T4 does not chain
 
@@ -125,9 +130,11 @@ on the guarded tape, a walk left over the merged sets, the deletion of the next 
 first element in state B, exactly as the turn would have left it: `2t + 4` steps after
 `t` turns (`[[Smith.pad_turn]]`). Every other rule is one step on both tapes
 (`[[Smith.pad_step]]`). `[[Smith.pad_schedule]]` gives the padded run with its schedule and
-the number of turns so far; with `r` guards and a program run of `N <= r - 1` steps at
-least one guard pair always remains, so the guards are never exhausted and the head is
-never on the leading star after time 0 (`PosRun`, the `SafeC` condition of chapter 06).
+the number of turns so far; before each turn at least one guard pair remains (`pad_turn`
+needs `t + 2 <= r`, and `t <= N - 1 <= r - 2` for a program run of `N <= r - 1` steps),
+the leading star is never deleted, and the head is never on it after time 0 (`PosRun`,
+the `SafeC` condition of chapter 06); with `r = T4 + 1` and `N = T4 - 1` one pair is
+still left after the last possible turn.
 
 `[[Smith.block_run]]` is the block's System 4 run from its entry: the exit configuration
 `padCfg n r (turns (T4 - 1)) [star] [] cE` at time `H`, where `cE` is the program's exit
@@ -202,17 +209,28 @@ chapter 09's finite form needs the run to last the budget.
 
 ## Tests
 
-`Tests/InfiniteVectors.lean` (E1-E5, all by kernel `decide`): D9's program `{0, 2} * {}`
-in a block with `n = 7`, `r = 5`, width `2^5`, band 4. E1: the System 4 entry in 10 steps
-to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration, stuck alone at 14,
-`SafeC`. E2: the System 3 run from `entry3`, the decode at 160 (`[false]`, as D9), the
-exit at 224 in the shape of `rep3_exit_zero`. E3: two blocks chained through `start3`,
-decodes at 161 and 385, exits at 225 and 449. E4: wolfram23 from `startFin`, decodes at
-335 and 793, the exit at 917 on the last cell in state A, size 450 kept through 917 steps
-and 451 at 918, no left move from an empty left tape. E5: `tape` at the block boundaries,
-`truncI 449 (istart (tape bd)) = startFin bd 1`, the infinite run decoding on a window
-of 64 cells at 335 and 793 and entering block 2 at 918, where the finite run leaves its
-tape.
+`Tests/InfiniteVectors.lean` (E1-E8, all by kernel `decide`). E1-E5: D9's program
+`{0, 2} * {}` in a block with `n = 7`, `r = 5`, width `2^5`, band 4. E1: the System 4
+entry in 10 steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
+stuck alone at 14, `SafeC`. E2: the System 3 run from `entry3`, the decode at 160
+(`[false]`, as D9), the exit at 224 in the shape of `rep3_exit_zero`. E3: two blocks
+chained through `start3`, decodes at 161 and 385, exits at 225 and 449. E4: wolfram23
+from `startFin`, decodes at 335 and 793, the exit at 917 on the last cell in state A,
+size 450 kept through 917 steps and 451 at 918, the head on the first cell only at time
+0. E5: `tape` at the block boundaries, `truncI 449 (istart (tape bd)) = startFin bd 1`,
+the infinite run decoding on a window of 64 cells and on the theorem's window 450 at
+335 and 793 and entering block 2 at 918, where the finite run leaves its tape. E6: the
+program `{0} {0, 1} * {2}`, which turns once at its left end, in a block with `n = 12`,
+`r = 10`, width `2^6`: the turn as `pad_turn` states it (the program's configuration
+padded with no turn at block time 24, with one turn `2 * 0 + 4` steps later, the
+innermost guard `{10}` merged as `{9}`), the exit at 31 as `padCfg 12 10 1`, the
+System 3 exit after 1218 steps, the head never back on the leftmost cell. E7: two
+blocks of different widths (`2^5` then `2^6`): `segCells`, `tape` at the boundaries,
+the decodes at 335 (width 32) and 1113 (width 64), the exit at 1365 and the entry into
+block 2. E8: the machine-independent side conditions of `BlockSpec` on the E1 block,
+the System 4 decode at `dt 0`, the halting reading of the block index
+(`Nat.findGreatest` on the one-step machine `tmH` of `Tests/TMToCTSVectors.lean`) and
+the theorem instantiated on `tmH`.
 
 ## What remains existential
 
@@ -220,9 +238,18 @@ tape.
   the run lengths of the emulation of `k` steps (`T4`, `b`, `H`, `f` from the schedules of
   chapters 04, 05 and 08), as in chapter 08. One tape per `(tm, c)` removes the
   dependence on the budget, but the size of block `k` is not given by a closed form, and
-  the tape's definition uses the schedules classically (`choose`). A closed-form
-  construction (chapter 11, item 1) would make the tape computable from `(tm, c)` by an
-  obviously non-universal algorithm, which is the other half of Smith's p. 22-26.
+  the tape's definition uses the schedules classically (`choose`).
+- The statement does not bound the work done by the encoder, and this is the objection
+  that remains (chapter 09, chapter 11 item 1). The conclusion template of the theorem
+  is satisfied by machines that do nothing: an infinite tape can hold, for every `k`,
+  the `k + 1` configurations of the run laid out in advance, and a machine that only
+  moves right over it meets every clause; and since the statement is
+  `forall tm c, exists t`, the same block machinery would even give one dovetailed
+  tape for all machines and inputs. What distinguishes wolfram23 is the construction
+  behind the proof (Smith's encoders, whose blocks are built from the machine's
+  description and the run's bookkeeping, not from the run's configurations), not the
+  statement. A closed-form construction with a size bound (item 1) is what would put
+  that into the statement; it is the other half of Smith's p. 22-26.
 - The times are existential, one schedule per block; there is no single schedule
   across blocks (each block starts the emulation over).
 - Smith starts "with the leftmost 0 active in state A"; here the start is a 2 in state
