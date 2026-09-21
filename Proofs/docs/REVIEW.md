@@ -52,6 +52,13 @@ Smith's theorem, cyclic tag emulation, and is not named universality (T8
 composes it with T7, which is M4b/M8). PLAN.md, "M6 notes", is the current
 record.
 
+Status note (after milestone M4b, 2026-09-21): T7, the simulation of a
+well-formed binary Turing machine by a cyclic tag system with a decoder, is
+proved by a genuine Cocke-Minsky construction (`TagSystem/TagRounds.lean`,
+`TagSystem/CockeMinsky.lean`, `TagSystem/TMToCTS.lean`: `t7_finite`). This
+replaces the halting-oracle "faithful Cocke-Minsky" theorem section 4.1
+rejects. PLAN.md, "M4b notes", is the current record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`

@@ -5,7 +5,7 @@ Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 res
 notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
 (see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 done
 2026-09-21 (see "M5 notes" in section 5); M6 done 2026-09-21 (see "M6 notes" in section 5);
-M4b and M8 are next.
+M4b done 2026-09-21 (see "M4b notes" in section 5); M8 is next.
 
 ## 1. Where we are
 
@@ -984,6 +984,92 @@ is a one-line inverse not yet written. The phase of the cyclic tag
 configuration is not decoded (it is `(cfg.phase + i) % appendants.length`).
 The times are existential (`times`, `T`) with no closed form. T6, the infinite
 form, is not attempted (optional M7).
+
+### M4b notes (done 2026-09-21)
+
+Three modules, all lakefile roots, about 1200 lines together:
+`TagSystem/TagRounds.lean` (2-tag systems over any alphabet, runs by rounds),
+`TagSystem/CockeMinsky.lean` (the simulation of a binary machine by a 2-tag
+system), `TagSystem/TMToCTS.lean` (the finite alphabet, the cyclic tag system,
+the decoder, T7). Zero `sorry`, no `native_decide` outside the tests;
+`#print axioms t7_finite` shows only `propext, Classical.choice, Quot.sound`.
+`lake build` is 851 jobs. `Tests/TMToCTSVectors.lean` runs a three-state
+machine through the tag system by `decide` and through the cyclic tag system
+by `native_decide`, and reads it back with the decoder.
+
+Rounds (`TagSystem/TagRounds.lean`). `stepP P` is the 2-tag step with
+productions `P` on `List sigma` (`Tag.step` is `stepP ts.productions`, so
+nothing about `Fin k` enters the construction). A round processes the whole
+current word: `passOut P u` is the concatenation of the productions of every
+other symbol of `u`, starting with the first; `nStepsP_even` says a word of
+even length `2n` is replaced by `passOut` of it in `n` steps; `nStepsP_odd`
+says a word of odd length `2n + 1` is replaced in `n + 1` steps by `passOut`
+of it without its first symbol, because the last symbol read takes the first
+appended symbol as its deleted partner. That one dropped symbol is the whole
+mechanism: the next round then reads the second of each pair. The
+computation lemmas give `passOut` on pairs read aligned (`passOut_pairs2`),
+on pairs read shifted (`passOut_cons_pairs2`: after a leading symbol, the
+second of each pair), and on runs (`passOut_cons_replicate_append`: a symbol,
+then half of a run rounded down, then the rest read from its first or second
+symbol according to the run's parity).
+
+The construction (`TagSystem/CockeMinsky.lean`), Cocke and Minsky's in the
+phase design of the module header, validated by a Python simulation of random
+machines before it was proved. The configuration `(q, left, head, right)` is
+the word `A_q x (al_q x)^m B_q x (be_q x)^N` with `m = val left` (nearest
+cell least significant) and `N = head + 2 val right`: the scanned cell is the
+lowest bit of the right number. Round 1 doubles nothing and halves nothing;
+it sets up the parity read: `A -> P1 P0`, `al -> p p`, `B -> Q`, `be -> r`,
+after which the word `P1 P0 (p p)^m Q r^N` has the parity of `N + 1`. Round 2
+reads `N / 2` of the `r` (the run starts after the odd prefix `Q`) and
+produces the pairs `E1 E0 (e1 e0)^m F1 F0 (f1 f0)^(N/2)`; round 3 reads the
+first of each pair when `N` is odd and the second when `N` is even, so every
+symbol read in round 3 knows the scanned bit. Round 3 executes the
+transition: for a move to the right it writes the next configuration word
+directly (`w + 2m` and `N / 2`); for a move to the left it writes `G g^m H H
+k^(4 (N/2))`, whose round 4 halves `m` and reads its parity into the frame
+of round 5, which writes `A x (al x)^(m/2) B x (be x)^(2w + (m mod 2) + 4
+(N/2))`. Whenever a round reads the second of each pair, the production of
+the first symbol read carries a leading pad `x`, which the odd round before
+it consumes, so the current tag word at the start of every machine step is
+exactly the configuration word (`tm_step_tag`: three rounds for a move to
+the right, five for a move to the left, step counts explicit).
+
+The finite alphabet and the cyclic tag system (`TagSystem/TMToCTS.lean`).
+Symbols carry a kind, a state and two bits; `enc` sends the symbols with
+states below `S` injectively into `Fin (1 + 84 S)` and `dec` inverts it
+(`dec_enc`), `WordOK` says all states of a word are below `S`, which the
+productions preserve under `WF` (`prod_OK`, 21 kinds by one `simp` call),
+and `nStepsP_enc` carries the runs over. `tagK tm S` is the resulting
+`Tag (1 + 84 S)`; `cts_of_tag` iterates `tagToCTS_simulation` of the old
+`TagSystem/TagToCTS.lean` (unchanged, its `2k` steps per tag step confirmed):
+`k` tag steps are `2 (1 + 84 S) k` cyclic tag steps. `WF tm` (decidable):
+from a state below `numStates` reading a bit the machine writes a bit and
+moves to a state below `numStates`; `ValidCfg`: the tape holds bits. Then
+
+    tm_cts_forwardSim : ForwardSim (tmSys tm) (ctsSys (tagToCTS (tagK tm S) _))
+      (fun c d => ValidCfg c /\ c.state < S /\ d = ctsOfCfg S c)
+
+and `tm_tag_forwardSim` at the tag level (used by M8, where the number of
+cyclic tag cycles must be the number of tag steps). The decoder `decodeCTS`
+reads the one-hot blocks back as tag symbols (`tagWordDecode`, an inverse of
+`tagWordEncode`, from `range_map_beq`: the block of `i` is `i` falses, a
+true, and falses), the symbols as a configuration word (`parseWord`, counting
+the pairs), and the two numbers as tape halves (`natBits`); it returns the
+configuration without trailing blanks (`canon`), because the numbers do not
+see them, and `decodeCTS_word` is its correctness. `t7_finite` is T7 in the
+finite form of the other links.
+
+Design notes. States are `Nat` in the symbols, not `Fin S`, so that the
+productions need no bound; the bound is an invariant (`WordOK`) rather than a
+type. `WF` restricts the machines to two symbols, as PLAN.md section 3 allows
+(link I, step 2); a base-`k` variant of the rounds is possible but not done,
+and neither is the classical reduction of `k`-symbol machines to two symbols.
+The halting state 0 of `BiTM` is not treated specially by the tag system: the
+simulation is stated for machine steps, and a halted machine makes none.
+
+Left undone in M4b: the reduction to two symbols; a decidable `WF` for
+`numSymbols`; the tag system's own halting is not related to the machine's.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of
