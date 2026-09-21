@@ -21,12 +21,14 @@
     * D4  `s52s4.pl 16 2 1,4 1,6 "" ""`               (p. 33)
     * D5  `system4.pl C` on the D4 tape               (p. 41)
     * D6  the System 0 transition table               (p. 3)
+    * D7  the scheduled times of the D5 run under `RepS4` (M3)
 -/
 
 import BiTM.CTSToSystem5
 import BiTM.System5ToSystem4
 import BiTM.System4
 import BiTM.Wolfram23Valid
+import Smith.Conjecture4
 
 namespace Tests
 
@@ -307,6 +309,48 @@ example : wolfram23.transition 2 1 = { nextState := 2, write := 2, dir := Dir.R 
   decide
 
 example : wolfram23.transition 2 2 = { nextState := 1, write := 0, dir := Dir.R } := by
+  decide
+
+/-! ## D7: the D5 run at the times `conjecture4_finite` schedules (M3)
+
+The System 5 program of D4 is `2 1,4 1,6 "" ""`; its bags are `2`, `1`,
+`3,6`, `2,5`, `1,4`, ... (one D-step, one P-step, two D-steps).  The bounds
+of `conjecture4_finite` at `f = 16` hold for a budget of 4 steps (the rule
+entry 6 needs `6 + 2h < 16`).  The head is back at the left end in state A
+after 8, 1336, 1616 and 1904 System 4 steps, and there `decodeS4` below the
+band `2f - 2j - 2` reads the System 5 bag.  The times in between at which
+the head is also at the left end in state A (570, the end of the first pop
+phase, and 1475, the middle of a D-step) decode to `none`, because the
+parity set then holds odd integers.  These runs are 10^3 steps long, so they
+close by `native_decide` like D5. -/
+
+example : (System4.nSteps s4D4 8).bind (fun c => Smith.decodeS4 c 28) = some [1] := by
+  native_decide
+
+example : (System4.nSteps s4D4 1336).bind (fun c => Smith.decodeS4 c 26) = some [3, 6] := by
+  native_decide
+
+example : (System4.nSteps s4D4 1616).bind (fun c => Smith.decodeS4 c 24) = some [2, 5] := by
+  native_decide
+
+example : (System4.nSteps s4D4 1904).bind (fun c => Smith.decodeS4 c 22) = some [1, 4] := by
+  native_decide
+
+example : (System4.nSteps s4D4 1904).map (fun c => (c.active, c.state)) = some (0, System4State.A) := by
+  native_decide
+
+example : (System4.nSteps s4D4 570).bind (fun c => Smith.decodeS4 c 26) = none := by
+  native_decide
+
+example : (System4.nSteps s4D4 1475).bind (fun c => Smith.decodeS4 c 24) = none := by
+  native_decide
+
+/-- The D-step of `Smith.System4Runs` on the D4 tape, by `decide`: the bag
+    set `{2}` is decremented twice and two empty sets are merged. -/
+example : System4.nSteps s4D4 8
+    = some ⟨Smith.sets [[0], [], []] ++ starredEmptyPairs 14
+              ++ Smith.encBlocks [[1, 4], [1, 6], [], []] 16 0,
+            0, System4State.A⟩ := by
   decide
 
 end Tests

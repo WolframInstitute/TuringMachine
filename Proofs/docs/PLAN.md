@@ -2,7 +2,8 @@
 
 Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 resolved on
 2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
-notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 is next.
+notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
+(see "M3 notes" in section 5); M4, M4b and M5 are next.
 
 ## 1. Where we are
 
@@ -579,6 +580,132 @@ a PDF budget must be divided by the number of appendants; and the schedule of
 `conjecture5_finite` is existential rather than given by a closed formula
 `times j = sum of (x_i + gap b_i)`, since the `_time` lemmas pin each increment
 but no aggregate was stated.
+
+### M3 notes (done 2026-09-21)
+
+T2 is proved, in the finite form with the System 5 run length as the budget.
+Two modules, both lakefile roots: `Smith/System4Runs.lean` (the run lemmas,
+about 780 lines) and `Smith/Conjecture4.lean` (the relation, the per-step
+lemma, T2, the decoder, the composition with T1, about 880 lines). Zero
+`sorry`, no `native_decide`; `#print axioms` of `conjecture4_finite`,
+`conjecture4_cts_exists_f`, `RepS4_decode` and `repS4_forwardSim` shows only
+`propext, Classical.choice, Quot.sound` (`repS4_exit`: `propext, Quot.sound`).
+`lake build` is 619 jobs; the two modules build in about 5 s together and
+emit no warnings.
+
+The run lemmas (`Smith/System4Runs.lean`). Each rule of `System4.step` is
+stated at a focus `L ++ e :: R` with the head on `e` (`step_setA`,
+`step_setA_zero`, `step_starA`, `step_setBC`, `step_starB`, `step_starC`),
+so every run of the emulation is a composition of local moves with an
+arbitrary context on both sides. On top of them: `sweep` (a B/C pass over a
+block of adjacent sets `sets K` decrements every set and flips the state
+once per set that contains `0`, so it ends in `flip (parMem 0 K) st`, where
+`parMem x K` is parity membership, that is membership in the "one big merged
+set" of PDF p. 16), `moveLeft`, `turn`, `turnFrom` (the state A walk back to
+the left end and the turn into B), `cPhase` (in state C the `g` star/empty
+pairs become `g` star/`{0}` pairs in `2g` steps), and the macros of p. 17-18:
+`dStep` (turn, sweep, star, turn, sweep, star, walk back; `4|K| + 4` steps,
+both sweeps quiet), `preLoop` (the 8 steps at the arrival at a block in state
+C: toggle of `1`, two decrements, the two stars around the set deleted, one
+empty set merged), `loopIter` (one iteration of Smith's loop, `2|K| + 1`
+steps, on the block `loopK i R = {0} :: {}^i ++ [R] ++ {}^(i+2)`), `loopRun`
+(`n` iterations), `finalPass` (the last pass, which merges the block into the
+leftmost block and returns the head to the left end), and `popPhase`, which
+chains turn, sweep, `cPhase`, `preLoop`, `loopRun` and `finalPass` from a
+left-end configuration with a `0` in the merged leftmost block. `popPhase` is
+applied twice per System 5 pop, once at the rule set and once at the
+all-integers set; the loop counts are `g - 1` and `f + t - 3`, as on
+p. 17-18. The step counts of the composite runs are existential (the schedule
+of T2 is existential anyway).
+
+The relation `RepS4 c s f j h` (`Smith/Conjecture4.lean`) is the "condition
+during execution" of p. 17 after `j` System 5 steps with `h` steps of budget
+left: there is a nonempty block `K` of sets, each `Nodup` and nonnegative,
+with
+
+    c = ⟨sets K ++ starredEmptyPairs (f - 2j) ++ encBlocks s.rules f (2j), 0, A⟩
+
+where `encBlocks` lays down one block per remaining rule whose rule set is
+`0..3f` toggled at `rulePos f t k = 2k + f + 3 - t` with `t = 2j` (the tape
+integer of a rule entry is fixed while the entry grows by 1 per step,
+`encBlocks_shift`); `2j + 2h < f`; for every `0 <= x` with
+`x + 2j + 2 < 2f`, `parMem x K = decide (exists e in s.bag, x = 2e - 2)`;
+`s.bag` is `Nodup` with `1 <= e` and `e + j < f` for every element; every
+rule is `Nodup` with `0 <= k` and `k + j + 2h < f` for every entry. The band:
+the symmetric difference of `K` agrees with the encoded bag only below
+`2f - 2j - 2`; above it the all-integers sets leave debris (`{0..2f+t-3}`
+xor `{0..2f-t}` after a pop, then decremented by 2 per step), which is what
+Smith's "f sufficiently large" is for. The budget clause on the rules keeps
+every popped integer below the band; it is invariant because a rule entry
+grows by 1 per step while its threshold shrinks by 1.
+
+The per-step lemma. `repS4_dStep` (`1` not in the bag) is `dStep` plus the
+shift of the blocks. `repS4_pStep` (`1` in the bag, rules `r :: rest`) is
+`popPhase` at `encRuleSet r f (2j)` followed by `popPhase` at
+`allInts (3f + 1)`; the zero facts it needs (`0 in decrN i (xorInsert 1 S)`
+at the loop indices) come from `encRuleSet_mem_low` (every integer below the
+first rule position `f + 3 - t` is in the rule set) and `allInts_mem`. The
+parity clause after the pop is the identity
+
+    parMem x K2 = parMem (x + 2) K xor decide (exists k in r, x = 2k)
+
+for `x` below the new band: the rule set contributes `x + g + 3 in Rs`, which
+there is `not (exists k in r, x = 2k)`, and the all-integers set contributes
+`true`; on the System 5 side `xorMerge_mem_iff` and `exists_xor_encode` read
+the new bag `xorMerge ((bag - 1).erase 0) (r + 1)` the same way.
+`system5ToSystem4_repS4` is the initial condition (`t = 0`,
+`K = [encodeBag bag]`; `system5ToSystem4_eq` identifies the M0 encoder with
+`encBlocks _ f 0`).
+
+Assembly. `repS4_forwardSim f h0 : ForwardSim (fueled system5Sys) system4Sys
+(fun p c => p.2 <= h0 /\ RepS4 c p.1 f (h0 - p.2) p.2)` (the step count is
+the fuel spent), and
+
+    theorem conjecture4_finite (s : System5Config) (f h n : Nat)
+        (hbag : s.bag.Nodup) (hbag1 : forall e in s.bag, 1 <= e /\ e < f)
+        (hrules : forall r in s.rules, r.Nodup /\ forall k in r, 0 <= k /\ k + 2 * h < f)
+        (hf : 2 * h < f) (hn : n <= h) (s' : System5Config)
+        (hrun : System5.nSteps s n = some s') :
+        exists times : Nat -> Nat, times 0 = 0 /\
+          (forall i, i < n -> times i < times (i + 1)) /\
+          forall i, i <= n -> exists si ci, System5.nSteps s i = some si /\
+            System4.nSteps (system5ToSystem4 s f) (times i) = some ci /\
+            RepS4 ci si f i (h - i)
+
+Exit: `repS4_exit`, from a related configuration with an empty rule list and
+`1` in the bag (the pop attempt that is Conjecture 5's terminal event) the run
+reaches a configuration in state C with the head just past the right end,
+where `System4.step` is `none`. Decoder: `decodeS4 c b` reads the parity set
+of the leftmost block below `b`; `RepS4_decode` shows that at
+`b = 2f - 2j - 2` it returns a permutation of the System 5 bag. Composition:
+`conjecture4_cts` and `conjecture4_cts_exists_f` compose T1 and T2
+(schedules composed through `strictMono_of_succ`): for every cyclic tag
+system, configuration, budget `N` and `n` within the budget there are `L`
+(the System 5 run length) and `f0` such that for every `f >= f0` the System 4
+tape `system5ToSystem4 (ctsToSystem5 C0 cfg N) f` has a strictly increasing
+schedule at which it stands in `RepS4` to a System 5 configuration that
+`Represents` the `i`-th cyclic tag configuration.
+
+Regression (`Tests/SmithVectors.lean`, D7): on the p. 33 program
+`2 1,4 1,6 "" ""` at `f = 16` the bounds allow a budget of 4; the D5 run is
+back at the left end in state A at times 8, 1336, 1616, 1904 and `decodeS4`
+there reads `1`, `3,6`, `2,5`, `1,4`, the System 5 bags; at 570 (the end of
+the first pop phase) and 1475 (the middle of a D-step) it reads `none`. By
+`native_decide` (runs of 10^3 steps); the D-step itself, time 8, is checked
+against the tape `sets [{0}, {}, {}] ++ 14 pairs ++ blocks` by plain
+`decide`.
+
+Left undone in M3. The finish-time bound `finishTime P <= 3^(n-1) M` of
+p. 20-21 is not formalised: T2 takes the System 5 run length as its budget
+and `conjecture4_cts_exists_f` chooses `f` from it, so no closed form for `f`
+is stated. `System5.step` is still `none` on an empty rule list (decision 5
+of section 8 remains to be implemented); `repS4_exit` states the terminal
+event as "rules empty and `1` in the bag". The relation fixes the tape layout
+of `s52s4.pl` exactly (block widths `2f` and `2f - 2`), not Smith's looser
+"possibly containing other integers higher than 3f". `RepS4` says nothing
+about the tape off the schedule; the head is also back at the left end in
+state A at unscheduled times (the end of the first pop phase, the middle of a
+D-step), which the D7 negative instances record.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

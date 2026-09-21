@@ -21,6 +21,12 @@ count and build time and are stale in those respects; PLAN.md, "M1 notes", is th
 record. The `native_decide` sites still in `OneSidedTM/` predate M0, are outside the Smith
 chain and are not depended on by it, as the M0 notes record.
 
+Status note (after milestone M3, 2026-09-21): `Smith/System4Runs.lean` and
+`Smith/Conjecture4.lean` prove T2, the System 5 -> System 4 link, with the fixed
+`s52s4.pl` encoder (section 4.3's two missing stars) and the exit in state C; the
+line "System 5 -> System 4: no emulation theorem attempted" in section 2 is
+therefore stale. PLAN.md, "M3 notes", is the current record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`
