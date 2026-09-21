@@ -237,7 +237,7 @@ theorem System4.step_none_of_active_oob (cfg : System4Config)
     (h : cfg.active ≥ cfg.elems.length) :
     System4.step cfg = none := by
   unfold System4.step
-  rw [dif_neg (Nat.not_lt.mpr h)]
+  rw [dite_eq_right (Nat.not_lt.mpr h)]
 
 /-- Trivial halting witness: `active` out of bounds => halts in one step. -/
 theorem System4.Halts_of_active_oob (cfg : System4Config)
@@ -975,9 +975,9 @@ theorem all_setNodup_set (l : List System4Elem) (i : Nat) (x : System4Elem)
 theorem decrementSet_nodup (s : List Int) (h : s.Nodup) : (decrementSet s).1.Nodup := by
   unfold decrementSet
   by_cases h0 : (0 : Int) ∈ s
-  · simp only [h0, if_pos]
+  · simp only [h0, ite_eq_left]
     exact nodup_map_sub_one (List.Nodup.erase 0 h)
-  · simp only [h0, if_false]
+  · simp only [h0, ite_false]
     exact nodup_map_sub_one h
 
 /-- **`System4.step` preserves `System4Config.WellFormed`.**  Rules 1 and 3

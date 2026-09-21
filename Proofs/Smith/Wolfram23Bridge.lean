@@ -159,7 +159,7 @@ theorem biSize_step (tm : Machine) (cfg cfg' : BiTM.Config) (h : BiTM.step tm cf
   by_cases hs : st = 0
   · subst hs
     simp [BiTM.step] at h
-  · simp only [BiTM.step, beq_iff_eq, hs, if_false] at h
+  · simp only [BiTM.step, beq_iff_eq, hs, ite_false] at h
     cases hd : (tm.transition st a).dir <;> rw [hd] at h
     · cases L <;> simp [BiTM.readHead] at h <;> subst h <;> simp [biSize]
       all_goals omega

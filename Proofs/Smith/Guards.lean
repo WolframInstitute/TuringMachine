@@ -84,7 +84,7 @@ theorem merged_zero (n : Nat) : merged n 0 = [gset n 2] := rfl
 
 theorem decr_gset (n k : Nat) (hk : k < n) : decr (gset n k) = gset n (k + 1) := by
   unfold decr decrementSet gset
-  rw [if_neg (by simp; omega)]
+  rw [ite_eq_right (by simp; omega)]
   simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true]
   push_cast
   omega
@@ -241,13 +241,13 @@ theorem xorInsert_one_preM (n : Nat) (hn : 3 ≤ n) : xorInsert 1 (preM n) = [0,
 
 theorem decr_single (n : Nat) (hn : 1 ≤ n) : decr [(n : Int)] = gset n 1 := by
   unfold decr decrementSet gset
-  rw [if_neg (by simp; omega)]
+  rw [ite_eq_right (by simp; omega)]
   simp
 
 theorem decr_preM' (n : Nat) : decr [0, (n : Int) - 1] = gset n 2 := by
   have h1 : decr [0, (n : Int) - 1] = [(n : Int) - 1 - 1] := by
     unfold decr decrementSet
-    rw [if_pos (by simp)]
+    rw [ite_eq_left (by simp)]
     simp
   rw [h1]
   unfold gset
@@ -365,7 +365,7 @@ theorem step_active_lt (c c1 : System4Config) (hs : System4.step c = some c1) :
     c.active < c.elems.length := by
   by_contra hlt
   unfold System4.step at hs
-  rw [dif_neg hlt] at hs
+  rw [dite_eq_right hlt] at hs
   cases hs
 
 /-- The turn on the padded tape: `2t + 4` steps, all with the head right of
@@ -435,7 +435,7 @@ theorem pad_turn (n r t : Nat) (Lc Rc : List System4Elem) (s : List Int) (R : Li
     have hsw := sweep G (merged n t) (System4Elem.set s :: (R ++ Rc)) System4State.B (by decide)
     rw [length_merged, parMem_zero_merged n t hn] at hsw
     rw [hsw, hGdef]
-    simp only [padCfg, hk', merged_succ n t hn, sets_cons, flip, Bool.false_eq_true, if_false,
+    simp only [padCfg, hk', merged_succ n t hn, sets_cons, flip, Bool.false_eq_true, ite_false,
       List.append_assoc, List.cons_append, List.length_append, length_guardPairs,
       List.length_singleton]
     simp [sets]
@@ -633,22 +633,22 @@ theorem pad_schedule (n r : Nat) (Lc Rc : List System4Elem) (N : Nat) (c0 : Syst
     · intro i hi
       dsimp only
       by_cases hiN : i < N
-      · rw [if_pos (le_of_lt hiN), if_pos (by omega)]
+      · rw [ite_eq_left (le_of_lt hiN), ite_eq_left (by omega)]
         exact hmono i hiN
       · obtain rfl : i = N := by omega
-        rw [if_pos (le_refl _), if_neg (by omega)]
+        rw [ite_eq_left (le_refl _), ite_eq_right (by omega)]
         omega
     · intro i hi
       dsimp only
       by_cases hiN : i ≤ N
-      · rw [if_pos hiN, if_pos hiN]
+      · rw [ite_eq_left hiN, ite_eq_left hiN]
         exact htr i hiN
       · obtain rfl : i = N + 1 := by omega
-        rw [if_neg hiN, if_neg hiN]
+        rw [ite_eq_right hiN, ite_eq_right hiN]
         refine ⟨by omega, cN, hrun, ?_⟩
         rw [System4.nSteps_add, hpadN, Option.bind_some, hrunk]
     · dsimp only
-      rw [if_neg (by omega)]
+      rw [ite_eq_right (by omega)]
       exact PosRun_add _ _ _ _ _ hpadN hpos hposk
 
 end Smith

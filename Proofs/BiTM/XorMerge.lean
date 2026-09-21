@@ -59,13 +59,13 @@ def xorMerge (xs ys : List Int) : List Int :=
 theorem xorInsert_not_mem (x : Int) (xs : List Int) (h : x ∉ xs) :
     xorInsert x xs = x :: xs := by
   unfold xorInsert
-  rw [if_neg h]
+  rw [ite_eq_right h]
 
 /-- `xorInsert x xs` erases `x` when `x` is in `xs`. -/
 theorem xorInsert_mem (x : Int) (xs : List Int) (h : x ∈ xs) :
     xorInsert x xs = xs.erase x := by
   unfold xorInsert
-  rw [if_pos h]
+  rw [ite_eq_left h]
 
 /-- `xorInsert` preserves `Nodup`.  Adding when absent prepends; erasing
     when present uses `List.Nodup.erase`. -/

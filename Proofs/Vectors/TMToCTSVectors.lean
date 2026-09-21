@@ -1,5 +1,5 @@
 /-
-  Tests.TMToCTSVectors
+  Vectors.TMToCTSVectors
 
   Regression vectors for T7 (milestone M4b): a three-state binary machine
   run through the Cocke-Minsky tag system and the cyclic tag system, and
@@ -146,7 +146,7 @@ example : decodeCTS 2 (ctsOfCfg 2 ⟨0, [1], 0, []⟩) = some ⟨0, [1], 0, []�
 `decodeCTS S`. The first stage needs a wolfram23 tape whose bag spells a
 doubled cyclic tag word, at least `2 * 4 * (1 + 84 S)` bits, so a block of
 width at least `2^13` for `S = 2`, whose rendering builds its parity rows by
-iteration and is out of reach of `decide`; `Tests/SmithVectors.lean` D9 and
+iteration and is out of reach of `decide`; `Vectors/SmithVectors.lean` D9 and
 D10 have the first stage on small tapes and `decodeTM` rejecting their
 words. Here `undbl` inverts `dbl` and rejects an odd word and a word that
 is not doubled, and the doubled encoding of a configuration, taken from the

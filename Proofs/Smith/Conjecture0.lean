@@ -398,7 +398,7 @@ theorem RepS4_decode_band (c : System4Config) (s : System5Config) (f j h : Nat)
     obtain ⟨e, _, rfl⟩ := (hmem x).mp hx
     simp only [decide_eq_true_eq]
     omega
-  rw [if_pos hall]
+  rw [ite_eq_left hall]
   refine ⟨_, rfl, ?_⟩
   have hnd1 : (((List.range b).map (fun (i : Nat) => (i : Int))).filter
       (fun x => parMem x K)).Nodup :=
@@ -596,7 +596,7 @@ theorem decodeBlocks_of_blocks (N b k : Nat) (hN : 1 ≤ N) (blocks : List (Bits
     rw [Int.toNat_natCast, parAt_blocks N k blocks hb i (by omega)]
   have hlm : blocks.length = (blocks.map Prod.fst).length := (List.length_map ..).symm
   unfold decodeBlocks
-  rw [if_pos ⟨all_flatMap_ofBits _, by rw [hL, hdiv]; exact hpos, by rw [hL, hmod]⟩]
+  rw [ite_eq_left ⟨all_flatMap_ofBits _, by rw [hL, hdiv]; exact hpos, by rw [hL, hmod]⟩]
   simp only [hL, hdiv, natBits_flatMap]
   rw [hlm, xorBlocks_flatten N _ hlen, hfilt]
 

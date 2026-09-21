@@ -420,12 +420,12 @@ theorem rotateLeft_getElem? {alpha : Type u} (l : List alpha) (r j : Nat)
     have hrot : l.rotateLeft 0 = l := by
       show (if l.length ≤ 1 then l else
             List.drop (0 % l.length) l ++ List.take (0 % l.length) l) = l
-      rw [if_pos h1]
+      rw [ite_eq_left h1]
     rw [hrot, Nat.zero_add, Nat.mod_eq_of_lt hj]
   · have hrot : l.rotateLeft r = List.drop r l ++ List.take r l := by
       show (if l.length ≤ 1 then l else
             List.drop (r % l.length) l ++ List.take (r % l.length) l) = _
-      rw [if_neg h1, Nat.mod_eq_of_lt hr]
+      rw [ite_eq_right h1, Nat.mod_eq_of_lt hr]
     rw [hrot]
     by_cases hj2 : j < l.length - r
     · rw [List.getElem?_append_left (by simp; omega)]

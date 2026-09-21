@@ -103,7 +103,7 @@ theorem CTS_Halts_induction (cts : CTS) (P : CTSConfig → Prop)
                 else match cts.step cfg with
                   | none => some cfg
                   | some c' => cts.eval c' m) = cts.eval cfg' m
-          rw [if_neg (by rw [h_nh]; decide), h_step]
+          rw [ite_eq_right (by rw [h_nh]; decide), h_step]
         rw [h_eval_step] at h_eval
         have h_he' : cts.Halts cfg' := ⟨m, result, h_eval⟩
         exact h_back cfg cfg' h_step h_he' (ih cfg' h_eval)

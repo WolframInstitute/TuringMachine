@@ -97,7 +97,7 @@ theorem dec_enc (S : Nat) (kd : Kind) (q : Nat) (h b : Bool) (hq : q < S) :
   have hmod : (kd.idx * S + q) % S = q := by
     rw [Nat.add_comm, Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt hq]
   simp only [dec, hval, Nat.add_sub_cancel_left, h4, hm4, hdiv, hmod, Kind.ofIdx_idx, hb_div, hb_mod]
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
 
 /-! ## Symbols with bounded states -/
 
@@ -423,7 +423,7 @@ theorem symbolDecodeAux_spec (i : Nat) : ∀ (r j : Nat),
   | zero =>
     intro r j
     simp only [List.replicate_zero, List.nil_append, symbolDecodeAux, Nat.add_zero]
-    rw [if_pos]
+    rw [ite_eq_left]
     rw [List.all_eq_true]
     intro b hb
     rw [List.eq_of_mem_replicate hb]
@@ -438,7 +438,7 @@ theorem symbolDecodeAux_spec (i : Nat) : ∀ (r j : Nat),
 
 theorem symbolDecode_encode (k : Nat) (a : Fin k) : symbolDecode k (symbolEncode k a) = some a := by
   unfold symbolDecode
-  rw [if_pos (symbolEncode_length k a)]
+  rw [ite_eq_left (symbolEncode_length k a)]
   unfold symbolEncode
   rw [range_map_beq k a.val a.isLt, symbolDecodeAux_spec, Nat.zero_add]
   simp only [a.isLt, dite_true]
@@ -518,7 +518,7 @@ theorem tagWordDecode_encode (k : Nat) (hk : 0 < k) (w : List (Fin k)) :
       have := congrArg List.length h
       simp only [List.length_append, hlen, List.length_nil] at this
       omega
-    rw [if_neg hne, dif_pos (by simp only [List.length_append, hlen]; omega),
+    rw [ite_eq_right hne, dite_eq_left (by simp only [List.length_append, hlen]; omega),
       List.take_left' hlen, List.drop_left' hlen, symbolDecode_encode, ih]
 
 /-- A word `tagWordDecode` accepts is the encoding of the tag word it returns:
@@ -528,24 +528,24 @@ theorem tagWordDecode_sound (k : Nat) (hk : 0 < k) (l : List Bool) : ∀ (w : Li
   induction l using tagWordDecode.induct k hk with
   | case1 =>
     intro w h
-    rw [tagWordDecode, if_pos rfl] at h
+    rw [tagWordDecode, ite_eq_left rfl] at h
     obtain rfl := Option.some.inj h
     rw [tagWordEncode_nil]
   | case2 l hl hle a w' hw ha ih =>
     intro w h
-    rw [tagWordDecode, if_neg hl, dif_pos hle, ha, hw] at h
+    rw [tagWordDecode, ite_eq_right hl, dite_eq_left hle, ha, hw] at h
     obtain rfl := Option.some.inj h
     rw [tagWordEncode_cons, ← ih w' hw, ← symbolDecode_sound k _ a ha, List.take_append_drop]
   | case3 l hl hle hno _ =>
     intro w h
-    rw [tagWordDecode, if_neg hl, dif_pos hle] at h
+    rw [tagWordDecode, ite_eq_right hl, dite_eq_left hle] at h
     split at h
     · rename_i a w' ha hw
       exact absurd (hno a w' ha hw) id
     · cases h
   | case4 l hl hle =>
     intro w h
-    rw [tagWordDecode, if_neg hl, dif_neg hle] at h
+    rw [tagWordDecode, ite_eq_right hl, dite_eq_right hle] at h
     cases h
 
 /-- The leading pairs `a x` of a word, counted. -/
@@ -566,10 +566,10 @@ theorem countPairs_pairs2 (a : Sym) (m : Nat) (l : List Sym)
     match l, hl with
     | [], _ => rfl
     | [_], _ => rfl
-    | a' :: x' :: rest, hl => simp only [countPairs, if_neg (hl a' x' rest rfl)]
+    | a' :: x' :: rest, hl => simp only [countPairs, ite_eq_right (hl a' x' rest rfl)]
   | succ m ih =>
     rw [pairs2_succ, List.cons_append, List.cons_append]
-    simp only [countPairs, and_self, if_true, ih]
+    simp only [countPairs, and_self, ite_true, ih]
 
 def headA : List Sym → Option (Nat × List Sym)
   | some (Kind.A, q, _, _) :: none :: rest => some (q, rest)
@@ -607,7 +607,7 @@ theorem parseWord_cword (q m N : Nat) : parseWord (cword q m N) = some (q, m, N)
   have h2 : countPairs (cBe q) (pairs2 (cBe q) X N) = (N, []) := by
     rw [pairs2_eq_append_nil]
     exact countPairs_pairs2 _ _ _ (by intro a' x' rest h; cases h)
-  simp only [parseWord, cword, headA_cons, h1, headB_cons, h2, if_true]
+  simp only [parseWord, cword, headA_cons, h1, headB_cons, h2, ite_true]
 
 /-- The configuration of the state and the two numbers: the scanned cell is
     the lowest bit of the right number. -/

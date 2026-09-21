@@ -1101,7 +1101,7 @@ theorem case_starC (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing)
 theorem step_off (L : List System4Elem) (st : System4State) :
     System4.step ⟨L, L.length, st⟩ = none := by
   unfold System4.step
-  rw [dif_neg (lt_irrefl _)]
+  rw [dite_eq_right (lt_irrefl _)]
 
 /-! ## The step lemma and the forward simulation -/
 

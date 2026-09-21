@@ -78,15 +78,15 @@ theorem step_setA (L : List System4Elem) (s : List Int) (R : List System4Elem)
     (hL : L ≠ []) :
     System4.step ⟨L ++ set s :: R, L.length, A⟩ = some ⟨L ++ set s :: R, L.length - 1, A⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ R)]
+  rw [dite_eq_left (focus_length L _ R)]
   simp only [focus_get]
-  rw [if_neg (by simpa using hL)]
+  rw [ite_eq_right (by simpa using hL)]
 
 /-- Rule 1 at the left end: the head turns round into state B. -/
 theorem step_setA_zero (s : List Int) (R : List System4Elem) :
     System4.step ⟨set s :: R, 0, A⟩ = some ⟨set s :: R, 0, B⟩ := by
   unfold System4.step
-  rw [dif_pos (by simp)]
+  rw [dite_eq_left (by simp)]
   simp
 
 /-- Rule 2: a star in state A is deleted, the head stays on what was to
@@ -94,7 +94,7 @@ theorem step_setA_zero (s : List Int) (R : List System4Elem) :
 theorem step_starA (L : List System4Elem) (R : List System4Elem) :
     System4.step ⟨L ++ star :: R, L.length, A⟩ = some ⟨L ++ R, L.length, B⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ R)]
+  rw [dite_eq_left (focus_length L _ R)]
   simp only [focus_get, focus_eraseIdx]
 
 /-- Rule 3 in state B. -/
@@ -102,7 +102,7 @@ theorem step_setB (L : List System4Elem) (s : List Int) (R : List System4Elem) :
     System4.step ⟨L ++ set s :: R, L.length, B⟩
       = some ⟨L ++ set (decrementSet s).1 :: R, L.length + 1, if 0 ∈ s then C else B⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ R)]
+  rw [dite_eq_left (focus_length L _ R)]
   simp only [focus_get, focus_set]
   by_cases h0 : (0 : Int) ∈ s
   · simp [decrementSet, h0]
@@ -113,7 +113,7 @@ theorem step_setC (L : List System4Elem) (s : List Int) (R : List System4Elem) :
     System4.step ⟨L ++ set s :: R, L.length, C⟩
       = some ⟨L ++ set (decrementSet s).1 :: R, L.length + 1, if 0 ∈ s then B else C⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ R)]
+  rw [dite_eq_left (focus_length L _ R)]
   simp only [focus_get, focus_set]
   by_cases h0 : (0 : Int) ∈ s
   · simp [decrementSet, h0]
@@ -123,9 +123,9 @@ theorem step_setC (L : List System4Elem) (s : List Int) (R : List System4Elem) :
 theorem step_starB (L : List System4Elem) (R : List System4Elem) (hL : L ≠ []) :
     System4.step ⟨L ++ star :: R, L.length, B⟩ = some ⟨L ++ R, L.length - 1, A⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ R)]
+  rw [dite_eq_left (focus_length L _ R)]
   simp only [focus_get, focus_eraseIdx]
-  rw [if_neg (by simpa using hL)]
+  rw [ite_eq_right (by simpa using hL)]
 
 /-- Rule 5: a star in state C moves the head onto the set to its right and
     toggles `1` there. -/
@@ -133,10 +133,10 @@ theorem step_starC (L : List System4Elem) (s : List Int) (R : List System4Elem) 
     System4.step ⟨L ++ star :: set s :: R, L.length, C⟩
       = some ⟨L ++ star :: set (xorInsert 1 s) :: R, L.length + 1, C⟩ := by
   unfold System4.step
-  rw [dif_pos (focus_length L _ _)]
+  rw [dite_eq_left (focus_length L _ _)]
   simp only [focus_get]
   have h1 : L.length + 1 < (L ++ star :: set s :: R).length := by simp
-  rw [dif_pos h1]
+  rw [dite_eq_left h1]
   have hg : (L ++ star :: set s :: R).get ⟨L.length + 1, h1⟩ = set s := by
     simp [List.getElem_append_right]
   simp only [hg]
@@ -155,7 +155,7 @@ theorem decr_mem (s : List Int) (hs : s.Nodup) (x : Int) :
     x ∈ decr s ↔ x + 1 ∈ s ∧ x + 1 ≠ 0 := by
   unfold decr decrementSet
   by_cases h0 : (0 : Int) ∈ s
-  · rw [if_pos h0]
+  · rw [ite_eq_left h0]
     simp only [List.mem_map]
     constructor
     · rintro ⟨y, hy, rfl⟩
@@ -163,7 +163,7 @@ theorem decr_mem (s : List Int) (hs : s.Nodup) (x : Int) :
       exact ⟨by rw [Int.sub_add_cancel]; exact List.mem_of_mem_erase hy, by omega⟩
     · rintro ⟨hx, hne⟩
       exact ⟨x + 1, (List.mem_erase_of_ne hne).mpr hx, by omega⟩
-  · rw [if_neg h0]
+  · rw [ite_eq_right h0]
     simp only [List.mem_map]
     constructor
     · rintro ⟨y, hy, rfl⟩
@@ -338,7 +338,7 @@ theorem cPhase (L : List System4Elem) (g : Nat) (R : List System4Elem) :
           = (L ++ [star]) ++ System4Elem.set [1] :: (starredEmptyPairs g ++ R) := by
         simp [xorInsert]
       have h4 : L.length + 1 = (L ++ [star]).length := by simp
-      rw [h3, h4, step_setC, if_neg (by decide)]
+      rw [h3, h4, step_setC, ite_eq_right (by decide)]
       simp [decrementSet]
     rw [hpair, Option.bind_some, ih]
     simp [starredZeroPairs]

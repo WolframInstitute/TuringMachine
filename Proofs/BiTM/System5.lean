@@ -71,8 +71,8 @@ theorem System5_step_pure_decrement (cfg cfg' : System5Config)
     rcases h with h | h
     · exact h_dec_ne_nil (List.isEmpty_iff.mp h)
     · exact h_inc_ne_nil (List.isEmpty_iff.mp h)
-  rw [if_neg h_first_false] at h_step
-  rw [if_neg h_zero] at h_step
+  rw [ite_eq_right h_first_false] at h_step
+  rw [ite_eq_right h_zero] at h_step
   injection h_step with h_eq
   rw [← h_eq]
   exact ⟨rfl, rfl⟩
@@ -99,23 +99,23 @@ theorem System5_step_none_iff (cfg : System5Config) :
       rcases h with h | h
       · exact h_dec_ne_nil (List.isEmpty_iff.mp h)
       · exact h_inc_ne_nil (List.isEmpty_iff.mp h)
-    rw [if_neg h_first_false] at h
+    rw [ite_eq_right h_first_false] at h
     by_cases h_zero : 0 ∈ cfg.bag.map (· - 1)
-    · rw [if_pos h_zero] at h
+    · rw [ite_eq_left h_zero] at h
       cases h_cfg_rules : cfg.rules with
       | nil => exact h_rules h_cfg_rules
       | cons r rs =>
         rw [h_cfg_rules] at h; cases h
-    · rw [if_neg h_zero] at h
+    · rw [ite_eq_right h_zero] at h
       cases h
   · intro h
     rcases h with h | h
     · have : (cfg.bag.map (· - 1)).isEmpty = true := by
         rw [h]; rfl
-      rw [if_pos (Or.inl this)]
+      rw [ite_eq_left (Or.inl this)]
     · have : (cfg.rules.map (fun r => r.map (· + 1))).isEmpty = true := by
         rw [h]; rfl
-      rw [if_pos (Or.inr this)]
+      rw [ite_eq_left (Or.inr this)]
 
 /-- Dual of `System5_step_none_iff`: `step` succeeds iff bag and rules are nonempty. -/
 theorem System5_step_some_iff (cfg : System5Config) :
@@ -162,8 +162,8 @@ theorem System5_step_pop_rule (cfg cfg' : System5Config)
     rcases h with h | h
     · exact h_dec_ne_nil (List.isEmpty_iff.mp h)
     · exact h_inc_ne_nil (List.isEmpty_iff.mp h)
-  rw [if_neg h_first_false] at h_step
-  rw [if_pos h_zero] at h_step
+  rw [ite_eq_right h_first_false] at h_step
+  rw [ite_eq_left h_zero] at h_step
   cases h_cfg_rules : cfg.rules with
   | nil => exact absurd h_cfg_rules h_rules
   | cons r rs =>
@@ -214,7 +214,7 @@ theorem System5_step_explicit_pop (cfg : System5Config)
     rcases h with h | h
     · exact h_dec_ne_nil (List.isEmpty_iff.mp h)
     · exact h_inc_ne_nil (List.isEmpty_iff.mp h)
-  rw [if_neg h_first_false, if_pos h_zero]
+  rw [ite_eq_right h_first_false, ite_eq_left h_zero]
   rw [h_rules]
   rfl
 
@@ -257,10 +257,10 @@ theorem System5_step_rules_length_le (cfg cfg' : System5Config)
   by_cases h_empty :
       (cfg.bag.map (· - 1)).isEmpty = true
       ∨ (cfg.rules.map (fun r => r.map (· + 1))).isEmpty = true
-  · rw [if_pos h_empty] at h_step; cases h_step
-  · rw [if_neg h_empty] at h_step
+  · rw [ite_eq_left h_empty] at h_step; cases h_step
+  · rw [ite_eq_right h_empty] at h_step
     by_cases h_zero : 0 ∈ cfg.bag.map (· - 1)
-    · rw [if_pos h_zero] at h_step
+    · rw [ite_eq_left h_zero] at h_step
       cases h_rules : cfg.rules with
       | nil =>
         rw [h_rules] at h_step
@@ -270,7 +270,7 @@ theorem System5_step_rules_length_le (cfg cfg' : System5Config)
         injection h_step with h_eq
         rw [← h_eq]
         simp
-    · rw [if_neg h_zero] at h_step
+    · rw [ite_eq_right h_zero] at h_step
       injection h_step with h_eq
       rw [← h_eq]
       simp

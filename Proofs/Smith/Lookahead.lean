@@ -44,7 +44,11 @@ inductive LState : Type
   | A : LState
   | B : LState
   | C : LState
-  deriving DecidableEq, Repr, Fintype
+  deriving DecidableEq, Repr
+
+instance : Fintype LState where
+  elems := {LState.A, LState.B, LState.C}
+  complete := by intro x; cases x <;> simp
 
 /-- A rule: rewrite the active cell (`one`) or the active cell and its
     right neighbour (`two`), change state, move by one. -/

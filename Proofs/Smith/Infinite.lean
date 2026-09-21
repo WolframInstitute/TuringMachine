@@ -116,7 +116,7 @@ theorem agree_step (tm : Machine) (c : BiTM.Config) (d : IConfig) (h : Agree c d
   unfold istep
   by_cases h0 : s = 0
   · subst h0; simp at hs
-  simp only [beq_iff_eq, h0, if_false] at hs ⊢
+  simp only [beq_iff_eq, h0, ite_false] at hs ⊢
   cases hd : (tm.transition s a).dir with
   | L =>
     rw [hd] at hs
@@ -128,7 +128,7 @@ theorem agree_step (tm : Machine) (c : BiTM.Config) (d : IConfig) (h : Agree c d
     | zero => simp
     | succ j =>
       simp only [List.length_cons] at hi
-      simp only [List.getElem?_cons_succ, Nat.add_sub_cancel, Nat.succ_ne_zero, if_false]
+      simp only [List.getElem?_cons_succ, Nat.add_sub_cancel, Nat.succ_ne_zero, ite_false]
       exact hr j (by omega)
   | R =>
     rw [hd] at hs
@@ -884,7 +884,7 @@ theorem istep_valid (d : IConfig) (h : IValid d) :
   obtain ⟨hnext, hwrite⟩ := wolfram23_rule s a hs hh
   have hs0 : s ≠ 0 := by omega
   unfold istep
-  simp only [beq_iff_eq, hs0, if_false]
+  simp only [beq_iff_eq, hs0, ite_false]
   cases hd : (wolfram23.transition s a).dir with
   | L =>
     refine ⟨_, rfl, hnext, ?_, ?_, ?_⟩
@@ -898,7 +898,7 @@ theorem istep_valid (d : IConfig) (h : IValid d) :
     · intro i
       by_cases hi : i = 0
       · simp [hi, hwrite]
-      · simp only [hi, if_false]; exact hr _
+      · simp only [hi, ite_false]; exact hr _
   | R =>
     refine ⟨_, rfl, hnext, hr 0, ?_, fun i => hr _⟩
     intro x hx

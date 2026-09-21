@@ -218,20 +218,20 @@ theorem ForwardSim_nSteps {S : Type u} {T : Type v}
     · intro j hj
       dsimp only
       by_cases hjn : j < n
-      · rw [if_pos (by omega), if_pos (by omega)]
+      · rw [ite_eq_left (by omega), ite_eq_left (by omega)]
         exact hmono j hjn
       · have hj' : j = n := by omega
         subst hj'
-        rw [if_pos (Nat.le_refl j), if_neg (by omega)]
+        rw [ite_eq_left (Nat.le_refl j), ite_eq_right (by omega)]
         omega
     · intro j hj
       dsimp only
       by_cases hjn : j ≤ n
-      · rw [if_pos hjn]
+      · rw [ite_eq_left hjn]
         exact htracks j hjn
       · have hj' : j = n + 1 := by omega
         subst hj'
-        rw [if_neg hjn]
+        rw [ite_eq_right hjn]
         refine ⟨s', t', hn, ?_, hR'⟩
         rw [StepSys.nSteps_add, htn]
         simpa using ht'
@@ -406,18 +406,18 @@ theorem demo_forwardSim : ForwardSim demoSrc demoTgt demoRel := by
     by_cases hc : s < 2
     · exact hc
     · rw [show demoSrc.step s = if s < 2 then some (s + 1) else none from rfl,
-          if_neg hc] at hstep
+          ite_eq_right hc] at hstep
       exact absurd hstep (by simp)
   have hs' : s' = s + 1 := by
     rw [show demoSrc.step s = if s < 2 then some (s + 1) else none from rfl,
-        if_pos hlt] at hstep
+        ite_eq_left hlt] at hstep
     exact Option.some.inj hstep.symm
   have e1 : demoTgt.step (2 * s) = some (2 * s + 1) := by
     show (if 2 * s < 4 then some (2 * s + 1) else none) = some (2 * s + 1)
-    rw [if_pos (by omega)]
+    rw [ite_eq_left (by omega)]
   have e2 : demoTgt.step (2 * s + 1) = some (2 * s + 2) := by
     show (if 2 * s + 1 < 4 then some (2 * s + 1 + 1) else none) = some (2 * s + 2)
-    rw [if_pos (by omega)]
+    rw [ite_eq_left (by omega)]
   refine ⟨2, Nat.le_of_lt (by omega), 2 * s + 2, ?_, ?_⟩
   · rw [StepSys.nSteps_succ_left, e1, Option.bind_some, StepSys.nSteps_one, e2]
   · simp only [demoRel]

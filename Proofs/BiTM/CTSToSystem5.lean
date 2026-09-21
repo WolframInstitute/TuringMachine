@@ -193,8 +193,8 @@ theorem length_rotateLeft {alpha : Type} (l : List alpha) (k : Nat) :
         else List.drop (k % l.length) l ++ List.take (k % l.length) l).length
        = l.length
   by_cases h : l.length ≤ 1
-  · rw [if_pos h]
-  · rw [if_neg h]
+  · rw [ite_eq_left h]
+  · rw [ite_eq_right h]
     have h_pos : 0 < l.length := by omega
     have h_mod := Nat.mod_lt k h_pos
     simp only [List.length_append, List.length_drop, List.length_take]

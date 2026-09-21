@@ -263,14 +263,14 @@ theorem round2 (q m N : Nat) :
     unfold W1
     rw [h]
     congr 1
-    rw [← W1, passOut_W1, List.tail_cons, W2, if_neg (by simp only [decide_eq_true_eq]; omega),
+    rw [← W1, passOut_W1, List.tail_cons, W2, ite_eq_right (by simp only [decide_eq_true_eq]; omega),
       List.nil_append, show 2 * n2 / 2 = n2 from by omega]
   · subst hN
     have hl : (W1 q m (2 * n2 + 1)).length = 2 * (m + n2 + 2) := by rw [length_W1]; omega
     have h := nStepsP_even (prod tm) (m + n2 + 2) (W1 q m (2 * n2 + 1)) [] hl
     rw [List.append_nil, List.nil_append] at h
     rw [show m + (2 * n2 + 1) / 2 + 2 = m + n2 + 2 from by omega, h, passOut_W1, W2,
-      if_pos (by simp only [decide_eq_true_eq]; omega), show (2 * n2 + 1) / 2 = n2 from by omega]
+      ite_eq_left (by simp only [decide_eq_true_eq]; omega), show (2 * n2 + 1) / 2 = n2 from by omega]
     rfl
 
 /-! ## Round 3 -/
@@ -281,11 +281,11 @@ theorem passOut_W2 (q : Nat) (h : Bool) (m n2 : Nat) :
           reps (prod tm (cf q h)) n2 := by
   cases h with
   | true =>
-    simp only [W2, if_true, List.singleton_append, passOut_cons_cons, passOut_pairs2]
+    simp only [W2, ite_true, List.singleton_append, passOut_cons_cons, passOut_pairs2]
     rw [pairs2_eq_append_nil (cf q true) (cf q false) n2, passOut_pairs2, passOut_nil,
       List.append_nil, List.append_assoc, List.append_assoc]
   | false =>
-    simp only [W2, Bool.false_eq_true, if_false, List.nil_append]
+    simp only [W2, Bool.false_eq_true, ite_false, List.nil_append]
     rw [pairs2_eq_append_nil (cf q true) (cf q false) n2, passOut_cons_pairs2, List.tail_cons,
       passOut_cons_pairs2, List.tail_nil, passOut_nil, List.append_nil]
     simp only [List.append_assoc]
@@ -378,14 +378,14 @@ theorem round4 (q : Nat) (h : Bool) (m n2 : Nat) :
     unfold W3
     rw [hs]
     congr 1
-    rw [← W3, passOut_W3, List.tail_cons, W4, if_neg (by simp only [decide_eq_true_eq]; omega),
+    rw [← W3, passOut_W3, List.tail_cons, W4, ite_eq_right (by simp only [decide_eq_true_eq]; omega),
       List.nil_append, show 2 * i / 2 = i from by omega]
   · subst hm
     have hl : (W3 q h (2 * i + 1) n2).length = 2 * (i + 2 * n2 + 2) := by simp [W3]; omega
     have hs := nStepsP_even (prod tm) (i + 2 * n2 + 2) (W3 q h (2 * i + 1) n2) [] hl
     rw [List.append_nil, List.nil_append] at hs
     rw [show (2 * i + 1) / 2 + 2 * n2 + 2 = i + 2 * n2 + 2 from by omega, hs, passOut_W3, W4,
-      if_pos (by simp only [decide_eq_true_eq]; omega), show (2 * i + 1) / 2 = i from by omega]
+      ite_eq_left (by simp only [decide_eq_true_eq]; omega), show (2 * i + 1) / 2 = i from by omega]
     rfl
 
 /-! ## Round 5 -/
@@ -396,11 +396,11 @@ theorem passOut_W4 (q : Nat) (h b : Bool) (i n2 : Nat) :
           reps (prod tm (cj q h b)) (2 * n2) := by
   cases b with
   | true =>
-    simp only [W4, if_true, List.singleton_append, passOut_cons_cons, passOut_pairs2]
+    simp only [W4, ite_true, List.singleton_append, passOut_cons_cons, passOut_pairs2]
     rw [pairs2_eq_append_nil (cj q h true) (cj q h false) (2 * n2), passOut_pairs2, passOut_nil,
       List.append_nil, List.append_assoc, List.append_assoc]
   | false =>
-    simp only [W4, Bool.false_eq_true, if_false, List.nil_append]
+    simp only [W4, Bool.false_eq_true, ite_false, List.nil_append]
     rw [pairs2_eq_append_nil (cj q h true) (cj q h false) (2 * n2), passOut_cons_pairs2,
       List.tail_cons, passOut_cons_pairs2, List.tail_nil, passOut_nil, List.append_nil]
     simp only [List.append_assoc]
@@ -471,7 +471,7 @@ theorem step_R (q : Nat) (left : List Nat) (head : Nat) (right : List Nat) (hq :
       = some ⟨(tm.transition q head).nextState, (tm.transition q head).write :: left,
               (readHead right).1, (readHead right).2⟩ := by
   unfold BiTM.step
-  simp only [beq_iff_eq, hq, if_false, hd]
+  simp only [beq_iff_eq, hq, ite_false, hd]
 
 theorem step_L (q : Nat) (left : List Nat) (head : Nat) (right : List Nat) (hq : q ≠ 0)
     (hd : (tm.transition q head).dir = Dir.L) :
@@ -479,7 +479,7 @@ theorem step_L (q : Nat) (left : List Nat) (head : Nat) (right : List Nat) (hq :
       = some ⟨(tm.transition q head).nextState, (readHead left).2, (readHead left).1,
               (tm.transition q head).write :: right⟩ := by
   unfold BiTM.step
-  simp only [beq_iff_eq, hq, if_false, hd]
+  simp only [beq_iff_eq, hq, ite_false, hd]
 
 theorem bit_decide_head (head : Nat) (hh : head < 2) : bit (decide (head = 1)) = head := by
   rcases Nat.lt_succ_iff.mp hh |> Nat.le_one_iff_eq_zero_or_eq_one.mp with rfl | rfl <;> rfl

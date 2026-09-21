@@ -1,8 +1,8 @@
 /-
-  Tests.InfiniteVectors
+  Vectors.InfiniteVectors
 
   Regression tests of the block construction of `Smith.Infinite` (T6, M7) on
-  two small programs. E1 to E5: the program of D9 (`Tests.SmithVectors`),
+  two small programs. E1 to E5: the program of D9 (`Vectors.SmithVectors`),
   `{0, 2} * {}`, whose System 4 run lasts 4 steps, exits in state C and never
   turns at its left end; the block around it has the guard parameter `n = 7`
   and `r = 5` guards, as `block_exists` would choose (`n = T4 + 3`,
@@ -27,7 +27,7 @@
 -/
 
 import Smith.Infinite
-import Tests.TMToCTSVectors
+import Vectors.TMToCTSVectors
 
 namespace Tests
 
@@ -369,7 +369,7 @@ example : (System4.nSteps ⟨bdE.tape, 0, System4State.C⟩ 10).bind
   decide +kernel
 
 /-- The halting reading of the block index: for `tmH` of
-    `Tests/TMToCTSVectors.lean`, which halts after one step, the last defined
+    `Vectors/TMToCTSVectors.lean`, which halts after one step, the last defined
     step below `j` is `min j 1`. -/
 example : (List.range 6).map (fun j =>
     Nat.findGreatest (fun i => (BiTM.nSteps tmH ⟨1, [], 0, []⟩ i).isSome = true) j)

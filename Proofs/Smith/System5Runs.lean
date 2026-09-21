@@ -331,15 +331,15 @@ theorem decodeFrom_pairsOf (lo : Int) (w : List Bool) (a : List Int)
     | nil => simp at h
     | cons x a =>
       rw [pairsAsc_cons_cons, Bool.and_eq_true, decide_eq_true_eq] at h
-      rw [pairsOf_cons, decodeFrom_cons_cons, if_pos h.1]
+      rw [pairsOf_cons, decodeFrom_cons_cons, ite_eq_left h.1]
       cases b with
       | false =>
         have hg : x + gap false = x + 1 := rfl
-        rw [hg, if_pos rfl, ih (x + 1) a (by rw [← hg]; exact h.2)]
+        rw [hg, ite_eq_left rfl, ih (x + 1) a (by rw [← hg]; exact h.2)]
         rfl
       | true =>
         have hg : x + gap true = x + 2 := rfl
-        rw [hg, if_neg (by omega), if_pos rfl, ih (x + 2) a (by rw [← hg]; exact h.2)]
+        rw [hg, ite_eq_right (by omega), ite_eq_left rfl, ih (x + 2) a (by rw [← hg]; exact h.2)]
         rfl
 
 /-- Any permutation of a valid family of pairs decodes to its working

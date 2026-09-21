@@ -1,5 +1,5 @@
 /-
-  Tests.SmithVectors
+  Vectors.SmithVectors
 
   Regression tests of the Smith-chain definitions against the printed traces
   of Alex Smith's own Perl interpreters (`docs/TM23Proof.pdf`).  Each test
@@ -473,7 +473,7 @@ whole number of one-hot blocks of length `1 + 84 * 2`. A tape on which
 configuration word, at least `2 * 4 * (1 + 84 S)` bits, hence a block of
 width at least `2^13` for `S = 2`, whose rendering `encSet` builds its
 parity rows by iteration (`row`) and is out of reach of `decide`; the last
-two stages on such a word are checked in `Tests/TMToCTSVectors.lean`. -/
+two stages on such a word are checked in `Vectors/TMToCTSVectors.lean`. -/
 
 def s3D10 : Smith.LConfig := (Smith.initAC 3 3 [0, 2, 4, 6] [System4Elem.star, System4Elem.set []]).toL
 

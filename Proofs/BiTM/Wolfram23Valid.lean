@@ -107,7 +107,7 @@ theorem step_wolfram23_preserves_valid (cfg : Config)
                 right := (wolfram23.transition cfg.state cfg.head).write
                           :: cfg.right }, ?_, ?_, ?_, ?_, ?_⟩
       · unfold step
-        rw [if_neg h_neq]
+        rw [ite_eq_right h_neq]
         dsimp only []
         rw [h_dir, h_l]
       · exact h_ns
@@ -127,7 +127,7 @@ theorem step_wolfram23_preserves_valid (cfg : Config)
                           :: cfg.left,
                 head := newHead, right := newRight }, ?_, ?_, ?_, ?_, ?_⟩
       · unfold step
-        rw [if_neg h_neq]
+        rw [ite_eq_right h_neq]
         dsimp only []
         rw [h_dir, h_r]
       · exact h_ns

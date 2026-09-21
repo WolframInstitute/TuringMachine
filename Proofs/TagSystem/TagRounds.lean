@@ -253,10 +253,10 @@ theorem passOut_cons_replicate_append (P : σ → List σ) (c r : σ) (n : Nat) 
     obtain ⟨j, hj | hj⟩ := Nat.even_or_odd' n
     · subst hj
       rw [passOut_replicate_even, show (2 * j + 1) / 2 = j from by omega,
-        if_neg (by omega), List.append_assoc]
+        ite_eq_right (by omega), List.append_assoc]
     · subst hj
       rw [passOut_replicate_odd, passOut_cons_tail, show (2 * j + 1 + 1) / 2 = j + 1 from by omega,
-        if_pos (by omega), reps_succ', List.append_assoc, List.append_assoc]
+        ite_eq_left (by omega), reps_succ', List.append_assoc, List.append_assoc]
 
 /-- The odd round on the whole word: a word `a :: l` of odd length at least
     3 whose first production is nonempty. -/

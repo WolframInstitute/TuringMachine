@@ -761,7 +761,7 @@ theorem RepS4_decode (c : System4Config) (s : System5Config) (f j h : Nat)
     obtain ⟨e, _, rfl⟩ := (hmem x).mp hx
     simp only [decide_eq_true_eq]
     omega
-  rw [if_pos hall]
+  rw [ite_eq_left hall]
   refine ⟨_, rfl, ?_⟩
   have hnd1 : (((List.range (2 * f - 2 * j - 2)).map (fun (i : Nat) => (i : Int))).filter
       (fun x => parMem x K)).Nodup :=

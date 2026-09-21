@@ -36,7 +36,7 @@ theorem step_some_of_active (tm : Machine) (cfg : Config) (h : cfg.state ≠ 0) 
                 right := (tm.transition cfg.state cfg.head).write :: cfg.right },
               ?_⟩
       unfold step
-      rw [if_neg h_neq]
+      rw [ite_eq_right h_neq]
       dsimp only []
       rw [h_dir, h_l]
   | R =>
@@ -47,7 +47,7 @@ theorem step_some_of_active (tm : Machine) (cfg : Config) (h : cfg.state ≠ 0) 
                 head := newHead, right := newRight },
               ?_⟩
       unfold step
-      rw [if_neg h_neq]
+      rw [ite_eq_right h_neq]
       dsimp only []
       rw [h_dir, h_r]
 
@@ -83,7 +83,7 @@ theorem step_active_state (tm : Machine) (cfg cfg' : Config)
             left := newLeft, head := newHead,
             right := (tm.transition cfg.state cfg.head).write :: cfg.right } := by
         unfold step
-        rw [if_neg h_state_neq]
+        rw [ite_eq_right h_state_neq]
         dsimp only []
         rw [h_dir, h_l]
       rw [h_eval] at h_step
@@ -98,7 +98,7 @@ theorem step_active_state (tm : Machine) (cfg cfg' : Config)
             left := (tm.transition cfg.state cfg.head).write :: cfg.left,
             head := newHead, right := newRight } := by
         unfold step
-        rw [if_neg h_state_neq]
+        rw [ite_eq_right h_state_neq]
         dsimp only []
         rw [h_dir, h_r]
       rw [h_eval] at h_step
