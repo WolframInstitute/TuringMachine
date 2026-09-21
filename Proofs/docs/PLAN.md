@@ -3,7 +3,8 @@
 Date: 2026-09-15. Companion to REVIEW.md. Status: all decisions in section 8 resolved on
 2026-09-15; M0 done 2026-09-15 (see "M0 notes" in section 5); M1 done 2026-09-15 (see "M1
 notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 2026-09-21
-(see "M3 notes" in section 5); M4, M4b and M5 are next.
+(see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 and
+M4b are next.
 
 ## 1. Where we are
 
@@ -706,6 +707,89 @@ of `s52s4.pl` exactly (block widths `2f` and `2f - 2`), not Smith's looser
 about the tape off the schedule; the head is also back at the left end in
 state A at unscheduled times (the end of the first pop phase, the middle of a
 D-step), which the D7 negative instances record.
+
+### M4 notes (done 2026-09-21)
+
+Four modules, all lakefile roots, about 950 lines together: `Smith/Lookahead.lean`
+(the machine type and the four rule tables), `Smith/Systems123.lean` (the
+relabelings), `Smith/LoopFree.lean` (T5), `Smith/Wolfram23Bridge.lean` (T5 for
+`BiTM.wolfram23`). Zero `sorry`, no `native_decide`; `#print axioms` of
+`sys3_sys0_forwardSim`, `sys1_leaves`, `sys0_leaves`, `sys0_not_periodic`,
+`wolfram23_leaves` and `wolfram23_not_periodic` shows only `propext,
+Classical.choice, Quot.sound`. `lake build` is 676 jobs.
+
+The machine type (`Smith/Lookahead.lean`). `LMachine.trans : LState -> Fin 3 ->
+Fin 3 -> LRule` reads the state, the active cell and its right neighbour (`0`
+when there is none) and returns `one st' a' d` (rewrite the active cell) or
+`two st' a' b' d` (rewrite both cells), the two rule shapes of `sys0-3.pl`
+(p. 45, `%rules` keyed by one or two cells). Configurations are finite zippers
+`(left, head, right, state)` like `BiTM.Config`, left cells nearest first;
+`lstep` is `none` on a move off either end and on a two-cell rule with no
+neighbour; `exitRight` records the state and the final tape when a one-cell
+rule moves the head off the right end, the exit event of Conjectures 0 to 3.
+A list-plus-index representation was tried first and abandoned: its focus
+lemmas are keyed on `L.length` and stop matching once `simp` re-associates
+`(L ++ [x]) ++ a :: R`; on the zipper every move is structural and the case
+analyses close by `simp`. The four tables are transcribed from p. 45 (`sys0`
+is Wolfram's table, D6 of the tests); `OneIgnoresNeighbour` holds for each by
+`decide`; the `sys0-3.pl 0 N 00A00000` trace of p. 47 is reproduced tape for
+tape over its 27 steps, and its exit (`1122112` in state B) by `exitRight`.
+
+The relabelings (`Smith/Systems123.lean`), each a `ForwardSim` from the higher
+system to the lower one, the direction the chain needs. `sys1_sys0_forwardSim`
+on the identity relation: one System 1 step is one System 0 step, or three
+for `B21` and `B22` (`sys0_B2_three`: `B2 -> A0>`, then `A1 -> A2<` or
+`A2 -> A1<`, then `A0 -> B1>`). `sys2_sys1_forwardSim` along `phi2` (state C
+is state B with the active cell swapped `1 <-> 2`), one step to one step
+(`phi2_step : lstep sys1 (phi2 c) = (lstep sys2 c).map phi2`).
+`sys3_sys2_forwardSim` along `phi3` (every cell left of the head swapped, and
+the head itself in state A), `phi3_step`. The composite
+
+    sys3_sys0_forwardSim : ForwardSim (lsys sys3) (lsys sys0) (fun c c' => c' = phi2 (phi3 c))
+
+is what link F composes with the System 4 -> System 3 emulation of M5. The
+correspondences are also checked by `decide` on every three-cell tape, with
+negative instances showing that neither relabeling is the identity. `phi2` is
+many-to-one (System 1 has no state C), so these are simulations, not
+bisimulations; the other direction is not needed by the chain.
+
+T5 (`Smith/LoopFree.lean`), Smith's p. 22 argument, made in System 1. `V c`
+is the sum of the positions, counted from 1, of the 0s of the tape; `W c` is
+`V c` without the head cell in state A (the `A0 -> B1>` step that must follow
+spends it); `phase c` is the head position plus the tape length in state A,
+and the number of cells to the right in state B. `sys1_measure`: every
+System 1 step from a configuration in state A or B decreases `(W, phase)`
+lexicographically and stays in A or B; it is checked rule by rule by `simp`
+and `omega` after splitting on both neighbours (`B20` raises `V` by the head
+position and lowers `W` by 1, which is Smith's "decreases to a lower value
+than the value it increased from"). `run_ends_of_measure` turns such a
+measure into the end of the run (a double induction on the two bounds), so
+`sys1_leaves : c.state <> C -> exists n, lnSteps sys1 c n = none`;
+`sys1_none_sys0` (System 0 is stuck wherever System 1 is: `B2` at the last
+cell moves System 0 off the tape) and `run_ends_of_sim` transfer it along the
+1-or-3 correspondence to `sys0_leaves`, and `sys0_not_periodic` follows. On
+the p. 47 tape `V` is not monotone along the System 0 run while `W` is
+monotone along the System 1 run, both by `decide`.
+
+The bridge (`Smith/Wolfram23Bridge.lean`). `toBi` reads a System 0
+configuration as a `BiTM.Config` (A is 1, B is 2, symbols by `Fin.val`);
+`toBi_step`: a System 0 step is a `wolfram23` step; `toBi_exit`: where
+System 0 leaves its tape, `wolfram23` steps onto an implicit blank and its
+explicit tape grows by one cell (`biSize`); `toBi_ofBi`: every valid
+configuration (`IsValidWolfram23Cfg`) is `toBi` of one. Hence
+`wolfram23_leaves`: from every valid configuration the run reaches a
+configuration with one more explicit cell, that is, the head has left the
+initial finite tape; and `wolfram23_not_periodic`, because `biSize` never
+decreases along a `BiTM` run (`biSize_step`). This is the formal counterpart
+of the refutations of REVIEW.md section 4.1 (the step-faithful predicates
+needed a periodic configuration) and settles, in Smith's direction, what the
+old code base treated as open.
+
+Left undone in M4: the exit time is existential (the proof bounds it by the
+measure, but no closed form is stated); `exitRight` is defined but nothing yet
+relates the exit state of System 3 to that of System 0 through the
+relabelings, which link F's "exit in state A" will need; the relabelings are
+proved only in the direction the chain uses.
 
 Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
 (M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of

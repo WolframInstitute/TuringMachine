@@ -27,6 +27,15 @@ Status note (after milestone M3, 2026-09-21): `Smith/System4Runs.lean` and
 line "System 5 -> System 4: no emulation theorem attempted" in section 2 is
 therefore stale. PLAN.md, "M3 notes", is the current record.
 
+Status note (after milestone M4, 2026-09-21): Systems 1, 2 and 3 exist
+(`Smith/Lookahead.lean`, on the lookahead machine type section 4.3 asks for) and
+the equivalences 0 = 1 = 2 = 3 are proved as forward simulations
+(`Smith/Systems123.lean`), so the "missing" entries for them in the table of
+section 5 are stale. T5, loop-freeness, is proved (`Smith/LoopFree.lean`,
+`Smith/Wolfram23Bridge.lean`: `wolfram23_not_periodic`), which closes in Smith's
+direction the periodicity question that section 4.1 says the old code treated as
+open, and confirms the refutation of the step-faithful predicates recorded there.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`
