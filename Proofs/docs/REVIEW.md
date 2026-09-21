@@ -69,6 +69,19 @@ four uncloseable sorries, the archived halting-oracle encoding). Section 1 to
 for the plan; PLAN.md, "M0 notes" to "M8 notes", is the record of what was
 built.
 
+Status note (after milestone M7, 2026-09-22): T6, the infinite form, is
+proved: `Smith.wolfram23_infinite` in `Smith/Infinite.lean` (with
+`Smith/Guards.lean`), axioms `propext, Classical.choice, Quot.sound`. One
+right-infinite tape per machine and input, no budget and no hypothesis on
+halting; the blocks are guarded System 4 tapes chained through rule 5, not
+T4's finite initial conditions, which do not chain. What it does not give:
+a closed-form size for block `k` (the parameters come from the emulation's
+own run lengths, as in T4), a single schedule of times across blocks. The
+independent review of 2026-09-21 (`blueprint/11-open-items.md`) found no
+soundness problem in M0-M8; its documentation corrections are applied in
+PLAN.md sections 1, 2, 5 and 8 and in the module headers it names. PLAN.md,
+"M7 notes", is the current record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`
@@ -158,8 +171,9 @@ Link status:
 - Empirical discoveries recorded in comments and confirmed by the audits: a 0-head CTS step costs 4
   System 5 steps (PPPP), a 1-head step costs 6 (PDPPDP); after a 1-head step the bag is
   `aux rest 1 ++ aux appendant (counter rest + 6)`, a valid but non-canonical encoding.
-- `BiTM/System4.lean` `System4.step`: faithful transcription of `system4.pl` and of the five rules
-  of Conjecture 4 (PDF p.10); matched configuration for configuration over 7 + 1337 + 9906 Perl
+- `BiTM/System4.lean` `System4.step`: faithful to `system4.pl` and to the five rules of
+  Conjecture 4 (PDF p.10) on all well-formed tapes (two unreachable branches differ; see the
+  comments in BiTM/System4.lean); matched configuration for configuration over 7 + 1337 + 9906 Perl
   steps, including the p.41 C-format output `110011110011110010` on the Perl-encoded tape.
 - Thin cores of `TagSystem/HaltsEmpty.lean` (about 400 lines: `tagNSteps`, eval/nSteps bridges,
   `CTS_nSteps_succ_decompose`, `find_min_or_none`, `CTS_Halts_induction`) and `BiTM/HaltInduction.lean`

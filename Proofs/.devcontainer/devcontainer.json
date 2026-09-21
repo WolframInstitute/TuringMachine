@@ -1,0 +1,25 @@
+{
+  "name": "Wolfram (2,3) universality in Lean 4",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "onCreateCommand": "curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain none && echo 'export PATH=$HOME/.elan/bin:$PATH' >> ~/.bashrc",
+  "postCreateCommand": "export PATH=$HOME/.elan/bin:$PATH && cd ${containerWorkspaceFolder}/Proofs 2>/dev/null || cd ${containerWorkspaceFolder}; lake exe cache get && lake build",
+  "customizations": {
+    "vscode": {
+      "extensions": ["leanprover.lean4"],
+      "settings": {
+        "lean4.toolchainPath": "",
+        "files.exclude": {
+          "**/.lake": true
+        }
+      }
+    }
+  },
+  "hostRequirements": {
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "remarks": "The Lake root is Proofs/ inside the paclet repository until the split of docs/PUBLISHING.md section 2 is decided; the postCreateCommand tries Proofs/ first and falls back to the repository root."
+}

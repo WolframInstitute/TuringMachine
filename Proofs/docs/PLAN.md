@@ -6,10 +6,16 @@ notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 
 (see "M3 notes" in section 5); M4 done 2026-09-21 (see "M4 notes" in section 5); M5 done
 2026-09-21 (see "M5 notes" in section 5); M6 done 2026-09-21 (see "M6 notes" in section 5);
 M4b done 2026-09-21 (see "M4b notes" in section 5); M8 done 2026-09-21 (see "M8 notes" in
-section 5): the headline theorem `wolfram23_universal` is proved. M7 (T6) is optional and
-not started.
+section 5): the headline theorem `wolfram23_universal` is proved; M7 done 2026-09-22 (see
+"M7 notes" in section 5): the infinite form `wolfram23_infinite` is proved. The review of
+2026-09-21 (`blueprint/11-open-items.md`) lists what remains open: a closed-form initial
+condition and finish-time bounds, event-based decoding times, k-symbol machines.
 
 ## 1. Where we are
+
+Status 2026-09-22: this section describes the tree of 2026-09-14, before M0. It is kept as
+the record of the starting point; the current state is in the M0-M8 and M7 notes of
+section 5 and in `blueprint/`.
 
 - Everything builds (10 s), but the four sorries sit under false statements and the proved
   universality theorem is a tautology. See REVIEW.md sections 1 and 4.
@@ -44,41 +50,53 @@ such that for every `k <= N` the System 5 configuration after `t_k` steps stands
 
 `~` is `List.Perm` (or equality of sorted lists, or `Multiset` equality if Mathlib is adopted).
 This is the p.19 "acceptable initial condition" relation. It is not equality with the canonical
-encoder output, which is why the current statements are false. Times are fixed by pop events
-("immediately after the 4k-th rule pop"), not by an existential over arbitrary `m`.
+encoder output, which is why the current statements are false. The theorem gives a strictly
+increasing schedule of times; the step lemmas behind it fix each time by a pop event
+("immediately after the 4k-th rule pop"), but the schedule itself is existential in the
+statement.
 
-T2 (Conjecture 5 implies 4). For every well-formed System 5 program `P` and every `f` with
-`f >= 3` and `f >= 2 * finishTime P`, the System 4 tape `system5ToSystem4 P f` (with the two stars
-restored) emulates the System 5 run of `P`: at each return of the head to the leftmost set in state
-A after a star removal, the leftmost conglomerate decodes (x -> x/2 + 1 on even elements, ignoring
-the band above f-3) to the current System 5 bag and the remaining sets encode the remaining rules
-shifted by the running parameter `t`; and when `P` attempts to pop a nonexistent rule the head
-leaves the defined tape in state C. Includes the finish-time bound `finishTime P <= 3^(n-1) * M`.
+T2 (Conjecture 5 implies 4). For every well-formed System 5 program `P` and every `f` large
+enough for the run (as proved: `f` above a bound computed from the run's own length, M3 notes),
+the System 4 tape `system5ToSystem4 P f` (with the two stars restored) emulates the System 5 run
+of `P`: at each return of the head to the leftmost set in state A after a star removal, the
+leftmost conglomerate decodes (x -> x/2 + 1 on even elements, ignoring the band above f-3) to
+the current System 5 bag and the remaining sets encode the remaining rules shifted by the
+running parameter `t`; and when `P` attempts to pop a nonexistent rule the head leaves the
+defined tape in state C. Smith's closed-form finish-time bound `finishTime P <= 3^(n-1) * M`
+(which would make `f` a function of `P` alone) is open; see `blueprint/11-open-items.md`
+item 1.
 
 T3 (Conjecture 4 implies 3; Conjectures 3 = 2 = 1 = 0). System 4 -> System 3 via parity blocks of
 width 2^w with `2^w >= 3f` (Lemma 0, Lemma 1, Corollary 1 methods), then the relabelings
 System 3 -> 2 -> 1 -> 0 as simulations with a 1-or-3 step count. Requires a machine type that reads
 the active cell and its right neighbour.
 
-T4 (Conjecture 0, finite form, the headline). For every two-colour CTS `C`, working string `w0`
-and budget `N` there is a finite tape segment `IC C w0 N : List (Fin 3)` such that the wolfram23
-run started on its leftmost cell in state A (i) never visits a cell left of the segment, (ii) has a
-computable decoding of the first `N` CTS configurations at explicit times, and (iii) eventually
-has the head on the first cell right of the segment in state A, before which (i) and (ii) hold.
-Vacuity guard: the decoding is a partial function from tape windows to CTS configurations that
-returns `none` unless the window is a valid encoding, and the time sequence is strictly increasing.
+T4 (Conjecture 0, finite form). For every two-colour CTS `C`, working string `w0` and budget
+`N` such that the run of `C` lasts the budget and leaves a nonempty word, there is a finite
+wolfram23 configuration (as proved: existential, the tape of the composed encoders, the head on
+the first cell of the first block in state A with Smith's left end `0^m 1 1 2` to its left) such
+that the run (i) keeps the size of its explicit tape, so it visits no cell outside it, (ii) has
+a computable decoding of the first `N` CTS configurations at a strictly increasing schedule of
+times, and (iii) at the step after the schedule ends has the head on the first cell right of the
+tape, a 0, in state A, before which (i) and (ii) hold. Vacuity guard: the decoding is a partial
+function from tape windows to CTS configurations that returns `none` unless the window is a
+valid encoding, and the schedule is strictly increasing. (`conjecture0_finite`, M6 notes.)
 
 T5 (loop-freeness). No wolfram23 configuration confined to a finite tape interval is periodic;
 equivalently the head leaves every finite interval. Proof via System 1 and the zero-position sum
 (PDF p.21-22). This is also the formal refutation of the current step-faithful predicates.
 
-T6 (Conjecture 0, infinite form; optional). With an infinite tape type (`Int -> Fin 3` or the
-zipper plus a background generator), the concatenation `IC C w0 1 ++ IC C w0 2 ++ ...` emulates
-`C` forever in Smith's sense: for every `k` the run at some time has the head at the start of block
-`k` in state A and then reproduces the first `k` CTS configurations. Follows from T4 and T5.
+T6 (Conjecture 0, infinite form). On a right-infinite tape (`IConfig`: a stream of cells right
+of the head), the concatenation of blocks, block `k` emulating the first `k` steps, emulates
+forever in Smith's sense: for every `k` the run at some time has the head at the entry of block
+`k` in state A and then reproduces the first `k` configurations. As proved
+(`wolfram23_infinite`, M7 notes): stated directly for binary Turing machines through T7, one
+tape per machine and input, blocks built from guarded System 4 tapes rather than from T4's
+finite initial conditions (which do not chain, Smith p. 25-26); T5 is not used, the explicit
+schedules give each block's exit.
 
-T7 (universality of cyclic tag systems, self-contained). For every well-formed Turing machine `M`
-(states and symbols in range, transitions in range) and configuration `c`, there is a 2-tag system
+T7 (universality of cyclic tag systems, self-contained). For every well-formed binary Turing
+machine `M` (two symbols; states in range, transitions in range) and configuration `c`, there is a 2-tag system
 and an initial tag word such that the tag run simulates `M`'s run step for step with a decoder
 (genuine Cocke-Minsky construction: tape halves as unary blocks, doubling and halving productions;
 Minsky 1967 Thm 14.6-1, or the smaller variant of Cook 2004 section 2.1), composed with the
@@ -86,12 +104,14 @@ already proved `tagToCTS_simulation` (one tag step = 2k CTS steps) to give a CTS
 with a decoder. Halting of `M` is read off the decoded configuration, so no halting convention
 (HaltsEmpty, ctsHalted, state 0) has to be propagated.
 
-T8 (headline). For every well-formed TM `M`, configuration `c`, and budget `N`, there is a finite
-wolfram23 initial condition from which the first `N` configurations of `M` can be decoded at
-explicit times, with the exit condition of T4. This is T4 composed with T7. It is universality in
-the literal sense, with no informal appeal to the literature: `#print axioms` must show only
-`propext`, `Classical.choice`, `Quot.sound`. T4 alone (CTS emulation) is exactly Smith's theorem
-and remains an intermediate result; it must not be named "universal".
+T8 (headline). For every well-formed binary TM `M`, configuration `c`, and budget `N`, there is a
+finite wolfram23 initial condition from which the first `N` configurations of `M` can be decoded
+at a strictly increasing schedule of times, with the exit condition of T4. This is T4 composed
+with T7. It is universality with no informal appeal to the literature: `#print axioms` must show
+only `propext`, `Classical.choice`, `Quot.sound`. Its limits: the initial condition depends on
+`N` and is existential (no closed-form size bound), the machines are binary; T6 removes the
+dependence on `N`. T4 alone (CTS emulation) is the finite form of Smith's theorem and remains an
+intermediate result; it must not be named "universal".
 
 The current "faithful Cocke-Minsky" theorem (`cocke_minsky_reduces_faithful_universal`) is a
 halting-oracle encoding and is not a step toward T7; it goes to the archive.
@@ -207,8 +227,8 @@ result connects to Mathlib's computability library.
 | M5 | T3 first half: System 4 -> System 3 (Lemmas 0, 1, parity blocks, w choice) | 0 sorry | 3-6 weeks (uncertain) |
 | M6 | T4: finite-form Conjecture 0 with exit condition and decoder; vacuity theorem for the decoder | 0 sorry; `#print axioms` shows only propext, Classical.choice, Quot.sound | 1-2 weeks |
 | M4b | T7: `WellFormed` machines; genuine Cocke-Minsky TM -> 2-tag with decoder; composition with `tagToCTS_simulation` | 0 sorry; `decide` example simulating a small TM for a few steps through tag and CTS; `#print axioms` clean | 2-4 weeks |
-| M8 | T8: compose T4 and T7 into the headline universality theorem | 0 sorry; `#print axioms` shows only propext, Classical.choice, Quot.sound; the theorem statement mentions only `BiTM.Machine`, `wolfram23`, and the decoder | 2-3 days |
-| M7 | T6: infinite form on an infinite tape type (optional) | 0 sorry | 1-2 weeks |
+| M8 | T8: compose T4 and T7 into the headline universality theorem | 0 sorry; `#print axioms` shows only propext, Classical.choice, Quot.sound; the theorem statement mentions only `TM.Machine`, `BiTM.Config`, `wolfram23`, the decoder and the well-formedness predicates (`TagSystem.WF`, `TagSystem.ValidCfg`, `BiTM.IsValidWolfram23Cfg`, `TagSystem.canon`, `Smith.biSize`) | 2-3 days |
+| M7 | T6: infinite form on an infinite tape type | 0 sorry; `#print axioms` clean; `decide` vectors of a block, a two-block chain and the infinite tape | 1-2 weeks |
 
 ### M0 notes (done 2026-09-15)
 
@@ -271,10 +291,12 @@ of PDF p. 31 with its first three printed bags and its C-format line, the
 545-element / 272-star `s52s4.pl` tape at `f = 16` with its sets and its
 `WellFormed` proof, the 9,906-step `system4.pl` run with the C-format line
 `110011110011110010` of PDF p. 41, and the System 0 transition table. It is the
-only module allowed to use `native_decide`, and `native_decide` is used only for
-the System 4 runs of D5 (about 10^4 steps over the 545-element tape); the D4
-structural checks, the `WellFormed` proof of the s52s4 tape included, close by
-plain `decide`. Nothing outside it depends on anything proved there.
+only module of the development that uses `native_decide`, and only for the
+three System 4 runs of D5 (about 10^4 steps over the 545-element tape); the
+later D7 to D10 checks close by kernel reduction (`decide +kernel`, since
+2026-09-22; D7 used `native_decide` from M3 until then), the D4 structural
+checks, the `WellFormed` proof of the s52s4 tape included, by plain `decide`.
+Nothing outside the test modules depends on anything proved there.
 
 Left undone in M0: the general theorem that `system5ToSystem4` always produces a
 `WellFormed` tape (only the `f = 16` instance is checked, by `decide`);
@@ -695,7 +717,8 @@ Regression (`Tests/SmithVectors.lean`, D7): on the p. 33 program
 back at the left end in state A at times 8, 1336, 1616, 1904 and `decodeS4`
 there reads `1`, `3,6`, `2,5`, `1,4`, the System 5 bags; at 570 (the end of
 the first pop phase) and 1475 (the middle of a D-step) it reads `none`. By
-`native_decide` (runs of 10^3 steps); the D-step itself, time 8, is checked
+`decide +kernel` (runs of 10^3 steps; `native_decide` until 2026-09-22); the
+D-step itself, time 8, is checked
 against the tape `sets [{0}, {}, {}] ++ 14 pairs ++ blocks` by plain
 `decide`.
 
@@ -931,8 +954,10 @@ neighbour, which is `B2 -> A0>` of wolfram23 after the relabelings.
 Two corrections to the T4 statement of section 2. The head does not start on
 the leftmost cell of the tape but on the first cell of the first block, as in
 Smith's `s42s0-3.pl` output (the marker `A` sits after the left end `0^m 2 2 1`;
-the leftmost cell is a 0, as the conjecture says, and it is never visited: the
-turns consume at most `h` of the `m >= h` zeros). And the run must be assumed
+the leftmost cell is a 0, as the conjecture says; what the theorem states is
+that the explicit tape keeps its size, so no cell outside it is visited, and
+what the relation records is that the turns consume at most `h` of the
+`m >= h` zeros). And the run must be assumed
 to last the budget without emptying the word: an emptied word empties the
 System 5 bag, System 4 then sweeps forever and never exits.
 
@@ -997,7 +1022,9 @@ the decoder, T7). Zero `sorry`, no `native_decide` outside the tests;
 `#print axioms t7_finite` shows only `propext, Classical.choice, Quot.sound`.
 `lake build` is 851 jobs. `Tests/TMToCTSVectors.lean` runs a three-state
 machine through the tag system by `decide` and through the cyclic tag system
-by `native_decide`, and reads it back with the decoder.
+by `decide +kernel` (`native_decide` until 2026-09-22), and reads it back with
+the decoder; since 2026-09-22 it also runs a machine that halts after one
+step, checks the decoder's rejections, and the last two stages of `decodeTM`.
 
 Rounds (`TagSystem/TagRounds.lean`). `stepP P` is the 2-tag step with
 productions `P` on `List sigma` (`Tag.step` is `stepP ts.productions`, so
@@ -1091,9 +1118,10 @@ the `i`-th configuration of the run of `tm`, without trailing blanks
 (`canon`); up to time `T` the run of wolfram23 keeps the size of its explicit
 tape (it visits no cell outside the initial tape); and at time `T + 1` its
 head is on the cell right of the tape, a 0, in state A (Smith's exit
-condition). The statement mentions `BiTM.Machine`, `BiTM.Config`,
-`BiTM.nSteps`, `wolfram23`, the decoder and the two well-formedness
-predicates, as the milestone table asks.
+condition). The statement mentions `TM.Machine`, `BiTM.Config`,
+`BiTM.nSteps`, `wolfram23`, the decoder `decodeTM`, `canon`, `biSize` and
+the well-formedness predicates `WF`, `ValidCfg`, `IsValidWolfram23Cfg`, as
+the (corrected) milestone table asks.
 
 The proof composes T7 and T4 by their schedules. `tm_tag_forwardSim` gives
 the tag steps `tt i` of the machine's run; the cyclic tag system of T7 makes
@@ -1108,25 +1136,137 @@ of `dbl` on doubled words, `none` elsewhere) returns the data, `decodeCTS`
 returns `canon c_i` (`decodeCTS_word`). The confinement and exit clauses are
 those of `conjecture0_finite` unchanged.
 
-What the theorem does and does not say. It is universality in the literal
-sense of section 2: an arbitrary binary machine is simulated step for step,
-with a computable decoder, from a finite initial tape, and the run is
-confined to that tape until it leaves it in state A. The initial tape is
-existential in the statement (it is the composite of the encoders `initAC`,
-`system5ToSystem4`, `ctsToSystem5`, `tagToCTS`, `tagK`, applied to parameters
-`f`, `w`, `h4` chosen in the proof of `conjecture0_finite`); a closed-form
-`IC` would be a corollary of unfolding those choices. The times are
-existential. The machine has two symbols; the reduction of `k`-symbol
-machines is not formalized (M4b notes). The decoder needs the parameters
-`numStates`, `2^w`, `b`, which the theorem provides; it returns `none` on
-tapes that are not encodings, as its components do, and the regression
-vectors of D8, D9 and `Tests/TMToCTSVectors.lean` exercise it. Smith's
-infinite form (T6, the concatenation of initial conditions that emulates
-forever) is not attempted; it is optional (M7).
+What the theorem does and does not say (corrected after the review of
+2026-09-21, `blueprint/11-open-items.md`). An arbitrary binary machine is
+simulated step for step, with a computable decoder, from a finite initial
+tape, and the run is confined to that tape until it leaves it in state A.
+The initial tape depends on the budget `n` and is existential in the
+statement: it is the composite of the encoders `initAC`, `system5ToSystem4`,
+`ctsToSystem5`, `tagToCTS`, `tagK`, but its parameters `f`, `w`, `h4` are
+chosen in the proof of `conjecture0_finite` from the lengths of the
+emulation's own runs (`tt n`, `t5 n`, the System 4 exit time), so unfolding
+the proof does not give a closed form; Smith's finish-time bounds (his
+Lemma 2 and the System 5 bound) are not formalized, and without them there
+is no bound on the size of the initial tape in terms of `tm`, `c`, `n`. The
+times are existential. The machine has two symbols; the reduction of
+`k`-symbol machines is not formalized (M4b notes). The decoder needs the
+parameters `numStates`, `2^w`, `b`, which the theorem provides; it returns
+`none` on tapes that are not encodings, as its components do; the regression
+vectors of D8, D9 and `Tests/TMToCTSVectors.lean` exercise its components
+(`decodeW23`, `decodeCTS`), and `decodeTM` itself is exercised by the vectors
+added after the review. Smith's infinite form is M7 (T6), done 2026-09-22:
+it removes the dependence on `n` but not the existential size of the blocks.
 
-Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8. M4 and M4b run in parallel with M2/M3
-(M4b is independent of the whole Smith side). M7 is optional. Total: roughly four months of
-focused work; M5 carries most of the risk, M4b none beyond volume.
+### M7 notes (done 2026-09-22)
+
+Three modules: `Smith/Guards.lean` (about 650 lines, the guarded System 4
+tapes), `Smith/Infinite.lean` (about 1,030 lines, the infinite tape and the
+theorem), `Tests/InfiniteVectors.lean` (about 190 lines, 35 vectors by
+`decide +kernel`); `Smith/Conjecture0.lean` gains `system4_emulation`, the
+System 4 half of T4 factored out of `conjecture0_finite` for reuse. Zero
+`sorry`, no `native_decide`; `#print axioms wolfram23_infinite` shows only
+`propext, Classical.choice, Quot.sound`.
+
+The statement, `wolfram23_infinite`: for a well-formed binary machine `tm`
+and a valid configuration `c` with state below `numStates` there is a tape
+`t : Nat -> Nat` of cells 0, 1, 2 such that, from `istart t` (state B on a 2,
+nothing to the left, `t` to the right), (i) at every time the run of
+wolfram23 is defined and does not move left from an empty left tape (the
+head never leaves the tape to the left, so the implicit blank on the left
+is never read), and (ii) for every `k` there are a width `2^w`, a band `b`,
+a window `W` and times `times i` such that `times` is strictly increasing
+on `i < k` as long as step `i + 1` of `tm` exists, and for every `i <= k` at
+which the run of `tm` is defined, the `W` cells right of the head at time
+`times i` decode by `decodeTM numStates (2^w) b` to the `i`-th configuration
+of `tm` without trailing blanks. No budget and no hypothesis on halting:
+block `k` emulates the longest run of
+at most `k` steps (classically, `Nat.findGreatest`), so a halting machine's
+run is reproduced in full by every block from some point on, and a
+non-halting one for ever. The tape is one object per `(tm, c)`; the
+parameters `w`, `b`, `W` and the times vary with `k`, as in Smith (p. 25,
+his `w_n` grows along the tape).
+
+The design (blueprint chapter 10, `Smith/Infinite.lean` header). Smith's
+finite initial condition (`0^m 2 2 1^t` at the left) cannot be chained by
+concatenation (p. 25-26), so the blocks are not T4's tapes. Each block is,
+in System 4 terms, a leading star, `r - 1` guard sets `{1, n}` with their
+stars, the guard `{0, 1, n - 1}`, then the encoder tape of the program
+(`blockTape`). The head enters on the leading star in state C, which is
+where the previous block's exit leaves it (the scan of the previous
+program's last set exits in state C onto the 0 that stands for the next
+block's first cell); System 4's rule 5 and the scans in state C carry it
+through the guards to the program's first set in state B in `2r` steps
+(`entryRun`, `padCfg_entry`), the guards now `{n - 1}` and the innermost
+`{n - 2}`. The program's turns at its left end consume one guard each
+(`pad_turn`: `2t + 4` steps after `t` turns, a walk left over the merged
+guards, a star deletion, a scan back); every other rule is one step on both
+tapes (`pad_step`); `pad_schedule` gives the padded run with its schedule.
+With `n = T4 + 3` and `r = T4 + 1` for a program run of `T4` steps the guards
+are never exhausted and no 0 appears in them (`merged`, `parMem_zero_merged`).
+The System 3 side is `Rep3` of M5 generalized (committed with M8's
+refactor): a junk left end guarded by `SafeC` (within the budget the head
+is on the block's leftmost element only in state C, which `block_run` gives
+for every budget), and a closing 0 followed by the rest of the tape
+(`Closing.zero`). `blockAC_OK` discharges the side conditions of the entry
+configuration; `block_sys3` runs `sys4_sys3_forwardSim` over the block with
+fuel `H + b`, reads the decodes with `rep3_decode` at the pop events of
+`system4_emulation` and the exit with `rep3_exit_zero`: System 3 head on the
+closing 0 in state A with a 0 to its left, which is the next block's entry
+shape (`entry3`). `chain_sys3` composes the blocks; `start3` is the System 3
+start `B20 -> A00>` onto block 0; `stage_w23` relabels through
+`sys3_sys0_forwardSim` and `toBi_run` to the wolfram23 run on the finite
+tape of blocks `0..k` (`startFin`), with the size invariant. The infinite
+tape `tape bd` is the stream of those cells (`segCells`); `agree_run`
+transfers a finite run that keeps its size to the infinite configuration
+(`Agree`), and `decodeTM_trunc` shows the decoder on the window `W =
+biSize (startFin bd k)` of the infinite configuration is the decoder of the
+finite one, since it reads only up to the first 0 right of the head.
+`stage_infinite` assembles the emulation of `k` steps on the infinite tape
+(a left move from an empty left tape would read the implicit blank and grow
+the size, against the size invariant); `inSteps_valid` gives that the run
+is defined at every time from the validity invariant of wolfram23 on tapes
+of cells below 3, and the never-left clause for all time follows from the
+per-`k` one because the schedule of block `k` ends after time `k`
+(`k < times k`, each block taking at least one System 3 step).
+
+Parameters of block `k` (`block_exists`): `T4` and `b` from
+`system4_emulation` on the cyclic tag run of `tt k` cycles, `n = T4 + 3`,
+`r = T4 + 1`, `H = 2r + padT (T4 - 1)`, `w = H + b + n + 3f + 6`; the
+decoding times `dt i = 2r + padT (t4 (2 (1 + 84 S) tt i))`. All of them are
+computed from the emulation's own run lengths, as in T4: the block sizes
+remain existential and without a closed form (`blueprint/11-open-items.md`
+item 1); T6 removes the dependence of the tape on the budget, which is
+what one tape per machine and input means, and nothing more.
+
+Corrections to section 2's T6 (applied): "follows from T4 and T5" was
+wrong on both counts, T4's tapes do not chain and T5 is not used; the tape
+type is a stream right of the head with `BiTM.step`'s semantics
+(`IConfig`, `istep`), not `Int -> Fin 3`; the machine is a binary Turing
+machine through T7, not a CTS.
+
+Tests (`Tests/InfiniteVectors.lean`, E1-E5): D9's program `{0, 2} * {}` in a
+block with `n = 7`, `r = 5`, width `2^5`, band 4: the System 4 entry in 10
+steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
+stuck alone at 14, `SafeC`; the System 3 run from `entry3`: decode at 160
+(`[false]`, as D9), exit at 224 in the shape of `rep3_exit_zero`; two blocks
+chained through `start3`: decodes at 161 and 385, exits at 225 and 449;
+wolfram23 from `startFin`: decodes at 335 and 793, exit at 917 on the last
+cell in state A, size 450 kept through 917 steps and 451 at 918, no left
+move from an empty left tape; the infinite tape: `tape` at the block
+boundaries, `truncI 449 (istart (tape bd)) = startFin bd 1`, the infinite
+run decoding on a window of 64 cells at 335 and 793 and entering block 2 at
+918 where the finite run leaves its tape. Kernel `decide` (`decide +kernel`)
+closes all of them in about a minute; plain `decide` hits the elaborator's
+recursion limit on the longer runs.
+
+Left undone. Closed-form block sizes (item 1 of the open items); a single
+schedule `times` independent of `k` (each block re-emulates from the start,
+so the decode of step `i` recurs in every block `k >= i`; the theorem gives
+one schedule per block); event-based decoding times (item 4).
+
+Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8 (done); M7 after M8 (done). M4 and M4b
+ran in parallel with M2/M3 (M4b is independent of the whole Smith side). Total: roughly four
+months of focused work was the estimate; M5 carried most of the risk, M4b none beyond volume.
 
 ## 6. Risks and mitigations
 
@@ -1156,7 +1296,7 @@ focused work; M5 carries most of the risk, M4b none beyond volume.
    the per-step lemma against `Represents` (porting the false-head engine). This is the first
    theorem that could not have been proved under the old statements.
 
-## 8. Decisions (all resolved 2026-09-15)
+## 8. Decisions (resolved 2026-09-15; decision 5 revised, see below)
 
 1. Target: resolved. Finite-budget statements first (T4, then the headline T8); the infinite form
    (T6) is optional and comes last, on a new tape type.
@@ -1171,6 +1311,6 @@ focused work; M5 carries most of the risk, M4b none beyond volume.
    Mathlib's chosen release pins (v4.32.x or newer) at the start of M1; M0 stays on v4.29.0-rc6.
 4. Old files: resolved. Archive the exploratory files under `Archive/`, outside the lakefile roots,
    on this branch; delete them once M2 lands.
-5. System 5 semantics: resolved. The step becomes total when the rule list is empty and exposes
-   the terminal event "a 0 surfaced with no rule left" explicitly (the event Conjecture 5 and the
-   System 4 exit-in-state-C argument depend on).
+5. System 5 semantics: deferred, then superseded. `System5.step` is still `none` on an empty
+   rule list; the terminal event "a 0 surfaced with no rule left" is handled on the System 4
+   side by `repS4_terminal` (M3 notes), which is where the exit-in-state-C argument needs it.
