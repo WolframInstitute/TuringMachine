@@ -1265,8 +1265,9 @@ cell in state A, size 450 kept through 917 steps and 451 at 918, the head on
 the first cell only at time 0; the infinite tape: `tape` at the block
 boundaries, `truncI 449 (istart (tape bd)) = startFin bd 1`, the infinite
 run decoding on a window of 64 cells and on the theorem's window 450 at 335
-and 793 and entering block 2 at 918 where the finite run leaves its tape.
-E6: the program `{0} {0, 1} * {2}`, which turns once at its left end, in a
+and 793 (and on every window from 31 on, not on 30), entering block 2 at 918
+where the finite run leaves its tape, and the left-end clause failing on the
+all-zero tape at time 12. E6: the program `{0} {0, 1} * {2}`, which turns once at its left end, in a
 block with `n = 12`, `r = 10`, width `2^6`: the turn as `pad_turn` states it
 (block time 24 to 28, the innermost guard `{10}` merged as `{9}`), the exit
 at 31 as `padCfg 12 10 1`, the System 3 exit after 1218 steps, the head

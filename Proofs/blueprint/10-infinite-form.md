@@ -219,7 +219,10 @@ from `startFin`, decodes at 335 and 793, the exit at 917 on the last cell in sta
 size 450 kept through 917 steps and 451 at 918, the head on the first cell only at time
 0. E5: `tape` at the block boundaries, `truncI 449 (istart (tape bd)) = startFin bd 1`,
 the infinite run decoding on a window of 64 cells and on the theorem's window 450 at
-335 and 793 and entering block 2 at 918, where the finite run leaves its tape. E6: the
+335 and 793 (window stability: at 335 the first 0 is cell 31, the window of 30 cells
+does not decode, every window from 31 on decodes alike), entering block 2 at 918, where
+the finite run leaves its tape, and the left-end clause failing on the all-zero tape at
+time 12. E6: the
 program `{0} {0, 1} * {2}`, which turns once at its left end, in a block with `n = 12`,
 `r = 10`, width `2^6`: the turn as `pad_turn` states it (the program's configuration
 padded with no turn at block time 24, with one turn `2 * 0 + 4` steps later, the
