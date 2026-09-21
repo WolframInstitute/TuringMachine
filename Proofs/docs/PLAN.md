@@ -8,14 +8,14 @@ notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 
 M4b done 2026-09-21 (see "M4b notes" in section 5); M8 done 2026-09-21 (see "M8 notes" in
 section 5): the headline theorem `wolfram23_universal` is proved; M7 done 2026-09-22 (see
 "M7 notes" in section 5): the infinite form `wolfram23_infinite` is proved. The review of
-2026-09-21 (`blueprint/11-open-items.md`) lists what remains open: a closed-form initial
+2026-09-21 (the blueprint's open-items chapter, `Blueprint/Chapters/OpenItems.lean`) lists what remains open: a closed-form initial
 condition and finish-time bounds, event-based decoding times, k-symbol machines.
 
 ## 1. Where we are
 
 Status 2026-09-22: this section describes the tree of 2026-09-14, before M0. It is kept as
 the record of the starting point; the current state is in the M0-M8 and M7 notes of
-section 5 and in `blueprint/`.
+section 5 and in the blueprint (`Blueprint/Chapters/`, published as a site; see docs/PUBLISHING.md).
 
 - Everything builds (10 s), but the four sorries sit under false statements and the proved
   universality theorem is a tautology. See REVIEW.md sections 1 and 4.
@@ -63,7 +63,7 @@ leftmost conglomerate decodes (x -> x/2 + 1 on even elements, ignoring the band 
 the current System 5 bag and the remaining sets encode the remaining rules shifted by the
 running parameter `t`; and when `P` attempts to pop a nonexistent rule the head leaves the
 defined tape in state C. Smith's closed-form finish-time bound `finishTime P <= 3^(n-1) * M`
-(which would make `f` a function of `P` alone) is open; see `blueprint/11-open-items.md`
+(which would make `f` a function of `P` alone) is open; see the blueprint's open-items chapter (`Blueprint/Chapters/OpenItems.lean`)
 item 1.
 
 T3 (Conjecture 4 implies 3; Conjectures 3 = 2 = 1 = 0). System 4 -> System 3 via parity blocks of
@@ -267,7 +267,7 @@ only `propext, Quot.sound`. `wolfram23_step2`, `wolfram23_runs_10` and
 `wolfram23_runs_20` were unreferenced and are gone (`not_halts_wolfram23_init`
 subsumes them). The remaining `native_decide` sites are in `OneSidedTM/`, which
 is unrelated to the Smith chain, and in the D5 System 4 runs of
-`Tests/SmithVectors.lean`.
+`Vectors/SmithVectors.lean`.
 
 Invariants proved:
 
@@ -285,7 +285,7 @@ Invariants proved:
   `ctsToSystem5_rules_nodup`, `ctsToSystem5_rules_ge_three`; `encodeBag_nodup`,
   `allInts_nodup`, `encodeS5RuleToS4Set_nodup`.
 
-`Tests/SmithVectors.lean` (a lakefile root) holds the PDF regression vectors:
+`Vectors/SmithVectors.lean` (a lakefile root) holds the PDF regression vectors:
 the two `cy2s5.pl` outputs, the phase-1 rotation, the 36-step `system5.pl` run
 of PDF p. 31 with its first three printed bags and its C-format line, the
 545-element / 272-star `s52s4.pl` tape at `f = 16` with its sets and its
@@ -712,7 +712,7 @@ tape `system5ToSystem4 (ctsToSystem5 C0 cfg N) f` has a strictly increasing
 schedule at which it stands in `RepS4` to a System 5 configuration that
 `Represents` the `i`-th cyclic tag configuration.
 
-Regression (`Tests/SmithVectors.lean`, D7): on the p. 33 program
+Regression (`Vectors/SmithVectors.lean`, D7): on the p. 33 program
 `2 1,4 1,6 "" ""` at `f = 16` the bounds allow a budget of 4; the D5 run is
 back at the left end in state A at times 8, 1336, 1616, 1904 and `decodeS4`
 there reads `1`, `3,6`, `2,5`, `1,4`, the System 5 bags; at 570 (the end of
@@ -825,7 +825,7 @@ Three modules, all lakefile roots, about 1900 lines together:
 per-rule lemmas, the initial tape, T3). Zero `sorry`, no `native_decide`;
 `#print axioms` of `sys4_sys3_forwardSim`, `sys4_sys0_forwardSim`,
 `conjecture3_finite` and `rep3_init` shows only `propext, Classical.choice,
-Quot.sound`. `lake build` is 679 jobs. The D8 vectors of `Tests/SmithVectors.lean`
+Quot.sound`. `lake build` is 679 jobs. The D8 vectors of `Vectors/SmithVectors.lean`
 run a six-step System 4 program through System 3 by `decide`.
 
 Parity blocks (`Smith/ParityBlocks.lean`). A block of 1s and 2s is `Bits` (`2`
@@ -933,7 +933,7 @@ tape; both are M6.
 One module, `Smith/Conjecture0.lean` (about 950 lines), plus a rule-count clause
 added to the M2 step lemmas. Zero `sorry`, no `native_decide`; `#print axioms
 conjecture0_finite` shows only `propext, Classical.choice, Quot.sound`. `lake
-build` is 680 jobs. The D9 vectors of `Tests/SmithVectors.lean` exercise the
+build` is 680 jobs. The D9 vectors of `Vectors/SmithVectors.lean` exercise the
 decoder by `decide`, with negative instances.
 
 The statement, `conjecture0_finite`: for a two-colour cyclic tag system `C0`, an
@@ -1020,7 +1020,7 @@ Three modules, all lakefile roots, about 1200 lines together:
 system), `TagSystem/TMToCTS.lean` (the finite alphabet, the cyclic tag system,
 the decoder, T7). Zero `sorry`, no `native_decide` outside the tests;
 `#print axioms t7_finite` shows only `propext, Classical.choice, Quot.sound`.
-`lake build` is 851 jobs. `Tests/TMToCTSVectors.lean` runs a three-state
+`lake build` is 851 jobs. `Vectors/TMToCTSVectors.lean` runs a three-state
 machine through the tag system by `decide` and through the cyclic tag system
 by `decide +kernel` (`native_decide` until 2026-09-22), and reads it back with
 the decoder; since 2026-09-22 it also runs a machine that halts after one
@@ -1137,7 +1137,7 @@ returns `canon c_i` (`decodeCTS_word`). The confinement and exit clauses are
 those of `conjecture0_finite` unchanged.
 
 What the theorem does and does not say (corrected after the review of
-2026-09-21, `blueprint/11-open-items.md`). An arbitrary binary machine is
+2026-09-21, the blueprint's open-items chapter (`Blueprint/Chapters/OpenItems.lean`)). An arbitrary binary machine is
 simulated step for step, with a computable decoder, from a finite initial
 tape, and the run is confined to that tape until it leaves it in state A.
 The initial tape depends on the budget `n` and is existential in the
@@ -1152,7 +1152,7 @@ times are existential. The machine has two symbols; the reduction of
 `k`-symbol machines is not formalized (M4b notes). The decoder needs the
 parameters `numStates`, `2^w`, `b`, which the theorem provides; it returns
 `none` on tapes that are not encodings, as its components do; the regression
-vectors of D8, D9 and `Tests/TMToCTSVectors.lean` exercise its components
+vectors of D8, D9 and `Vectors/TMToCTSVectors.lean` exercise its components
 (`decodeW23`, `decodeCTS`), and `decodeTM` itself is exercised by the vectors
 added after the review. Smith's infinite form is M7 (T6), done 2026-09-22:
 it removes the dependence on `n` but not the existential size of the blocks.
@@ -1161,7 +1161,7 @@ it removes the dependence on `n` but not the existential size of the blocks.
 
 Three modules: `Smith/Guards.lean` (about 650 lines, the guarded System 4
 tapes), `Smith/Infinite.lean` (about 1,030 lines, the infinite tape and the
-theorem), `Tests/InfiniteVectors.lean` (about 190 lines, 35 vectors by
+theorem), `Vectors/InfiniteVectors.lean` (about 190 lines, 35 vectors by
 `decide +kernel`); `Smith/Conjecture0.lean` gains `system4_emulation`, the
 System 4 half of T4 factored out of `conjecture0_finite` for reuse. Zero
 `sorry`, no `native_decide`; `#print axioms wolfram23_infinite` shows only
@@ -1189,7 +1189,7 @@ non-halting one for ever. The tape is one object per `(tm, c)`; the
 parameters `w`, `b`, `W` and the times vary with `k`, as in Smith (p. 25,
 his `w_n` grows along the tape).
 
-The design (blueprint chapter 10, `Smith/Infinite.lean` header). Smith's
+The design (the blueprint's chapter on the infinite form, `Smith/Infinite.lean` header). Smith's
 finite initial condition (`0^m 2 2 1^t` at the left) cannot be chained by
 concatenation (p. 25-26), so the blocks are not T4's tapes. Each block is,
 in System 4 terms, a leading star, `r - 1` guard sets `{1, n}` with their
@@ -1237,13 +1237,13 @@ Parameters of block `k` (`block_exists`): `T4` and `b` from
 `r = T4 + 1`, `H = 2r + padT (T4 - 1)`, `w = H + b + n + 3f + 6`; the
 decoding times `dt i = 2r + padT (t4 (2 (1 + 84 S) tt i))`. All of them are
 computed from the emulation's own run lengths, as in T4: the block sizes
-remain existential and without a closed form (`blueprint/11-open-items.md`
+remain existential and without a closed form (the blueprint's open-items chapter, `Blueprint/Chapters/OpenItems.lean`,
 item 1). T6 removes the dependence of the tape on the budget and nothing
 more: its statement, like T8's, does not bound the work of the encoder, so
 its conclusion is also met by a machine that only moves right over a tape
 holding the run in advance, and its `forall tm c, exists t` form would
 admit one dovetailed tape for all machines and inputs; what distinguishes
-wolfram23 is the construction in the proof (blueprint chapter 10, "What
+wolfram23 is the construction in the proof (the blueprint's chapter on the infinite form, "What
 remains existential"). The review of T6 (2026-09-22, six lenses, three
 refuters per finding) found no soundness problem; it asked for the state
 and window clauses above, for `k < times k`, and for the vectors E6-E8.
@@ -1254,7 +1254,7 @@ type is a stream right of the head with `BiTM.step`'s semantics
 (`IConfig`, `istep`), not `Int -> Fin 3`; the machine is a binary Turing
 machine through T7, not a CTS.
 
-Tests (`Tests/InfiniteVectors.lean`, E1-E8). E1-E5: D9's program `{0, 2} * {}`
+Tests (`Vectors/InfiniteVectors.lean`, E1-E8). E1-E5: D9's program `{0, 2} * {}`
 in a block with `n = 7`, `r = 5`, width `2^5`, band 4: the System 4 entry in
 10 steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
 stuck alone at 14, `SafeC`; the System 3 run from `entry3`: decode at 160
@@ -1307,7 +1307,7 @@ months of focused work was the estimate; M5 carried most of the risk, M4b none b
 
 1. M0 fixes, no new theory: add the two stars in `encodeS5RuleToS4Elems` and the parity fold in
    `encodeBag`; rotate the appendant list by `phase` in `ctsRulesToSystem5Rules`; create
-   `Proofs/Tests/SmithVectors.lean` with the PDF test vectors as `decide`/`#eval` checks; replace
+   `Proofs/Vectors/SmithVectors.lean` with the PDF test vectors as `decide`/`#eval` checks; replace
    `native_decide` in `Wolfram23Valid.lean`; state `System5_step_bag_nodup` and a System 4
    well-formedness predicate with preservation lemmas. Build green, commit.
 2. Archive: move the files listed in Section 4 to `Archive/`, trim the lakefile roots, salvage the

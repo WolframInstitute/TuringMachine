@@ -25,9 +25,9 @@ ever, never leaves the tape to the left, and for every `k` reproduces the first 
 configurations of the run of the machine (as many of them as exist) at strictly
 increasing times, read off a window of the tape by `Smith.decodeTM`. No budget and no
 hypothesis on halting; the block sizes are still existential, and neither statement
-bounds the work of the encoder (`blueprint/11-open-items.md` item 1).
-`blueprint/01-overview.md` states exactly what is and is not proved;
-`blueprint/11-open-items.md` lists the gaps.
+bounds the work of the encoder (the open-items chapter of the blueprint, item 1).
+The blueprint's overview chapter states exactly what is and is not proved; its
+open-items chapter lists the gaps.
 
 The chain, one module per arrow:
 
@@ -51,35 +51,51 @@ Expected output:
 'Smith.wolfram23_infinite' depends on axioms: [propext, Classical.choice, Quot.sound]
 ```
 
-No `sorry` in `Smith/`, `TagSystem/`, `BiTM/`, `TM/`; `native_decide` only in `Tests/`,
+No `sorry` in `Smith/`, `TagSystem/`, `BiTM/`, `TM/`; `native_decide` only in `Vectors/`,
 which nothing imports.
 
 ## Build
 
-Toolchain `leanprover/lean4:v4.32.2`, Mathlib pinned in `lake-manifest.json`.
+Toolchain `leanprover/lean4:v4.34.0`, Mathlib `v4.34.0` (pinned in `lake-manifest.json`).
 
 ```
 lake exe cache get
 lake build
 ```
 
-A full build is about 850 jobs; with the Mathlib cache it takes a few minutes.
+A full build is about 870 jobs plus Verso; with the Mathlib cache the proofs take a few
+minutes, Verso about a quarter of an hour the first time.
 
 ## Where things are
 
-- `blueprint/`: the prose companion, one chapter per link, with the formal statements
-  quoted (Markdown now, Verso port pending).
+- `Blueprint/Chapters/`: the prose companion, one Verso chapter per link, with the
+  statements linked to their declarations (the blueprint site above).
 - `docs/PLAN.md`: targets T1 to T8 and the milestone notes M0 to M8 and M7, the
   engineering record. `docs/REVIEW.md`: the audit that preceded the rebuild, with status notes.
   `docs/PUBLISHING.md`: the publishing plan. `docs/TM23Proof.pdf`: Smith's paper.
-- `Tests/SmithVectors.lean`, `Tests/TMToCTSVectors.lean`, `Tests/InfiniteVectors.lean`:
+- `Vectors/SmithVectors.lean`, `Vectors/TMToCTSVectors.lean`, `Vectors/InfiniteVectors.lean`:
   regression vectors against Smith's printed traces, a small machine, and a small block
   of the infinite tape.
 - `OneSidedTM/`: an unrelated earlier development in the same `lean_lib` (classes of
   one-sided machines); not part of the chain.
 
+## The blueprint site
+
+The prose companion of the proof (one chapter per link of the chain, the statements
+linked to their declarations, the dependency graph, the progress summary) is a Verso
+blueprint: `Blueprint.lean`, `Blueprint/Chapters/`, `BlueprintMain.lean`, rendered by
+
+```
+lake exe vbp build            # to _out/site/html-multi
+lake exe vbp build --serve    # local preview
+```
+
+It is published to GitHub Pages at <https://wolframinstitute.github.io/TuringMachine/>
+by `.github/workflows/blueprint-pages.yml` (repository root) on every push that touches
+`Proofs/`, and to the Wolfram Cloud by `scripts/CloudDeployBlueprint.wl`. See
+`docs/PUBLISHING.md`.
+
 ## Codespaces
 
-[Open in GitHub Codespaces](https://codespaces.new/sw1sh/TuringMachine) (badge and
-target to be set once the repository layout is decided). `.devcontainer/` fetches the
-Mathlib cache and builds on creation.
+`.devcontainer/` fetches the Mathlib cache and builds on creation (Codespaces reads
+`.devcontainer` at the repository root, so it is a template until moved there).

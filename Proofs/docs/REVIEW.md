@@ -11,7 +11,7 @@ and the 19,305-line `BiTM/CTSToSystem5.lean` unchanged to `Archive/BiTM/` (line 
 valid there), replaced `BiTM/CTSToSystem5.lean` by a slim encoder module, trimmed
 `TagSystem/HaltsEmpty.lean` and `BiTM/HaltInduction.lean`, fixed the two encoder bugs of section
 4.3 (stars, phase), removed `native_decide` from the theorem chain, stated the Nodup and
-well-formedness invariants, and added `Tests/SmithVectors.lean`. See PLAN.md, "M0 notes".
+well-formedness invariants, and added `Vectors/SmithVectors.lean`. See PLAN.md, "M0 notes".
 
 Status note (after milestone M1, same day): the tree is now on `leanprover/lean4:v4.32.2`
 with Mathlib pinned at tag `v4.32.2`, and `Smith/Simulation.lean`, `Smith/Doubling.lean` and
@@ -78,8 +78,8 @@ T4's finite initial conditions, which do not chain. What it does not give:
 a closed-form size for block `k` (the parameters come from the emulation's
 own run lengths, as in T4), a single schedule of times across blocks, and,
 like T8, any bound on the encoder, so its statement alone does not exclude
-a tape holding the run in advance (blueprint chapter 10). The
-independent review of 2026-09-21 (`blueprint/11-open-items.md`) found no
+a tape holding the run in advance (the blueprint's chapter on the infinite form). The
+independent review of 2026-09-21 (the blueprint's open-items chapter, `Blueprint/Chapters/OpenItems.lean`) found no
 soundness problem in M0-M8; its documentation corrections are applied in
 PLAN.md sections 1, 2, 5 and 8 and in the module headers it names. PLAN.md,
 "M7 notes", is the current record.

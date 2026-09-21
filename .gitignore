@@ -16,6 +16,7 @@ paclet_version.txt
 # Lean
 Proofs/.lake/
 Proofs/build/
+Proofs/_out/
 
 # Wolfram
 *.mx

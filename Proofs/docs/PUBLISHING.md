@@ -1,82 +1,99 @@
-# Proposal: publishing the Lean proof as an interactive site
+# Publishing the Lean proof as an interactive site
 
-Date: 2026-09-21. Companion to PLAN.md and REVIEW.md. Status: narrative started 2026-09-21
-in `blueprint/` (Markdown, Verso port pending); scaffolding for steps 1 and 3 written.
+Date: 2026-09-21 (proposal); decisions and setup 2026-09-22. Companion to PLAN.md and
+REVIEW.md.
 
-Created on 2026-09-21:
+## 1. Decisions (2026-09-22)
 
-- `blueprint/README.md` and chapters `01-overview` to `11-open-items`, one per link of the
-  chain plus the T6 specification (chapter 10) and the open items from the review
-  (chapter 11). Declarations are wiki-linked by full Lean name for the Verso port; key
-  statements are quoted verbatim from the source.
-- `README.md` (project in one screen, axiom check, build, where things are, Codespaces
-  placeholder), `.devcontainer/devcontainer.json`, `.github/workflows/ci.yml` (inert until
-  the repository split: GitHub reads workflows from the repository root; move it up and keep
-  `working-directory: Proofs` to run it in-tree).
+- In-tree: the Lake root stays `Proofs/` inside the paclet repository; no split. The
+  open questions of the proposal (section 6) are closed by this and the next two items.
+- Toolchain: Lean `v4.34.0` with Mathlib `v4.34.0`, the release line verso-blueprint
+  publishes for (its `v4.34.0` branch; its own Verso pin is built on `v4.34.0-rc2`).
+  Bumped from `v4.32.2` on 2026-09-22.
+- Two hosts: GitHub Pages at <https://wolframinstitute.github.io/TuringMachine/> (the
+  repository is `WolframInstitute/TuringMachine`, public; the Pages source is "GitHub
+  Actions", enabled through `gh api repos/WolframInstitute/TuringMachine/pages -f
+  build_type=workflow`), and the Wolfram Cloud under the `wolframinstitute` account.
+- The blueprint covers the Smith chain and the machine reduction (M0 to M8, M7), not
+  the `OneSidedTM` class proofs that share the `lean_lib`.
 
-Updated 2026-09-22 (T6 landed): chapter 10 of the blueprint rewritten from target to
-proved, README and overview updated, the module headers named by the review corrected.
+## 2. Layout
 
-Remaining: doc-gen4 (step 2); the Verso port and the pin-or-bump decision (step 4); the
-Pages workflow (step 5); the repo-split decision (section 2).
+| Piece | Where |
+|---|---|
+| Verso chapters | `Proofs/Blueprint/Chapters/*.lean`, one module per link of the chain (Overview, MachineModel, TMToCTS, CTSToSystem5, System5ToSystem4, System4ToSystem3, Systems3210, Conjecture0, Universality, InfiniteForm, OpenItems) |
+| Top-level document | `Proofs/Blueprint.lean` (includes, dependency graph, progress summary) |
+| Generator entry point | `Proofs/BlueprintMain.lean` (`vbp` discovers it by name) |
+| Lake | `require VersoBlueprint ... @ "v4.34.0"` and `lean_lib Blueprint` in `Proofs/lakefile.lean` |
+| Site output | `Proofs/_out/site/html-multi/` (ignored by git) |
+| Pages workflow | `.github/workflows/blueprint-pages.yml` at the repository root, `working-directory: Proofs` |
+| Wolfram Cloud deploy | `Proofs/scripts/CloudDeployBlueprint.wl` |
+| Codespaces | `Proofs/.devcontainer/devcontainer.json` (to move to the repository root if a Codespaces badge is wanted; Codespaces reads `.devcontainer` at the root) |
 
-## 1. Recommendation
+Chapters import the proof modules and link each statement to its declaration with
+`(lean := "Full.Name")`, so the site renders the real signatures and their Lean
+status; blueprint labels are the full Lean names. Chapter cross references use
+`{ref "tag"}[text]` with the tags `overview`, `machine-model`, `tm-to-cts`,
+`cts-to-system5`, `system5-to-system4`, `system4-to-system3`, `systems-3-2-1-0`,
+`conjecture0`, `universality`, `infinite-form`, `open-items`. The Markdown chapters that
+preceded the port (2026-09-21) were the source of the Verso modules and were removed
+with the port (git history has them under `docs/blueprint-md/` and `blueprint/`).
 
-Three layers, each answering a different "can I click on it?":
+## 3. Building and publishing
+
+Local:
+
+```
+cd Proofs
+lake exe cache get          # the Mathlib cache
+lake build                  # the proofs, the tests and the Blueprint library
+lake exe vbp build          # the site, to _out/site/html-multi
+lake exe vbp build --serve  # local preview
+```
+
+GitHub Pages: every push to `main` or `lean-proofs` that touches `Proofs/` runs the
+workflow (build, `sorry`/`native_decide` scan, axiom check of both headline theorems,
+`vbp build`, upload, deploy); `workflow_dispatch` runs it by hand. The first run
+compiles Verso from source (the Lake packages are cached between runs).
+
+Wolfram Cloud: after `lake exe vbp build`,
+
+```
+wolframscript -file scripts/CloudDeployBlueprint.wl _out/site/html-multi wolfram23-blueprint
+```
+
+deploys every file as a public cloud object under `wolfram23-blueprint/` with an
+explicit content type and prints the index URL. Facts established by experiment on
+2026-09-22 with the `wolframinstitute` account: directory URLs resolve to `index.html`
+on the cloud, so the site's relative links work unchanged; binary files round-trip;
+a plain file copy (`CopyFile`) of a `.js` or `.mjs` file is served as `text/plain`,
+which browsers refuse to execute as a module, while an `HTTPResponse` object is served
+with the content type it carries, which is why the script deploys every file that way.
+
+## 4. Background: the three layers (from the proposal)
 
 | Layer | Tool | What the reader gets | Hosting |
 |---|---|---|---|
-| Structure | [verso-blueprint](https://github.com/leanprover/verso-blueprint) | Prose <-> Lean cross-links, clickable dependency graph (TM -> 2-tag -> CTS -> System 5 -> 4 -> 3 -> 2 -> 1 -> 0 -> `wolfram23_universal`), hover previews, progress summary, PDF from the same source | GitHub Pages |
-| Declarations | doc-gen4 | mathlib-docs-style page per declaration, from the existing docstrings; blueprint links into it | GitHub Pages |
-| Goal states | `.devcontainer` + "Open in Codespaces" badge | Real VS Code + infoview with the Mathlib cache fetched; step through any tactic | none |
+| Structure | [verso-blueprint](https://github.com/leanprover/verso-blueprint) | Prose and Lean cross-links, the dependency graph, hover previews, the progress summary, PDF from the same source | GitHub Pages, Wolfram Cloud |
+| Declarations | doc-gen4 | a page per declaration from the docstrings | not done |
+| Goal states | `.devcontainer` and an "Open in Codespaces" badge | VS Code with the infoview and the Mathlib cache; step through any tactic | none |
 
-verso-blueprint is the official successor of Patrick Massot's plasTeX `leanblueprint`
-(FLT has migrated; the FRO roadmap for 2026-09 to 2027-02 lists it as a hardening target).
-Do not start a plasTeX blueprint now.
+verso-blueprint is the official successor of Patrick Massot's plasTeX `leanblueprint`.
+Not recommended for now: self-hosting lean4web or the Lean Workbench (both need a
+server with Lean and Mathlib resident in RAM); Codespaces gives the same experience.
 
-Not recommended for now: self-hosting lean4web or the FRO's Lean Workbench (experimental,
-self-host only). Both need a server with Lean + Mathlib resident in RAM. Codespaces gives the
-same experience for free; revisit if a public Workbench instance appears.
+## 5. Not done
 
-## 2. Repo layout decision
+- doc-gen4 pages per declaration: the blueprint's `(lean := ...)` links render the
+  signatures from the environment, which covers the main need; doc-gen4 would add the
+  docstrings and the source links. `require «doc-gen4»` behind `-Kenv=dev`,
+  `lake -R -Kenv=dev build OneSidedTM:docs`, publish `.lake/build/doc` under `/docs/`.
+- The PDF build (`lake exe vbp build --pdf`, needs lualatex and the TeX Live packages
+  listed in the verso-blueprint manual).
+- The Codespaces badge (needs `.devcontainer` at the repository root).
 
-The Lake root is `Proofs/` inside the Wolfram paclet repo. Blueprint, doc-gen4 and Pages
-workflows assume the Lake project is the repo. Two options:
+## 6. Questions closed on 2026-09-22
 
-- (a) Split `Proofs/` into its own repo (`sw1sh/Wolfram23Lean` or similar), keep the paclet
-  repo pointing at it. Cleaner for readers; drops `old_call_graphs/`, `sieve*.lean`,
-  `trace.lean`, `group_rules.lean`, `lean_dep_*` and `Archive/` from what they see.
-- (b) Stay in-tree, run every workflow with `working-directory: Proofs`, and exclude the
-  clutter from the `lean_lib` roots (already the case) and from doc-gen4.
-
-Preference: (a). The proof is a self-contained artefact with a different audience from the
-paclet.
-
-## 3. Steps
-
-1. Prerequisites in the tree.
-   - Docstring `wolfram23_universal` and the other three public statements in
-     `Smith/Universality.lean` (3 docstrings today): the encoding, the `times`/`T` clock,
-     the decoder, the size invariant.
-   - Put `#print axioms wolfram23_universal` in the README (expected: `propext`,
-     `Classical.choice`, `Quot.sound`). `Tests/` vectors and the "no sorry" grep go into CI.
-2. doc-gen4. Add as a dev dependency in `lakefile.lean` (`require «doc-gen4» ... ` behind
-   `Kenv=dev`), build with `lake -R -Kenv=dev build OneSidedTM:docs`, publish `.lake/build/doc`
-   to Pages. Half a day.
-3. Codespaces. `.devcontainer/devcontainer.json` on the Mathlib image, post-create
-   `lake exe cache get && lake build`. Badge in the README. One hour.
-4. verso-blueprint. `cp -R project_template blueprint`, `lake exe vbp build --serve`.
-   One chapter per link of the chain, seeded from PLAN.md section 3 ("Proof architecture,
-   link by link") and the M-notes in section 5; each theorem block carries `\lean`-style
-   references to the declaration. Toolchain caveat: verso-blueprint tracks recent Lean
-   (4.35.0-rc1 bump in flight); either pin a verso-blueprint tag for 4.32.2 or bump Mathlib
-   first. Two to four days of writing; the prose is mostly already in PLAN.md.
-5. Pages workflow that builds doc-gen4 and the blueprint on push to `main`, with the Mathlib
-   cache. Blueprint site at `/`, docs at `/docs/`.
-
-## 4. Open questions
-
-- Split repo or in-tree (section 2)?
-- Bump to the toolchain verso-blueprint supports, or pin verso-blueprint to 4.32.2?
-- Does the blueprint cover only the Smith chain (M0-M8), or also the `OneSidedTM` class
-  proofs, which live in the same `lean_lib`?
+- Split repo or in-tree: in-tree.
+- Bump to the toolchain verso-blueprint supports, or pin verso-blueprint to 4.32.2: bump.
+- Blueprint scope: the chain only.
