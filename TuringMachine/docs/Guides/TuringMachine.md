@@ -55,6 +55,41 @@ This paclet provides tools for exploring and analyzing Turing machines, with an 
 - `MultiwayTuringMachinePlot` the values reachable by a multiway machine across inputs
 - `$PvsNPStyles` the named colors and plot styles shared by the visualizations
 
+## Smith's universality proof
+
+Alex Smith's proof that Wolfram's 2,3 Turing machine is universal, formalized in Lean in the paclet repository, is a chain of emulations. There is one function for each arrow of the chain, one for each way back, and an evolution function for each system.
+
+### Encoders
+
+- `TuringMachineToTagSystem` the Cocke–Minsky 2-tag system of a binary Turing machine, its word and its tag times
+- `TagSystemToCyclicTagSystem` Cook's cyclic tag system of a 2-tag system
+- `CyclicTagSystemToSystem5` Smith's System 5 program for a number of cycles of a cyclic tag system
+- `System5ToSystem4` the System 4 tape of a System 5 program
+- `System4ToSystem3` the System 3 tape of a System 4 tape, sets written as parity blocks
+- `System3ToWolfram23` the wolfram23 configuration of a System 3 configuration
+
+### Decoders
+
+- `TagSystemToTuringMachine` the machine configuration of a tag word
+- `CyclicTagSystemToTagSystem` the tag word of a cyclic tag working string
+- `System5ToCyclicTagSystem` the doubled working string of a System 5 bag
+- `System4ToSystem5` the System 5 bag of a System 4 tape
+- `Wolfram23ToSystem5` the System 5 bag of a wolfram23 tape
+
+### Evolution
+
+- `TagSystemEvolution` the run of a 2-tag system
+- `CyclicTagSystemEvolution` the run of a cyclic tag system
+- `System5Evolution` the run of a System 5 program, or its length
+- `System4Evolution` the run of a System 4 tape
+- `System3Evolution` the run of a System 3 tape
+- `Wolfram23Evolution` the run of Wolfram's 2,3 machine, or the configurations at selected steps
+
+### Parameters
+
+- `EmulationParameters` the parameters of the emulation of a System 5 program, exact or in closed form
+- `EmulationSizes` the size of every stage of the emulation of a Turing machine
+
 ## Inductive proofs
 
 A separate `` WolframInstitute`TuringMachine`InductiveProofs` `` context proves, by equational induction, that a machine's tape-configuration semantics matches its intended behavior, and visualizes those proofs as graphs and multiway rewrite clouds.

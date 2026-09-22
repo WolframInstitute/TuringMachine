@@ -53,6 +53,29 @@ Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic,
 - [MultiwayTuringMachinePlot](paclet:WolframInstitute/TuringMachine/ref/MultiwayTuringMachinePlot)
 - [\$PvsNPStyles](paclet:WolframInstitute/TuringMachine/ref/$PvsNPStyles)
 
+### Smith's universality proof
+
+- [TuringMachineToTagSystem](paclet:WolframInstitute/TuringMachine/ref/TuringMachineToTagSystem)
+- [TagSystemToCyclicTagSystem](paclet:WolframInstitute/TuringMachine/ref/TagSystemToCyclicTagSystem)
+- [CyclicTagSystemToSystem5](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystemToSystem5)
+- [System5ToSystem4](paclet:WolframInstitute/TuringMachine/ref/System5ToSystem4)
+- [System4ToSystem3](paclet:WolframInstitute/TuringMachine/ref/System4ToSystem3)
+- [System3ToWolfram23](paclet:WolframInstitute/TuringMachine/ref/System3ToWolfram23)
+- [TagSystemToTuringMachine](paclet:WolframInstitute/TuringMachine/ref/TagSystemToTuringMachine)
+- [CyclicTagSystemToTagSystem](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystemToTagSystem)
+- [System5ToCyclicTagSystem](paclet:WolframInstitute/TuringMachine/ref/System5ToCyclicTagSystem)
+- [System4ToSystem5](paclet:WolframInstitute/TuringMachine/ref/System4ToSystem5)
+- [Wolfram23ToSystem5](paclet:WolframInstitute/TuringMachine/ref/Wolfram23ToSystem5)
+- [TagSystemEvolution](paclet:WolframInstitute/TuringMachine/ref/TagSystemEvolution)
+- [CyclicTagSystemEvolution](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystemEvolution)
+- [System5Evolution](paclet:WolframInstitute/TuringMachine/ref/System5Evolution)
+- [System4Evolution](paclet:WolframInstitute/TuringMachine/ref/System4Evolution)
+- [System3Evolution](paclet:WolframInstitute/TuringMachine/ref/System3Evolution)
+- [Wolfram23Evolution](paclet:WolframInstitute/TuringMachine/ref/Wolfram23Evolution)
+- [EmulationParameters](paclet:WolframInstitute/TuringMachine/ref/EmulationParameters)
+- [EmulationSizes](paclet:WolframInstitute/TuringMachine/ref/EmulationSizes)
+
 ## Tutorials
 
 - [Exploring One-Sided Turing Machines](paclet:WolframInstitute/TuringMachine/tutorial/ExploringOneSidedTuringMachines)
+- [The Chain of Smith's Universality Proof](paclet:WolframInstitute/TuringMachine/tutorial/SmithsUniversalityProof)
