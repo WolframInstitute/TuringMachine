@@ -310,35 +310,60 @@ and the `Represents` relation of T1 ({uses "Smith.Represents"}[],
 
 # The parameter choices, and what they mean
 
-:::proof "Smith.conjecture0_finite"
+::::proof "Smith.conjecture0_finite"
 The proof composes the finite forms by their schedules rather than by
 `ForwardSim_comp` ({uses "Smith.ForwardSim_comp"}[]), because the fuel lives in
 a different source system at each link. Write `n` for
 `C0.appendants.length * N`. The parameters are picked in order, each from
 quantities the earlier schedules produced:
 
-- `t5`: the System 5 schedule of T1 exact ({uses "Smith.conjecture5_finite_exact"}[]);
-  `t5 n` is the System 5 run length for the whole budget.
-- `B0`: a bound on the integers of the System 5 program ({uses "Smith.Bound5"}[],
-  from `exists_int_bound` through `exists_Bound5`).
-- `M`, which is `(B0 + t5 n).toNat`: by {uses "Smith.Bound5_nSteps"}[] some bag
-  element is at most `M + 1` at the end of the run, so at most `M` terminal
-  decrements happen.
-- `H`, which is `t5 n + M + 1`: T2's budget, the run plus the terminal phase.
-- `f`, which is `B0.toNat + 2 * H + 2 * t5 n + 5`: T2's bounds `e < f`,
-  `k + 2 * H < f` and `2 * H < f` ({uses "Smith.conjecture4_finite"}[]).
-- `b`, which is `2 * f - 2 * t5 n - 2`: the band lies under the debris for every
-  `j ≤ t5 n` and above every bag position ({uses "Smith.RepS4_decode_band"}[]).
-- `t4`, `k` and `T4`, which is `t4 (t5 n) + k`: T2's schedule, the terminal
-  count of {uses "Smith.repS4_terminal"}[] (which needs the empty rule list that
-  T1 exact gives at the end of the budget), and the System 4 exit time.
-- `h4`, which is `T4 + b`: T3's fuel must cover the System 4 run and the band.
-- `w`, which is `h4 + 3 * f + 6`: `w < 2 ^ w` covers `h4 + 3 ≤ 2 ^ w` and
-  `3 * f + 3 ≤ 2 ^ w` (every set element below the width), the hypotheses of T3
-  ({uses "Smith.conjecture3_finite"}[]) supplied by
-  {uses "Smith.system5ToSystem4_wellFormed"}[],
-  {uses "Smith.system5ToSystem4_last_set"}[] and
-  {uses "Smith.system5ToSystem4_elem_lt"}[].
+:::table +header
+*
+  * parameter
+  * choice
+  * why
+*
+  * `t5`
+  * the System 5 schedule of T1 exact ({uses "Smith.conjecture5_finite_exact"}[])
+  * `t5 n` is the System 5 run length for the whole budget
+*
+  * `B0`
+  * a bound on the integers of the System 5 program ({uses "Smith.Bound5"}[], from `exists_int_bound` through `exists_Bound5`)
+  * every integer of the program stays below it
+*
+  * `M`
+  * `(B0 + t5 n).toNat`
+  * by {uses "Smith.Bound5_nSteps"}[] some bag element is at most `M + 1` at the end of the run, so at most `M` terminal decrements happen
+*
+  * `H`
+  * `t5 n + M + 1`
+  * T2's budget: the run plus the terminal phase
+*
+  * `f`
+  * `B0.toNat + 2 * H + 2 * t5 n + 5`
+  * T2's bounds `e < f`, `k + 2 * H < f` and `2 * H < f` ({uses "Smith.conjecture4_finite"}[])
+*
+  * `b`
+  * `2 * f - 2 * t5 n - 2`
+  * the band lies under the debris for every `j ≤ t5 n` and above every bag position ({uses "Smith.RepS4_decode_band"}[])
+*
+  * `t4`, `k`, `T4`
+  * T2's schedule, the terminal count of {uses "Smith.repS4_terminal"}[] (which needs the empty rule list that T1 exact gives at the end of the budget), and `T4 = t4 (t5 n) + k`
+  * the System 4 exit time
+*
+  * `h4`
+  * `T4 + b`
+  * T3's fuel must cover the System 4 run and the band
+*
+  * `w`
+  * `h4 + 3 * f + 6`
+  * `w < 2 ^ w` covers `h4 + 3 ≤ 2 ^ w` and `3 * f + 3 ≤ 2 ^ w` (every set element below the width)
+:::
+
+The hypotheses of T3 ({uses "Smith.conjecture3_finite"}[]) on the encoder tape
+are supplied by {uses "Smith.system5ToSystem4_wellFormed"}[],
+{uses "Smith.system5ToSystem4_last_set"}[] and
+{uses "Smith.system5ToSystem4_elem_lt"}[].
 
 The tape `start` is `toBi` ({uses "Smith.toBi"}[]) of the relabeling
 `phi2 (phi3 _)` ({uses "Smith.phi2"}[], {uses "Smith.phi3"}[]) of the System 3
@@ -360,7 +385,7 @@ System 3 head on the closing 1 in state C; `phi_exit` relabels this to
 `⟨L.map sw, 2, [], B⟩`, and the next wolfram23 step is
 {uses "Smith.wolfram23_exit_step"}[] onto the implicit blank, which is the new
 cell `0` right of the tape.
-:::
+::::
 
 Every parameter therefore depends on the run lengths `t5 n`, `T4` and `k` of the
 emulation itself. The tape `start` exhibited by the proof is sized by running

@@ -22,9 +22,13 @@ open TM
 -- ============================================================================
 
 /-- Configuration of a bi-infinite tape TM.
+
+    ```
     left:  cells to the left of head (closest first), implicitly 0 beyond
     head:  current cell symbol
     right: cells to the right of head (closest first), implicitly 0 beyond
+    ```
+
     State 0 = halted. -/
 structure Config where
   state : Nat
@@ -92,16 +96,22 @@ def nSteps (tm : Machine) (cfg : Config) : Nat → Option Config
 /-- Wolfram's 2-state 3-symbol Turing machine (machine 596440).
     Proven universal by Alex Smith (2007).
 
+    ```
     States: 1 = A, 2 = B (0 = halt, never reached by this machine)
     Symbols: 0, 1, 2
+    ```
 
     Transition table:
+
+    ```
     +--------+---------+---------+---------+
     |        |  sym 0  |  sym 1  |  sym 2  |
     +--------+---------+---------+---------+
     | A (1)  | 1,R,B   | 2,L,A   | 1,L,A   |
     | B (2)  | 2,L,A   | 2,R,B   | 0,R,A   |
-    +--------+---------+---------+---------+ -/
+    +--------+---------+---------+---------+
+    ```
+    -/
 def wolfram23 : Machine where
   numStates := 3   -- 0=halt, 1=A, 2=B
   numSymbols := 3  -- 0, 1, 2

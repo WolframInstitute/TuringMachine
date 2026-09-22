@@ -121,6 +121,7 @@ theorem Tag.eval_add {k : Nat} (ts : Tag k) (n m : Nat) (cfg mid result : TagCon
 
 /-- A cyclic tag system: binary alphabet, cyclic list of appendants.
     Each step:
+
     1. If the first bit is true, append the current appendant
     2. Delete the first bit
     3. Advance to the next appendant (cycling) -/

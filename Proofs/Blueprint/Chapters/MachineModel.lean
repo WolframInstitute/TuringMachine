@@ -141,6 +141,28 @@ symbol before, then the written symbol, the move and the new state. Every other
 unused.
 :::
 
+Wolfram's table, in the form of his own presentation: each entry is the symbol
+written, the move and the new state.
+
+:::table +header (align := center)
+*
+  * state
+  * symbol 0
+  * symbol 1
+  * symbol 2
+*
+  * A (1)
+  * `1, R, B`
+  * `2, L, A`
+  * `1, L, A`
+*
+  * B (2)
+  * `2, L, A`
+  * `2, R, B`
+  * `0, R, A`
+:::
+
+
 Entry by entry this is Wolfram's rule 596440 as published (`A0 -> 1RB`,
 `A1 -> 2LA`, `A2 -> 1LA`, `B0 -> 2LA`, `B1 -> 2RB`, `B2 -> 0RA`) and Smith's
 System 0 table on p. 3, whose four rows read: before (symbol, state), after
@@ -272,6 +294,84 @@ C, entered by the two-cell rules on `B21` and `B22`.
 System 3 ({uses "Smith.LMachine"}[]): the table of p. 45, a relabeling of
 System 2 with state C.
 :::
+
+Its thirteen rows, the rule being the new state, the written symbols and the
+move; a one-cell rule ignores the neighbour, written `-` below, and a two-cell
+rule writes the head cell and the neighbour.
+
+:::table +header
+*
+  * state
+  * head
+  * neighbour
+  * rule
+*
+  * A
+  * 0
+  * `-`
+  * `one B 2 R`
+*
+  * A
+  * 1
+  * `-`
+  * `one A 1 L`
+*
+  * A
+  * 2
+  * `-`
+  * `one A 2 L`
+*
+  * B
+  * 0
+  * `-`
+  * `one A 2 L`
+*
+  * B
+  * 1
+  * `-`
+  * `one B 1 R`
+*
+  * B
+  * 2
+  * 0
+  * `two A 0 0 R`
+*
+  * B
+  * 2
+  * 1
+  * `two C 2 1 R`
+*
+  * B
+  * 2
+  * 2
+  * `two C 2 2 R`
+*
+  * C
+  * 0
+  * `-`
+  * `one A 2 L`
+*
+  * C
+  * 1
+  * 0
+  * `two A 0 0 R`
+*
+  * C
+  * 1
+  * 1
+  * `two C 2 1 R`
+*
+  * C
+  * 1
+  * 2
+  * `two C 2 2 R`
+*
+  * C
+  * 2
+  * `-`
+  * `one B 1 R`
+:::
+
 
 :::definition "Smith.LMachine.OneIgnoresNeighbour" (parent := "machine-model-lookahead") (lean := "Smith.LMachine.OneIgnoresNeighbour")
 A machine ({uses "Smith.LMachine"}[]) has this property when a one-cell rule

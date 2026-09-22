@@ -17,6 +17,8 @@
   `example`s.
 
   Vectors:
+
+  ```
     * D1  `cy2s5.pl 3 01 1 10`                       (p. 29)
     * D2  `cy2s5.pl 50 F test1.cy`                    (p. 28-29)
     * D3  `system5.pl` default and C traces of D1     (p. 31)
@@ -27,6 +29,7 @@
     * D8  the System 3 emulation of a System 4 run (M5)
     * D9  the wolfram23 decoder `decodeW23` (M6)
     * D10 the composite decoder `decodeTM` on the D9 tapes (M8)
+  ```
 -/
 
 import BiTM.CTSToSystem5

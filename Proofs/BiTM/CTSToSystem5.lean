@@ -47,6 +47,7 @@ open TagSystem
     positions, the `while($temp ne '')` loop of `cy2s5.pl`.
 
     For each bit of the data, starting at counter `i = 1`:
+
     * `true` ('1'): emit `[i, i+2, i+3, i+5]`, advance the counter by 6.
     * `false` ('0'): emit `[i, i+1, i+2, i+3]`, advance the counter by 4. -/
 def ctsConfigToSystem5BagAux : List Bool → Int → List Int
@@ -128,6 +129,7 @@ theorem counterAfterWorkingString_ge_one (data : List Bool) :
 
 /-- Encode one CTS appendant as a pair of System 5 rules together with the
     post-encoding counter value, per `cy2s5.pl` (PDF p. 28):
+
     * `false` ('0'): r1 gets `i+2, i+3`; r2 gets `i, i+1`; the counter += 4.
     * `true`  ('1'): r1 gets `i+2, i+5`; r2 gets `i, i+3`; the counter += 6.
 

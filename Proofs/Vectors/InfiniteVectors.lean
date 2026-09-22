@@ -16,6 +16,7 @@
   or `decide`; nothing outside this file depends on it.
 
   Vectors:
+
     * E1  the System 4 run of the block: entry, exit, stuck alone
     * E2  the System 3 run of the block from `entry3`: decode, exit
     * E3  two blocks chained: `start3`, the decodes and the exit of each

@@ -893,8 +893,9 @@ theorem System5_Halts_extract_step_none_witness
   · exact absurd hN (h_none N (Nat.le_refl _))
 
 /-- **System5 periodic orbit => not-Halts**: a config with a periodic
-    orbit (period >= 1) cannot halt.  Uses `System5_Halts_extract_step_
-    none_witness` plus `System5_nSteps_past_step_none_eq_none`. -/
+    orbit (period >= 1) cannot halt.  Uses
+    `System5_Halts_extract_step_none_witness` plus
+    `System5_nSteps_past_step_none_eq_none`. -/
 theorem System5_periodic_not_halts
     (cfg : System5Config) (p : Nat) (h_pos : p ≥ 1)
     (h_period : System5.nSteps cfg p = some cfg) :
@@ -1045,8 +1046,9 @@ theorem System5_Halts_induction (P : System5Config → Prop)
       exact h_back cfg cfg' h_step h_he' (ih cfg' h_n')
 
 /-- **System5 -> BiTM step-to-nSteps emulation positive bound**:
-    System5 -> tm analog of `step_to_nSteps_emulation_system5_to_
-    system4_pos`.  Required for BiTM-side chain composition. -/
+    System5 -> tm analog of
+    `step_to_nSteps_emulation_system5_to_system4_pos`.
+    Required for BiTM-side chain composition. -/
 theorem step_to_nSteps_emulation_system5_to_tm_pos
     (tm : Machine) (encode : System5Config → Config)
     (h_emulate : ∀ cfg cfg', System5.step cfg = some cfg' →

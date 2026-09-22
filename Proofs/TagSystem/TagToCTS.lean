@@ -71,11 +71,13 @@ theorem tagWordEncode_cons (k : Nat) (a : Fin k) (rest : List (Fin k)) :
 /-- Construct a Cyclic Tag System that simulates a given 2-tag system.
 
     Cook's encoding uses **2k appendants** (not k):
+
     - Appendants 0..k-1:   encode production(a_j) as tagWordEncode k (productions(a_j))
     - Appendants k..2k-1:  all empty (consume the second deleted symbol silently)
 
     One 2-tag step on word `a :: b :: rest -> rest ++ productions(a)` corresponds
     to 2k CTS steps:
+
     - First k steps process `symbolEncode k a`: the one-hot bit at position a.val
       fires appendant[a.val] = tagWordEncode(productions(a)), appending the correct production
     - Next k steps process `symbolEncode k b`: the one-hot bit at position b.val
