@@ -4,28 +4,30 @@ A machine-checked development of Alex Smith's 2007 proof that Wolfram's 2-state
 3-colour Turing machine emulates every two-colour cyclic tag system, extended by a
 Cocke-Minsky reduction from binary Turing machines to cyclic tag systems.
 
-Note: the Lake root is `Proofs/` inside the `TuringMachine` paclet repository. Whether
-to split it into its own repository is an open question (`docs/PUBLISHING.md`
-section 2); paths below are relative to this directory and would survive a split.
+Note: the Lake root is `Proofs/` inside the `TuringMachine` paclet repository; paths
+below are relative to this directory.
 
 ## What is proved
 
-`Smith.wolfram23_universal` (`Smith/Universality.lean`): for every well-formed binary
-Turing machine, valid configuration and run of `n` steps, there is a finite tape from
-which `BiTM.wolfram23` reproduces the `n + 1` configurations of the run, read off the
-tape by the decoder `Smith.decodeTM` at strictly increasing times, with the run confined
-to the tape until it leaves it to the right in state A. This is Smith's Conjecture 0 in
-finite form composed with the Turing-machine reduction. The tape is existential and
-depends on the budget `n`.
+`Smith.wolfram23_universal_ic` (`Smith/Universality.lean`): for every well-formed binary
+Turing machine `tm`, valid configuration `c` and run of `n` steps, `BiTM.wolfram23`
+started on the finite tape `Smith.IC tm c n` reproduces the `n + 1` configurations of
+the run, read off the tape by the decoder `Smith.decodeTM` at strictly increasing
+times, with the run confined to the tape until it leaves it to the right in state A.
+This is Smith's Conjecture 0 in finite form composed with the Turing-machine
+reduction. `IC tm c n` is a definition: Smith's encoders applied to `tm`, `c` and `n`,
+with parameters from closed-form bounds on the run lengths (`Smith/RunBounds.lean`,
+`TagSystem/TagBounds.lean`, `Smith/ClosedForm.lean`); it runs no system.
+`Smith.wolfram23_universal` is the corollary with the tape existential.
 
-`Smith.wolfram23_infinite` (`Smith/Infinite.lean`): the infinite form. For every
-well-formed binary Turing machine and valid configuration there is one right-infinite
-tape of cells 0, 1, 2 from which `BiTM.wolfram23`, started at its left end, runs for
-ever, never leaves the tape to the left, and for every `k` reproduces the first `k`
-configurations of the run of the machine (as many of them as exist) at strictly
-increasing times, read off a window of the tape by `Smith.decodeTM`. No budget and no
-hypothesis on halting; the block sizes are still existential, and neither statement
-bounds the work of the encoder (the open-items chapter of the blueprint, item 1).
+`Smith.wolfram23_infinite_ic` (`Smith/Infinite.lean`): the infinite form. For every
+well-formed binary Turing machine `tm` and valid configuration `c`, the right-infinite
+tape `Smith.ITape tm c` of cells 0, 1, 2 (again a definition) is one from which
+`BiTM.wolfram23`, started at its left end, runs for ever, never leaves the tape to the
+left, and for every `k` reproduces the first `k` configurations of the run of the
+machine (as many of them as exist) at strictly increasing times, read off a window of
+the tape by `Smith.decodeTM`. No budget and no hypothesis on halting.
+`Smith.wolfram23_infinite` is the corollary with the tape existential.
 The blueprint's overview chapter states exactly what is and is not proved; its
 open-items chapter lists the gaps.
 
@@ -38,8 +40,8 @@ The chain, one module per arrow:
 ```
 cat > /tmp/ax.lean <<'EOF'
 import Smith.Infinite
-#print axioms Smith.wolfram23_universal
-#print axioms Smith.wolfram23_infinite
+#print axioms Smith.wolfram23_universal_ic
+#print axioms Smith.wolfram23_infinite_ic
 EOF
 lake env lean /tmp/ax.lean
 ```
@@ -47,8 +49,8 @@ lake env lean /tmp/ax.lean
 Expected output:
 
 ```
-'Smith.wolfram23_universal' depends on axioms: [propext, Classical.choice, Quot.sound]
-'Smith.wolfram23_infinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Smith.wolfram23_universal_ic' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Smith.wolfram23_infinite_ic' depends on axioms: [propext, Classical.choice, Quot.sound]
 ```
 
 No `sorry` in `Smith/`, `TagSystem/`, `BiTM/`, `TM/`; `native_decide` only in `Vectors/`,

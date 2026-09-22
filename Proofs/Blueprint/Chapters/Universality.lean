@@ -3,9 +3,10 @@
 
   Chapter 9 of the blueprint: T8, the composition. The decoder of the
   headline theorem, how T7 (machine to cyclic tag) is composed with T4
-  (cyclic tag to wolfram23) into the proof of `Smith.wolfram23_universal`
-  (whose statement the overview owns), and which of the referee's
-  objections the statement answers and which it leaves open.
+  (cyclic tag to wolfram23) into the proof of `Smith.wolfram23_universal_ic`
+  (whose statement the overview owns), the tag bounds and the closed-form
+  initial condition `IC`, and which of the referee's objections the
+  statement answers and which it leaves open.
 -/
 
 import Verso
@@ -31,8 +32,9 @@ htmlSplit := .never
 [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean) composes T7
 ({ref "tm-to-cts"}[the chapter on the machine reduction]) with T4
 ({ref "conjecture0"}[the chapter on Conjecture 0]) into
-{bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`], stated in full in {ref "overview"}[the overview].
-This chapter records how the composition is made, what the decoder is, and
+{bpref "Smith.wolfram23_universal_ic"}[`Smith.wolfram23_universal_ic`], stated in full in {ref "overview"}[the overview].
+This chapter records how the composition is made, what the decoder is, how the
+initial condition `IC tm c n` is written down without running anything, and
 which of the referee's objections the statement answers and which it does not.
 
 # The decoder
@@ -75,47 +77,119 @@ blanks. If any stage fails the result is `none`.
 head up to the first 0 to its right; it does not see the machine, the input or
 the run.
 
+# The tag bounds
+
+:::group "tag_bounds"
+The tag side of the closed-form initial condition: the Cocke-Minsky tag system
+runs for ever, and its time for `n` machine steps has a closed-form bound
+([`TagSystem/TagBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagBounds.lean)).
+:::
+
+:::definition "TagSystem.rawRun" (parent := "tag_bounds") (lean := "TagSystem.rawStep, TagSystem.rawRun, TagSystem.roundLen, TagSystem.tagTime")
+`rawStep tm c` is the step of the machine with the halting state 0 treated as an
+ordinary state (row 0 of the table, which {uses "TagSystem.WF"}[] keeps in range);
+`rawRun tm c n` is its `n`-th iterate. `roundLen tm c` is the number of tag steps
+the Cocke-Minsky tag system takes for one raw step from `c` (the round lengths of
+{uses "TagSystem.tm_step_tag"}[]), and `tagTime tm c n` their sum over the first `n`
+raw steps.
+:::
+
+:::lemma_ "TagSystem.rawRun_eq" (parent := "tag_bounds") (lean := "TagSystem.rawRun_eq, TagSystem.step_eq_rawStep, TagSystem.rawRun_valid")
+While the machine runs, the raw run is its run: if `BiTM.nSteps tm c n = some c'`
+({uses "BiTM.nSteps"}[]) then `rawRun tm c n = c'` ({uses "TagSystem.rawRun"}[]). Raw
+steps keep a configuration valid with its state in range.
+:::
+
+:::proof "TagSystem.rawRun_eq"
+Outside state 0, {uses "BiTM.step"}[] is `some (rawStep tm c)` (`step_eq_rawStep`);
+induction on `n`.
+:::
+
+:::lemma_ "TagSystem.tag_rawRun" (parent := "tag_bounds") (lean := "TagSystem.tag_rawRun, TagSystem.raw_step_tag, TagSystem.tag_run_total")
+From the word of a valid configuration `c` with state in range, the tag system
+{uses "TagSystem.tagK"}[] reaches, after `tagTime tm c n` steps
+({uses "TagSystem.rawRun"}[]), the word ({uses "TagSystem.word"}[]) of `rawRun tm c n`. In
+particular the tag run is defined for every number of steps (`tag_run_total`): it
+does not stop when the machine halts.
+:::
+
+:::proof "TagSystem.tag_rawRun"
+The round lemmas of {ref "tm-to-cts"}[the machine reduction] are stated for any
+state; only {uses "TagSystem.tm_step_tag"}[] needs `q != 0`, to unfold
+`BiTM.step`. `raw_step_tag` is the same composition of rounds for the raw step,
+whatever the state, in `roundLen` tag steps; induction on `n`.
+:::
+
+:::lemma_ "TagSystem.tagTime_le" (parent := "tag_bounds") (lean := "TagSystem.tagTime_le, TagSystem.roundLen_le, TagSystem.sz")
+For a valid configuration `c` with state in range, with `sz c` the number of
+explicit tape cells, `tagTime tm c n <= n * 15 * 2 ^ (sz c + n)`.
+:::
+
+:::proof "TagSystem.tagTime_le"
+A round costs at most five passes over the tag word, whose halves are the numbers
+`val left` and `head + 2 val right`, below `2 ^ sz c` and `2 ^ (sz c + 1)`
+(`val_lt_two_pow`), so `roundLen c <= 15 * 2 ^ sz c`; a raw step grows the tape by
+at most one cell (`sz_rawStep`), so the `i`-th raw configuration has
+`sz <= sz c + i`; sum over `i < n`.
+:::
+
+# The closed-form initial condition
+
+:::definition "Smith.IC" (parent := "composition") (lean := "Smith.IC, Smith.ICw, Smith.ICb, Smith.icN, Smith.icProg, Smith.ctsOf") (tags := "T8")
+`ctsOf tm` is the cyclic tag system {uses "TagSystem.tagToCTS"}[] of the tag system
+{uses "TagSystem.tagK"}[] `tm S` of T7, with `S = tm.numStates`. The budget is
+`icN c n = n * 15 * 2 ^ (sz c + n)` cycles, the bound of
+{uses "TagSystem.tagTime_le"}[]; `icProg tm c n` is the System 5 program
+{uses "BiTM.ctsToSystem5"}[] `(ctsOf tm) (ctsOfCfg S c) (icN c n)`. The initial
+condition is `IC tm c n = icStart (icProg tm c n)` ({uses "Smith.icStart"}[]), with the
+width exponent `ICw tm c n = icW (icProg tm c n)` and the band
+`ICb tm c n = icBand (icProg tm c n)`. Every part is an encoder applied to `tm`, `c`
+and `n`, or an arithmetic expression in the sizes of their outputs.
+:::
+
 # The composition
 
 The statement of the headline theorem is in the overview; its proof is the
 composition below.
 
-:::proof "Smith.wolfram23_universal"
-Write `S` for `tm.numStates` and `c_i` for the `i`-th configuration of the run,
-`BiTM.nSteps tm c i = some c_i`.
+:::proof "Smith.wolfram23_universal_ic"
+Write `S` for `tm.numStates`, `K = 1 + 84 S`, `N = icN c n`, and `c_i` for the
+`i`-th configuration of the run, `BiTM.nSteps tm c i = some c_i`.
 
-The tag-level simulation of T7, {uses "TagSystem.tm_tag_forwardSim"}[],
-unrolled over the `n` steps of the run by {uses "Smith.ForwardSim_nSteps"}[],
-gives a strictly increasing tag-level schedule `tt`: after `tt i` steps the tag
-system {uses "TagSystem.tagK"}[] `tm S` holds the encoded configuration word
-`(word c_i).map (enc S)` ({uses "TagSystem.word"}[], {uses "TagSystem.enc"}[]),
-and `c_i` is valid with state below `S`.
+The tag run from `word c` is defined for every number of steps
+({uses "TagSystem.tag_rawRun"}[]). The cyclic tag system `ctsOf tm` has `2 K`
+appendants ({uses "TagSystem.tagToCTS_appendants_length"}[]) and makes exactly one
+cycle of them per tag step ({uses "TagSystem.cts_of_tag"}[]): after `2 K t` cyclic tag
+steps from {uses "TagSystem.ctsOfCfg"}[] `S c` its configuration encodes the tag word at
+time `t` (`cts_run_tag`). So the cyclic tag run lasts the budget of `N` cycles, and
+its last word is nonempty because the tag run goes on one step further, which needs
+a word of at least two symbols.
 
-The cyclic tag system {uses "TagSystem.tagToCTS"}[] of T7 has `2 (1 + 84 S)`
-appendants ({uses "TagSystem.tagToCTS_appendants_length"}[]) and makes exactly
-one cycle of them per tag step ({uses "TagSystem.cts_of_tag"}[]): after
-`2 (1 + 84 S) tt i` cyclic tag steps from {uses "TagSystem.ctsOfCfg"}[] `S c`
-its configuration is `ctsOfCfg S c_i`.
+So T4 in closed form, {uses "Smith.conjecture0_closed"}[], applies to `ctsOf tm`,
+`ctsOfCfg S c` and `N`; its tape `icStart (icProg tm c n)` is `IC tm c n`
+({uses "Smith.IC"}[]) and its width and band are `ICw` and `ICb`. It returns a
+schedule `times'` on the cyclic tag steps and the exit time `T`. The schedule of T8
+is `times i = times' (2 K tagTime tm c i)`: `tagTime` is strictly increasing
+(`tagTime_strictMono`) and `tagTime tm c i <= tagTime tm c n <= N`
+({uses "TagSystem.tagTime_le"}[]), so the times are strictly increasing on `[0, n]` and
+at most `T`.
 
-So T4, {uses "Smith.conjecture0_finite"}[], is applied to this cyclic tag
-system, the configuration `ctsOfCfg S c` and the budget of `tt n` cycles: the
-cyclic tag run of `2 (1 + 84 S) tt n` steps is the one T4 requires, and its last
-word is the encoding of the last configuration word, nonempty because a
-configuration word has at least four symbols ({uses "TagSystem.length_word"}[]).
-T4 returns the tape `start`, the width `w`, the band `b`, a schedule `times'` on
-the cyclic tag steps and the exit time `T`. The schedule of T8 is
-`times i = times' (2 (1 + 84 S) tt i)`: it is strictly increasing on `[0, n]`
-because `tt` and `times'` are, and it is at most `T` because `tt i <= tt n`.
+At cyclic tag time `2 K tagTime tm c i` the tag word is `word (rawRun tm c i)`
+({uses "TagSystem.tag_rawRun"}[]), and `rawRun tm c i = c_i`
+({uses "TagSystem.rawRun_eq"}[]), so the cyclic tag configuration is `ctsOfCfg S c_i`.
+The decoders compose: {uses "Smith.decodeW23"}[] returns {uses "Smith.dbl"}[] of its
+data, `undbl` returns the data ({uses "Smith.undbl_dbl"}[]), and `decodeCTS` returns
+`canon c_i` ({uses "TagSystem.decodeCTS_word"}[], for a valid configuration with state
+below `S`, `rawRun_valid`). So {uses "Smith.decodeTM"}[] `S (2^w) b` of the wolfram23
+configuration at time `times i` is `some (canon c_i)` ({uses "TagSystem.canon"}[]). The
+validity of the start, its state A, the confinement clause and the exit clause are
+those of `conjecture0_closed`, unchanged.
 
-At cyclic tag time `2 (1 + 84 S) tt i` the cyclic tag configuration is
-`ctsOfCfg S c_i`, and the decoders compose: {uses "Smith.decodeW23"}[] returns
-{uses "Smith.dbl"}[] of its data, `undbl` returns the data
-({uses "Smith.undbl_dbl"}[]), and `decodeCTS` returns `canon c_i`
-({uses "TagSystem.decodeCTS_word"}[], for a valid configuration with state below
-`S`). So {uses "Smith.decodeTM"}[] `S (2^w) b` of the wolfram23 configuration at
-time `times i` is `some (canon c_i)` ({uses "TagSystem.canon"}[]). The validity
-of `start`, its state A, the confinement clause and the exit clause are those of
-`conjecture0_finite`, unchanged.
+Before the closed form the proof went through the forward simulation
+{uses "TagSystem.tm_tag_forwardSim"}[] unrolled by {uses "Smith.ForwardSim_nSteps"}[],
+whose tag schedule is existential; the raw run replaces it because it gives the tag
+time as a function (`tagTime`) with a bound, and because it keeps the tag run going
+past the budget whatever the machine does.
 :::
 
 # What the statement answers, and what it leaves open
@@ -134,33 +208,33 @@ Answered by the statement as it stands:
 Left open by the statement (the independent review of 2026-09-21;
 {ref "open-items"}[the chapter on open items]):
 
-- One tape per machine, configuration and budget `n`, with the tape sized in the
-  proof from the run lengths of the emulating systems
-  ({ref "conjecture0"}[the chapter on Conjecture 0]). The standard notion of
-  universality asks for one
-  encoding of `(M, x)` independent of the running time. The conclusion template
-  is satisfied by a machine that only moves right over a tape on which the
-  `n + 1` configurations have been laid out in advance; what distinguishes
-  wolfram23 is the proof term (Smith's encoders), not the statement. The infinite
-  form ({ref "infinite-form"}[the chapter on the infinite form], proved:
-  {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`]) removes the budget: one right-infinite tape per
-  `(M, x)` with the whole run decodable. It does not remove the precomputed-tape
-  objection, which applies to it in the same way (an infinite tape can hold the
-  whole run in advance); only a closed-form initial condition with a size bound
-  would (the chapter on open items, item 1, open).
+- One tape per machine, configuration and budget `n`. The standard notion of
+  universality asks for one encoding of `(M, x)` independent of the running time;
+  the infinite form ({ref "infinite-form"}[the chapter on the infinite form],
+  {bpref "Smith.wolfram23_infinite_ic"}[`Smith.wolfram23_infinite_ic`]) gives it: one right-infinite tape
+  `ITape tm c` per `(M, x)` with the whole run decodable.
+- The precomputed-tape objection (the conclusion template alone is met by a
+  machine that only moves right over a tape on which the configurations have been
+  laid out in advance) is answered by the closed form: the tape is the definition
+  `IC tm c n` (or `ITape tm c`), which writes down encodings of the machine's
+  description and evaluates closed-form bounds, and never runs the machine or the
+  emulating systems (the chapter on open items, item 1, done). No theorem bounds
+  the size of the tape or the cost of computing it; it is exponential in `n` and
+  in the size of `c`, through the budget `icN c n`, and the System 5 bound
+  `icT5` is exponential again in the number of rules.
 - Binary machines only.
 - Decoding up to `canon`, at existential times, with nothing said about other
   times.
 - The name `wolfram23_universal` claims more than the statement, as did the
   phrase "universality in the literal sense" of the M8 notes in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md)
   (since removed; the chapter on open items, item 17). The docstring of the
-  theorem in the module (lines 52-60 of [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean)) states the
+  theorem in the module ([`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean)) states the
   `n`-step form correctly.
 
 # Notes and caveats
 
 - No regression vector runs `decodeTM` on encoder output and gets a
-  configuration back: with the proof's `w` the block width is far beyond
+  configuration back: with `ICw` the block width is far beyond
   `decide`, and a positive instance on a rendered tape needs the doubled
   encoding of a configuration word, at least `2 * 4 * (1 + 84 S)` bits, hence a
   block of width at least `2^13` for `S = 2`, whose rendering builds its parity
@@ -180,8 +254,8 @@ Left open by the statement (the independent review of 2026-09-21;
 
 # Depends on
 
-This chapter depends on the module `Smith.Universality`, and through it on
-{ref "tm-to-cts"}[the chapter on the machine reduction] (T7:
-{bpref "TagSystem.tm_tag_forwardSim"}[`TagSystem.tm_tag_forwardSim`], {bpref "TagSystem.cts_of_tag"}[`TagSystem.cts_of_tag`],
+This chapter depends on the modules `Smith.Universality` and `TagSystem.TagBounds`,
+and through them on {ref "tm-to-cts"}[the chapter on the machine reduction] (T7:
+{bpref "TagSystem.tm_step_tag"}[`TagSystem.tm_step_tag`], {bpref "TagSystem.cts_of_tag"}[`TagSystem.cts_of_tag`],
 {bpref "TagSystem.decodeCTS_word"}[`TagSystem.decodeCTS_word`]) and {ref "conjecture0"}[the chapter on Conjecture 0]
-(T4: {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`], {bpref "Smith.decodeW23"}[`Smith.decodeW23`]).
+(T4: {bpref "Smith.conjecture0_closed"}[`Smith.conjecture0_closed`], {bpref "Smith.icStart"}[`Smith.icStart`], {bpref "Smith.decodeW23"}[`Smith.decodeW23`]).

@@ -84,6 +84,17 @@ soundness problem in M0-M8; its documentation corrections are applied in
 PLAN.md sections 1, 2, 5 and 8 and in the module headers it names. PLAN.md,
 "M7 notes", is the current record.
 
+Status note (after milestone M9, 2026-09-23): open item 1 is done. The
+initial conditions are definitions that run no system: `Smith.IC tm c n`
+for T8 (`Smith.wolfram23_universal_ic`), `Smith.icStart s` for T4
+(`Smith.conjecture0_closed`), `Smith.ITape tm c` for T6
+(`Smith.wolfram23_infinite_ic`), built from closed-form bounds on the runs
+of System 5 (`Smith.System5.run_bound`), System 4
+(`Smith.System4.run_bound`) and the tag system (`TagSystem.tagTime_le`).
+The existential statements are corollaries. Axioms unchanged. Not stated as
+a theorem: a closed-form bound on the size of the tapes. PLAN.md, "M9
+notes", is the current record.
+
 ## 1. Bottom line
 
 - The project builds. All 37 modules compile on the pinned toolchain `leanprover/lean4:v4.29.0-rc6`

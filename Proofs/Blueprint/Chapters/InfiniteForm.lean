@@ -4,8 +4,8 @@
   Chapter 10 of the blueprint: T6, the infinite form of Conjecture 0. The
   statement (introduced in the overview) read clause by clause, why the
   finite form does not chain, the construction (guarded System 4 blocks,
-  the System 3 side, the chain, the infinite tape), the tests, and what
-  remains existential.
+  the System 3 side, the chain, the infinite tape), the closed-form
+  blocks, the tests, and what remains existential.
 -/
 
 import Verso
@@ -44,8 +44,10 @@ reconciled with the source when the theorem landed.
 
 # The statement
 
-The statement is {bpref "Smith.wolfram23_infinite"}[] in {ref "overview"}[the
-overview]. Read clause by clause:
+The statement is {bpref "Smith.wolfram23_infinite_ic"}[] in {ref "overview"}[the
+overview], with the tape `t = ITape tm c` in closed form; its corollary
+{bpref "Smith.wolfram23_infinite"}[] leaves `t`, `w` and `b` existential. Read clause by
+clause:
 
 - `tm`, `hwf`, `c`, `hv`, `hst` are as in the overview: a well-formed binary machine
   and a valid configuration with state in range. There is no budget and no hypothesis
@@ -60,19 +62,20 @@ overview]. Read clause by clause:
   configuration whose cells are below 3, `IValid`) and does not move left from an
   empty left tape: the head never leaves the tape to the left, so the implicit blank
   on the left is never read and the tape is genuinely one-sided.
-- For every `k`: a width `2^w`, a band `b`, a window `W` and times `times i`, the last
-  of them later than `k` (the emulation advances along the tape). The times are
-  strictly increasing on `i < k` for as long as the run of `tm` continues (if `tm`
-  halts at step `m < k`, the clause is silent beyond `m`; in the proof the times are
-  constant there). For every `i <= k` at which the run of `tm` is defined, wolfram23
+- For every `k`: the width `2^w` and band `b` of block `k` (`w = blkW tm c k`,
+  `b = icBand (blkProg tm c k)`), a window `W` and times `times i`, the last of them
+  later than `k` (the emulation advances along the tape). The times are strictly
+  increasing on `i < k`, whether or not `tm` halts: block `k` emulates `k` raw steps
+  (the halting row read as an ordinary one), which are the steps of `tm` while it
+  runs. For every `i <= k` at which the run of `tm` is defined, wolfram23
   is in state B at `times i` and the infinite configuration, truncated to the `W`
   cells right of the head (`truncI`) or to any larger window, decodes by `decodeTM`
   to the `i`-th configuration without trailing blanks (`canon`). The "any larger
   window" clause says that the decoder, which reads up to the first 0 right of the
   head, has read the whole leading conglomerate: the window does not cut it.
 
-One tape per machine and input, with no budget in the statement. The parameters `w`,
-`b`, `W` and the schedule vary with `k`, as in Smith's construction (his `w_n` grows
+One tape per machine and input, with no budget in the statement, and the tape a
+definition. The parameters `w`, `b`, `W` and the schedule vary with `k`, as in Smith's construction (his `w_n` grows
 along the tape, p. 25): block `k` re-emulates the run from the start with its own
 width and band, so the decode of step `i` recurs in every block `k >= i`. What the
 statement does not say is discussed under "What remains existential" below.
@@ -270,27 +273,49 @@ on the program's run after its first step.
 :::definition "Smith.BlockSpec" (parent := "guards") (lean := "Smith.BlockData, Smith.BlockSpec")
 `BlockData` packages a block: `n`, `r`, `w`, `b`, the program `S0`, `rest`, the run
 length `H` and the decoding times `dt`. `BlockSpec tm c k bd` is the specification a
-block must meet to emulate the first `k` steps of `tm` from `c`: `3 <= n`,
+block must meet to emulate the first `k` raw steps of `tm` from `c`
+({uses "TagSystem.rawRun"}[]): `3 <= n`,
 `H + b + 3 <= 2^w`, `n < 2^w`, the program well formed and ending with a set, its
 integers below `2^w`, `SafeC (H + b)` on the block tape, the exit in state C at `H`,
 and strictly increasing decoding times `dt i <= H` at which the block tape is the
 shape `rep3_decode` reads and the decode is the doubled cyclic tag word of the `i`-th
-configuration.
+raw configuration `rawRun tm c i`.
+:::
+
+:::definition "Smith.closedBlock" (parent := "guards") (lean := "Smith.closedBlock, Smith.blkProg, Smith.blkN, Smith.blkR, Smith.blkOrig, Smith.blkH, Smith.blkW")
+Block `k` in closed form. Its program is `blkProg tm c k = icProg tm c k`
+({uses "Smith.IC"}[]), the System 5 program of T8 for `k` steps; its program tape
+`blkOrig` is the System 4 tape of that program with the parameter `icF`
+({uses "Smith.icStart"}[]); its guard parameter and number of guards are
+`blkN = icT4 + 3` and `blkR = icT4 + 1`, from the bound `icT4` on the program's
+System 4 run; `blkH` is the bound `(2 L + 2) (L + 1)` of
+{uses "Smith.System4.run_bound"}[] for the length `L` of the whole block tape
+{uses "Smith.blockTape"}[]; the width exponent is
+`blkW = blkH + icBand + blkN + 3 icF + 6` and the band `icBand`. The run data `H` and
+`dt` of `closedBlock tm c k` are set to 0: the cells of a block
+(`BlockData.cells`) do not read them.
 :::
 
 :::theorem "Smith.block_exists" (parent := "guards") (lean := "Smith.block_exists")
-For every `k` at which the run of `tm` from `c` is defined there is a block meeting
-{uses "Smith.BlockSpec"}[], with `n = T4 + 3`, `r = T4 + 1`,
-`w = H + b + n + 3f + 6`.
+For every `k` the closed-form block, with its actual run length `H` and decoding
+times `dt` filled in, meets {uses "Smith.BlockSpec"}[] for `k`:
+`BlockSpec tm c k {closedBlock tm c k with H, dt}` ({uses "Smith.closedBlock"}[]).
 :::
 
 :::proof "Smith.block_exists"
-{uses "TagSystem.tm_tag_forwardSim"}[] gives the tag steps `tt k` of the machine's run
-and {uses "TagSystem.cts_of_tag"}[] the cyclic tag run of `2 (1 + 84 S) tt k` steps,
-whose last word is nonempty; {uses "Smith.system4_emulation"}[] (the System 4 half of
-T4) supplies the program: the encoder tape, its exit in state C after `T4` steps, and
-the decoding events with their decodes. {uses "Smith.block_run"}[] pads it; the width
-covers the fuel, the guard parameter and the program's integers.
+With `N = icN c k` and `K = 1 + 84 S`, the cyclic tag run of `2 K N` steps is defined
+and ends on a nonempty word (`cts_run_tag`, as in the proof of
+{uses "Smith.wolfram23_universal_ic"}[]). {uses "Smith.system4_emulation"}[] (the System 4
+half of T4) supplies the program's run: its exit in state C after `T4 <= icT4` steps,
+and the decoding events with their decodes. Since `T4 <= icT4`, the block has enough
+guards (`T4 <= r`, `T4 + 1 <= n`) for {uses "Smith.block_run"}[] to pad the run; the
+padded run length `H` is at most `blkH` by {uses "Smith.System4.run_bound"}[], so the
+width covers the fuel, the guard parameter and the program's integers. The decoding
+time of raw step `i` is `dt i = 2 r + padT (t4 (2 K tagTime tm c i))`, strictly
+increasing because `tagTime` is ({uses "TagSystem.tagTime_le"}[] keeps
+`tagTime tm c i <= N`); at cyclic tag time `2 K tagTime tm c i` the configuration is
+`ctsOfCfg S (rawRun tm c i)` ({uses "TagSystem.tag_rawRun"}[],
+{uses "TagSystem.cts_of_tag"}[]).
 :::
 
 ## The block on the System 3 side
@@ -407,35 +432,48 @@ cells of the finite start are the first cells of the stream.
 :::
 
 :::theorem "Smith.stage_infinite" (parent := "chain") (lean := "Smith.stage_infinite")
-On the infinite tape of a sequence of blocks, block `j` emulating the longest run of at
-most `j` steps: for every `k`, the width and band of block `k`, the window
-`W = biSize (startFin bd k)`, times with `k < times k`, strictly increasing while the
-run of `tm` goes on, no left move from an empty left tape before `times k`, and the
-decodes of the defined configurations `i <= k` at `times i`, in state B, on the window
-and on every larger window.
+On the infinite tape of a sequence of blocks, block `j` emulating the first `j` raw
+steps: for every `k`, the window `W = biSize (startFin bd k)`, strictly increasing
+times with `k < times k`, no left move from an empty left tape before `times k`, and
+the decodes, with the width and band of block `k`, of the defined configurations
+`i <= k` at `times i`, in state B, on the window and on every larger window.
 :::
 
 :::proof "Smith.stage_infinite"
 {uses "Smith.stage_w23"}[] on the finite tape, transferred to the infinite one by
 {uses "Smith.agree_run"}[] from {uses "Smith.startFin_agree"}[]; the decoder on the
-window by {uses "Smith.decodeTM_trunc"}[], then `undbl_dbl` and
-{uses "TagSystem.decodeCTS_word"}[] turn the doubled cyclic tag word into the
-configuration (its validity along the run by `nSteps_valid`). "No left move from an
+window by {uses "Smith.decodeTM_trunc"}[]; where the run of `tm` is defined the raw
+configuration is its configuration ({uses "TagSystem.rawRun_eq"}[]), and `undbl_dbl`
+and {uses "TagSystem.decodeCTS_word"}[] turn the doubled cyclic tag word into it (its
+validity along the run by `nSteps_valid`). "No left move from an
 empty left tape" follows from the size invariant: a left move from `left = []` reads
 the implicit blank and grows the size by one.
 :::
 
-:::proof "Smith.wolfram23_infinite"
-Block `k` emulates the longest run of at most `k` steps: `m k` is `Nat.findGreatest` of
-"step `i` exists" below `k`, and {uses "Smith.block_exists"}[] is applied to `m k`;
-the blocks are chosen classically (`choose`). For a machine that halts at step `m`,
-every block from `m` on reproduces the whole run; for one that does not halt,
-`m k = k`. This is why the theorem needs no hypothesis on halting, where the finite
-form needs the run to last the budget. The tape is {uses "Smith.tape"}[] of those
-blocks; {uses "Smith.inSteps_valid"}[] gives that the run is defined at every time,
-{uses "Smith.stage_infinite"}[] gives the per-`k` clauses, and its "no left move" clause
-holds at every time because the schedule of block `k` ends after time `k` (each block
-takes at least one System 3 step).
+:::definition "Smith.ITape" (parent := "infinite_tape") (lean := "Smith.ITape")
+The closed-form tape of T6: `ITape tm c = tape (closedBlock tm c)`
+({uses "Smith.tape"}[], {uses "Smith.closedBlock"}[]), a 0 followed by the cells of the
+closed-form blocks `0, 1, 2, ...`. Cell `i` is a closed form of `tm`, `c` and `i`.
+:::
+
+:::proof "Smith.wolfram23_infinite_ic"
+{uses "Smith.block_exists"}[] gives, for every `k`, the run data `H k` and `dt k` of
+block `k` (chosen classically, `choose`); the blocks with their run data have the
+same cells as the closed-form blocks, so their tape is `ITape tm c`
+({uses "Smith.ITape"}[]) by definition. Block `k` emulates `k` raw steps, and a raw
+step is a step of `tm` while `tm` runs, so for a machine that halts at step `m` every
+block reproduces the run up to `m`, and past `m` the blocks go on emulating the raw
+run, which nothing decodes as a step of `tm`. This is why the theorem needs no
+hypothesis on halting, where the finite form needs the run to last the budget.
+{uses "Smith.inSteps_valid"}[] gives that the run is defined at every time,
+{uses "Smith.stage_infinite"}[] gives the per-`k` clauses, and its "no left move"
+clause holds at every time because the schedule of block `k` ends after time `k`
+(each block takes at least one System 3 step).
+
+Before the closed form, block `k` emulated the longest run of at most `k` steps
+(`Nat.findGreatest` of "step `i` exists") and was sized from the run lengths of that
+emulation; the raw run removes the case distinction and the bounds remove the run
+lengths.
 :::
 
 # Tests
@@ -461,29 +499,29 @@ turn `2 * 0 + 4` steps later, the innermost guard `{10}` merged as `{9}`), the e
 leftmost cell. E7: two blocks of different widths (`2^5` then `2^6`): `segCells`,
 `tape` at the boundaries, the decodes at 335 (width 32) and 1113 (width 64), the exit
 at 1365 and the entry into block 2. E8: the machine-independent side conditions of
-`BlockSpec` on the E1 block, the System 4 decode at `dt 0`, the halting reading of the
-block index (`Nat.findGreatest` on the one-step machine `tmH` of
-[`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean)) and the theorem instantiated on `tmH`.
+`BlockSpec` on the E1 block, the System 4 decode at `dt 0`, the raw run that the
+blocks emulate on the one-step machine `tmH` of
+[`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean) (it agrees with the run at step 1 and goes on
+at step 2, where the run is `none`) and both theorems instantiated on `tmH`. The
+E-blocks are hand-sized (`n = T4 + 3` from the exact run length); the closed-form
+blocks are far too large to evaluate (block 0 of `tmH` has `icT4 + 1` guards), and
+[`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/ClosedFormVectors.lean) checks the bounds behind them on small
+instances instead.
 
 # What remains existential
 
-- The tape is existential in the statement and, in the proof, block `k` is sized from
-  the run lengths of the emulation of `k` steps (`T4`, `b`, `H`, `f` from the schedules
-  of the previous chapters), as in the finite form. One tape per `(tm, c)` removes the
-  dependence on the budget, but the size of block `k` is not given by a closed form,
-  and the tape's definition uses the schedules classically (`choose`).
-- The statement does not bound the work done by the encoder, and this is the
-  objection that remains ({ref "universality"}[the chapter on the composition],
-  {ref "open-items"}[open items] item 1). The conclusion template of the theorem is
-  satisfied by machines that do nothing: an infinite tape can hold, for every `k`, the
-  `k + 1` configurations of the run laid out in advance, and a machine that only moves
-  right over it meets every clause; and since the statement is
-  `forall tm c, exists t`, the same block machinery would even give one dovetailed
-  tape for all machines and inputs. What distinguishes wolfram23 is the construction
-  behind the proof (Smith's encoders, whose blocks are built from the machine's
-  description and the run's bookkeeping, not from the run's configurations), not the
-  statement. A closed-form construction with a size bound (item 1) is what would put
-  that into the statement; it is the other half of Smith's p. 22-26.
+- Nothing about the tape is existential any more: `ITape tm c` is a definition, and
+  block `k` is a closed form of `tm`, `c` and `k` ({ref "open-items"}[open items]
+  item 1, done). Only the run data `H` and `dt` of the blocks, which the proofs read
+  and the tape does not, are chosen classically.
+- The conclusion template alone is satisfied by machines that do nothing (an
+  infinite tape can hold the run laid out in advance, and in the corollary's
+  `forall tm c, exists t` form one dovetailed tape could even serve all machines and
+  inputs). The closed-form statement excludes this reading: its tape is the stated
+  function of `(tm, c)`, built by Smith's encoders from the machine's description and
+  from bounds, never from the run's configurations. No theorem bounds the size of
+  block `k` or the cost of writing it down; both are exponential in `k` and in the
+  size of `c`.
 - The times are existential, one schedule per block; there is no single schedule
   across blocks (each block starts the emulation over).
 - Smith starts "with the leftmost 0 active in state A"; here the start is a 2 in state
@@ -495,8 +533,9 @@ block index (`Nat.findGreatest` on the one-step machine `tmH` of
 
 `Smith.Guards`, `Smith.Conjecture3` with `LeftEnd.junk` and `Closing.zero`
 ({ref "system4-to-system3"}[the chapter on System 4 to System 3]), `Smith.Conjecture0`
-(`rep3_decode`, `rep3_exit`, `system4_emulation`, {ref "conjecture0"}[the chapter on
-Conjecture 0]), `Smith.Universality` (`decodeTM`, `undbl`, {ref "universality"}[the
-chapter on the composition]), `TagSystem.TMToCTS` (`tm_tag_forwardSim`,
-`decodeCTS_word`, `step_valid`, {ref "tm-to-cts"}[the chapter on the machine
-reduction]).
+(`rep3_decode`, `rep3_exit`), `Smith.ClosedForm` and `Smith.RunBounds`
+(`system4_emulation`, `icStart`, `System4.run_bound`, {ref "conjecture0"}[the chapter on
+Conjecture 0]), `Smith.Universality` (`decodeTM`, `undbl`, `icProg`, `cts_run_tag`,
+{ref "universality"}[the chapter on the composition]), `TagSystem.TagBounds`
+(`rawRun`, `tagTime`, `tag_rawRun`) and `TagSystem.TMToCTS` (`decodeCTS_word`,
+`step_valid`, {ref "tm-to-cts"}[the chapter on the machine reduction]).

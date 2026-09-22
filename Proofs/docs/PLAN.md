@@ -7,14 +7,16 @@ notes" in section 5); M2 done 2026-09-15 (see "M2 notes" in section 5); M3 done 
 2026-09-21 (see "M5 notes" in section 5); M6 done 2026-09-21 (see "M6 notes" in section 5);
 M4b done 2026-09-21 (see "M4b notes" in section 5); M8 done 2026-09-21 (see "M8 notes" in
 section 5): the headline theorem `wolfram23_universal` is proved; M7 done 2026-09-22 (see
-"M7 notes" in section 5): the infinite form `wolfram23_infinite` is proved. The review of
-2026-09-21 (the blueprint's open-items chapter, `Blueprint/Chapters/OpenItems.lean`) lists what remains open: a closed-form initial
-condition and finish-time bounds, event-based decoding times, k-symbol machines.
+"M7 notes" in section 5): the infinite form `wolfram23_infinite` is proved; M9 done
+2026-09-23 (see "M9 notes" in section 5): closed-form initial conditions,
+`wolfram23_universal_ic` and `wolfram23_infinite_ic`. The review of 2026-09-21 (the
+blueprint's open-items chapter, `Blueprint/Chapters/OpenItems.lean`) lists what remains
+open: event-based decoding times, k-symbol machines, a stated size bound for the tapes.
 
 ## 1. Where we are
 
 Status 2026-09-22: this section describes the tree of 2026-09-14, before M0. It is kept as
-the record of the starting point; the current state is in the M0-M8 and M7 notes of
+the record of the starting point; the current state is in the M0-M9 notes of
 section 5 and in the blueprint (`Blueprint/Chapters/`, published as a site; see docs/PUBLISHING.md).
 
 - Everything builds (10 s), but the four sorries sit under false statements and the proved
@@ -229,6 +231,7 @@ result connects to Mathlib's computability library.
 | M4b | T7: `WellFormed` machines; genuine Cocke-Minsky TM -> 2-tag with decoder; composition with `tagToCTS_simulation` | 0 sorry; `decide` example simulating a small TM for a few steps through tag and CTS; `#print axioms` clean | 2-4 weeks |
 | M8 | T8: compose T4 and T7 into the headline universality theorem | 0 sorry; `#print axioms` shows only propext, Classical.choice, Quot.sound; the theorem statement mentions only `TM.Machine`, `BiTM.Config`, `wolfram23`, the decoder and the well-formedness predicates (`TagSystem.WF`, `TagSystem.ValidCfg`, `BiTM.IsValidWolfram23Cfg`, `TagSystem.canon`, `Smith.biSize`) | 2-3 days |
 | M7 | T6: infinite form on an infinite tape type | 0 sorry; `#print axioms` clean; `decide` vectors of a block, a two-block chain and the infinite tape | 1-2 weeks |
+| M9 | Closed-form initial conditions (open item 1): run bounds for Systems 5 and 4 and for the tag system; T4, T8 and T6 restated with the tape a definition that runs no system | 0 sorry; `#print axioms` clean; `decide` vectors of the bounds against exact run lengths | 2-3 days |
 
 ### M0 notes (done 2026-09-15)
 
@@ -1284,7 +1287,91 @@ schedule `times` independent of `k` (each block re-emulates from the start,
 so the decode of step `i` recurs in every block `k >= i`; the theorem gives
 one schedule per block); event-based decoding times (item 4).
 
-Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8 (done); M7 after M8 (done). M4 and M4b
+### M9 notes (done 2026-09-23)
+
+Open item 1: the initial conditions of T4, T8 and T6 are now definitions,
+computed from the program (T4) or from the machine, its configuration and
+the number of steps (T8, T6) by the encoders and by closed-form bounds on
+the run lengths; none of them runs a system. The existential theorems stay,
+as corollaries.
+
+Run bounds (`Smith/RunBounds.lean`). System 4 always halts:
+`System4.run_bound`, at most `(2 L + 2) (L + 1)` steps from a tape of length
+`L`, by the measure `phi4 K c = phase4 c * K + off4 K c` (the phase is twice
+the number of stars plus one in state A; it never increases and drops at
+every change of direction; within a phase the head moves monotonically).
+System 5 halts from configurations with a duplicate-free positive bag and
+non-negative rule entries (`Inv5`, true of the encoder's output and kept by
+every step): `System5.run_bound`, at most `B * 2 ^ R` steps with `R` rules
+and every integer at most `B`; a bag element at most `v` forces a pop within
+`v` steps (`run5_phase`), after which one rule fewer is left and every
+integer is at most `2 B`. `maxInt5 s` is such a `B`. This replaces Smith's
+`3^(n-1) M` (T2's `finishTime` clauses in section 2 remain unformalized as
+stated; the bound here is coarser and plays the same role).
+
+Tag bounds (`TagSystem/TagBounds.lean`). The round lemmas of
+`TagSystem/CockeMinsky.lean` hold in any state; only `tm_step_tag` needs
+`q != 0`. `rawStep` is the machine step with state 0 read as an ordinary
+state (row 0 is kept in range by `WF`); the tag system carries it out in
+`roundLen` tag steps (`raw_step_tag`), so the tag run never stops
+(`tag_run_total`) and at `tagTime c n` holds the word of `rawRun c n`
+(`tag_rawRun`), which is the machine's `n`-th configuration while it runs
+(`rawRun_eq`). `roundLen c <= 15 * 2 ^ sz c` (five passes over a word whose
+halves are below `2 ^ sz c` and `2 ^ (sz c + 1)`), a raw step grows the
+tape by at most one cell, so `tagTime c n <= n * 15 * 2 ^ (sz c + n)`
+(`tagTime_le`).
+
+T4 (`Smith/ClosedForm.lean`). `icStart s` for a System 5 program `s`, with
+the parameters of T4 in closed form: `icB = maxInt5`, `icT5 = icB * 2 ^ R`,
+`icM = icB + icT5`, `icH = icT5 + icM + 1`, `icF = icB + 2 icH + 2 icT5 + 5`,
+`icBand = 2 icF - 2 icT5 - 2`, `icT4 = (2 L + 2) (L + 1)` for the length `L`
+of `system5ToSystem4 s icF`, `icFuel = icT4 + icBand`,
+`icW = icFuel + 3 icF + 6`. Every hypothesis T4 put on its parameters is an
+inequality that holds for any value at least the exact run length, so the
+old proof goes through with the bounds: `conjecture0_closed` (start
+`icStart s`, width `2 ^ icW s`, band `icBand s`); `conjecture0_finite` is
+its corollary. `system4_emulation` moved here from `Smith/Conjecture0.lean`
+and now returns `T4 <= icT4`.
+
+T8 (`Smith/Universality.lean`). `IC tm c n = icStart (icProg tm c n)`, with
+`icProg tm c n` the System 5 program of the cyclic tag system of T7 from
+`ctsOfCfg S c` with the budget `icN c n = n * 15 * 2 ^ (sz c + n)` cycles.
+`wolfram23_universal_ic`: T8 with `start = IC tm c n`, width
+`2 ^ ICw tm c n`, band `ICb tm c n`. The schedule is
+`times' (2 K tagTime tm c i)`; the forward simulation `tm_tag_forwardSim`
+is no longer used by T8 (its schedule was existential). The cyclic tag word
+at the end of the budget is nonempty because the tag run takes one more
+step (`length_ge_two_of_stepP`). `wolfram23_universal` is the corollary.
+
+T6 (`Smith/Infinite.lean`). Block `k` now emulates the first `k` raw steps
+(`BlockSpec.hdec` decodes `rawRun tm c i`), which removes the
+`Nat.findGreatest` case analysis: for a halting machine the blocks go on
+emulating the raw run, which nothing decodes as a step. `closedBlock tm c k`
+is block `k` in closed form: program `icProg tm c k`, guards
+`blkN = icT4 + 3`, `blkR = icT4 + 1`, width `blkW = blkH + icBand + blkN +
+3 icF + 6` with `blkH` the System 4 bound on the whole block tape; its run
+data `H`, `dt` (read by the proofs, not by the tape) are 0 in the closed
+form and filled in by `block_exists`. `ITape tm c = tape (closedBlock tm c)`
+and `wolfram23_infinite_ic` states T6 on it, with width `2 ^ blkW tm c k`
+and band `icBand (blkProg tm c k)` for block `k` and times strictly
+increasing unconditionally. `wolfram23_infinite` is the corollary.
+
+Vectors (`Vectors/ClosedFormVectors.lean`, F1-F5): the System 5 runs of D1
+and D4 (10 and 11 steps) against `icT5` (7168 and 96); the System 4 tape of
+D4 at `f = 16` (545 elements, 9906 steps) against its bound 596232; the
+closed-form parameters of D4 (`icF = 601`, `icLen4 = 20435`,
+`icT4 = 835260192`); the raw run of `tmH` past its halt and the tag times of
+`tmH` and `tmEx` against `tagTime_le`; the budget (30 cycles) and the 40560
+rules of `icProg tmH c 1`. The initial conditions themselves are far beyond
+evaluation. E8 of `Vectors/InfiniteVectors.lean` now checks the raw run of
+`tmH` instead of `Nat.findGreatest`, and instantiates both T6 statements.
+
+Left undone. A theorem bounding `biSize (IC tm c n)` by a closed form (the
+size is one, but no lemma states it); tighter bounds (Smith's `3^(n-1) M`,
+a linear-in-time System 4 bound); a single schedule across the blocks of T6;
+event-based decoding times (item 4).
+
+Critical path: M0 -> M1 -> M2 -> M3 -> M5 -> M6 -> M8 (done); M7 after M8 (done); M9 after M7 (done). M4 and M4b
 ran in parallel with M2/M3 (M4b is independent of the whole Smith side). Total: roughly four
 months of focused work was the estimate; M5 carried most of the risk, M4b none beyond volume.
 

@@ -30,36 +30,32 @@ reviewers, three verifiers per finding, synthesis), reconciled with the code as 
 commit `bb4f95b`. None is a soundness problem: the review found no blocker and
 confirmed the axiom check. They are gaps between the statement and the word
 "universal", and debts in the documentation. Items are ordered by weight. Status
-2026-09-22: items marked "done" were applied after T6 landed; the rest are open.
+2026-09-23: items marked "done" were applied after T6 landed; the rest are open.
 
 # A. Mathematics
 
-- Item 1 (major): closed-form initial condition and finish-time bounds. The tape of
-  {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`] and {bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] is existential and sized
-  in the proof from the emulation's own run lengths
-  ({ref "conjecture0"}[the chapter on Conjecture 0]). To answer the "the encoder does
-  the computation" objection the way Smith does (p. 20-26), the development needs:
-  (i) Smith's System 5 finish-time bound `finishTime P <= 3^(n-1) M` (T2 of
-  [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 promises it; the M3 notes say it is undone; no declaration
-  named `finishTime` exists); (ii) a System 4 exit-time bound from the explicit step
-  counts of {bpref "Smith.dStep"}[`Smith.dStep`], {bpref "Smith.popPhase"}[`Smith.popPhase`], {bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`]; (iii) a bound on
-  the tag steps of {ref "tm-to-cts"}[the chapter on the machine reduction] in terms
-  of `|c| + n` (the round lengths are explicit in {bpref "TagSystem.tm_step_tag"}[`TagSystem.tm_step_tag`]); (iv) a
-  lemma that T7's cyclic tag run continues for any budget at or above the needed one,
-  including after `tm` halts ({bpref "BiTM.step"}[`BiTM.step`] is `none` in state 0 and the Cocke-Minsky
-  step lemmas need `q != 0`); (v) a definition `IC tm c n` from those bounds and the
-  theorem restated with `start = IC tm c n`, or at least `biSize start <= F tm c n`
-  for a closed form `F`. A merely computable `IC` that runs the systems would not
-  answer the objection. This item applies to T6 as much as to T8: the conclusion of
-  {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`] is met by a machine that only moves right over an
-  infinite tape holding the run in advance, and its `forall tm c, exists t` form
-  would even admit one dovetailed tape for all machines and inputs
-  ({ref "infinite-form"}[the chapter on the infinite form], "What remains
-  existential").
+- Item 1 (major): closed-form initial condition and finish-time bounds. Done
+  2026-09-23. The tape of {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`] and {bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] was existential
+  and sized in the proof from the emulation's own run lengths. Now:
+  (i) System 5 halts within `maxInt5 s * 2 ^ (number of rules)` steps
+  ({bpref "Smith.System5.run_bound"}[`Smith.System5.run_bound`]), a coarser bound than Smith's `3^(n-1) M` that plays
+  the same role (the `finishTime` clauses of T2 in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) are not
+  formalized as stated); (ii) System 4 halts within `(2 L + 2) (L + 1)` steps on a
+  tape of length `L` ({bpref "Smith.System4.run_bound"}[`Smith.System4.run_bound`], by a termination measure rather
+  than the step counts of the D-step and P-step lemmas); (iii) the tag time of `n`
+  machine steps is at most `n * 15 * 2 ^ (sz c + n)` ({bpref "TagSystem.tagTime_le"}[`TagSystem.tagTime_le`]); (iv) the
+  tag system carries out the steps of the halting state too, so its run lasts any
+  budget ({bpref "TagSystem.tag_rawRun"}[`TagSystem.tag_rawRun`]); (v) the initial condition is the definition
+  `IC tm c n` ({bpref "Smith.IC"}[`Smith.IC`]) and T8 is restated with `start = IC tm c n`
+  ({bpref "Smith.wolfram23_universal_ic"}[`Smith.wolfram23_universal_ic`]); T4 likewise with `start = icStart s`
+  ({bpref "Smith.conjecture0_closed"}[`Smith.conjecture0_closed`]), and T6 with the tape `ITape tm c`
+  ({bpref "Smith.wolfram23_infinite_ic"}[`Smith.wolfram23_infinite_ic`]). None of these definitions runs a system. Still
+  open: a theorem bounding `biSize (IC tm c n)` by a closed form `F tm c n` (the
+  size is a closed form, but no lemma states it), and tighter bounds.
 - Item 2: the infinite form T6 ({ref "infinite-form"}[the chapter on the infinite form]),
-  done 2026-09-22, {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`]. One right-infinite tape per machine and
-  input, no budget and no hypothesis on halting. It does not by itself give a closed
-  form for the size of block `k`, nor answer item 1.
+  done 2026-09-22, {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`]; with the closed-form tape
+  since 2026-09-23, {bpref "Smith.wolfram23_infinite_ic"}[`Smith.wolfram23_infinite_ic`]. One right-infinite tape per
+  machine and input, no budget and no hypothesis on halting.
 - Item 3 (minor): binary machines. {bpref "TagSystem.WF"}[`TagSystem.WF`] covers two-symbol machines; the
   reduction of k-symbol machines, or a bridge to Mathlib's `Turing.TM0`, is not
   formalized. Wording of [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 T7/T8 ("well-formed binary TM"):

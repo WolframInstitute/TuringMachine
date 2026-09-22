@@ -4,14 +4,16 @@
   Chapter 8 of the blueprint: T4, Smith's Conjecture 0 in finite form. The
   composition of the cyclic-tag-to-wolfram23 half of the chain, the pieces
   added to the links (the bound on System 5, the encoder tape, the terminal
-  phase, the exit), the decoder of the wolfram23 tape, the parameter choices
-  and what they mean, and the corrections to Smith's statement.
+  phase, the exit), the decoder of the wolfram23 tape, the run bounds of
+  System 5 and System 4, the closed-form initial condition and its
+  parameters, and the corrections to Smith's statement.
 -/
 
 import Verso
 import VersoManual
 import VersoBlueprint
 import Smith.Conjecture0
+import Smith.ClosedForm
 import Smith.Wolfram23Bridge
 import BiTM.XorMerge
 
@@ -29,17 +31,22 @@ htmlSplit := .never
 
 # Orientation
 
-[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) composes the four chapters from
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ClosedForm.lean) compose the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through
 {ref "system5-to-system4"}[System 5 to System 4],
 {ref "system4-to-system3"}[System 4 to System 3] and
-{ref "systems-3-2-1-0"}[Systems 3, 2, 1 and 0] into {bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`]:
-for a two-colour cyclic tag system, an initial word and a budget, there is a
-finite wolfram23 tape from which the run reproduces the working strings of the
+{ref "systems-3-2-1-0"}[Systems 3, 2, 1 and 0] into {bpref "Smith.conjecture0_closed"}[`Smith.conjecture0_closed`]:
+for a two-colour cyclic tag system, an initial word and a budget, the finite
+wolfram23 tape `icStart`, a definition computed from the System 5 program by
+closed-form bounds ([`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/RunBounds.lean)), is one from which the run reproduces the working strings of the
 cyclic tag run at strictly increasing times, read by the decoder
 {bpref "Smith.decodeW23"}[`Smith.decodeW23`], stays on the tape until then, and afterwards steps onto the
 cell right of the tape, a 0, in state A. This is Smith's Conjecture 0 (p. 4)
-"for an arbitrary number of steps", with two corrections recorded below.
+"for an arbitrary number of steps", with two corrections recorded below, and
+with the initial condition produced as Smith produces it (p. 20-26): from a
+priori bounds on the run lengths, without running any system.
+{bpref "Smith.conjecture0_finite"}[`Smith.conjecture0_finite`], the form with an existential tape, is a
+corollary.
 
 # The statement
 
@@ -49,13 +56,14 @@ tag to wolfram23, the pieces added to them, and the decoder of the wolfram23
 tape.
 :::
 
-:::theorem "Smith.conjecture0_finite" (parent := "t4_conjecture0") (lean := "Smith.conjecture0_finite") (tags := "T4")
+:::theorem "Smith.conjecture0_closed" (parent := "t4_conjecture0") (lean := "Smith.conjecture0_closed") (tags := "T4")
 For a two-colour cyclic tag system `C0`, an initial configuration `cfg` and a
 budget `N` such that the run of `C0` from `cfg` lasts the
 `C0.appendants.length * N` steps of the budget and ends in a configuration `c'`
-whose word is nonempty, there are a wolfram23 configuration `start`
-({uses "BiTM.Config"}[]), a block width `2 ^ w`, a band `b`, times `times i` and
-an exit time `T` such that:
+whose word is nonempty, write `s = ctsToSystem5 C0 cfg N`
+({uses "BiTM.ctsToSystem5"}[]), `start = icStart s` ({uses "Smith.icStart"}[], a
+wolfram23 configuration, {uses "BiTM.Config"}[]), `w = icW s` and `b = icBand s`.
+There are times `times i` and an exit time `T` such that:
 
 - `start` is valid ({uses "BiTM.IsValidWolfram23Cfg"}[]) and in state A
   (`start.state = 1`);
@@ -71,6 +79,18 @@ an exit time `T` such that:
 - at time `T + 1` the configuration is `⟨1, L, 0, []⟩` with
   `L.length = biSize start`: state A, the `biSize start` cells of the tape to
   the left of the head, the head on a 0, and no explicit cell to its right.
+:::
+
+:::theorem "Smith.conjecture0_finite" (parent := "t4_conjecture0") (lean := "Smith.conjecture0_finite") (tags := "T4")
+The same with `start`, `w` and `b` existential: for `C0`, `cfg`, `N` and `c'` as
+in {uses "Smith.conjecture0_closed"}[] there are a wolfram23 configuration
+`start`, a block width `2 ^ w`, a band `b`, times and an exit time with the
+five clauses of that theorem.
+:::
+
+:::proof "Smith.conjecture0_finite"
+{uses "Smith.conjecture0_closed"}[] with `start = icStart s`, `w = icW s`,
+`b = icBand s`.
 :::
 
 The budget is `N` cycles of the appendants; the cyclic tag run must last the
@@ -276,90 +296,160 @@ the sets of `K`, which is what `decodeS4` computes on the leading sets.
 The decoding times are therefore the T2 times plus one System 4 step, carried
 to System 0 by the T3 schedule.
 
+# The run bounds
+
+:::group "t4_run_bounds"
+Closed-form bounds on every run of System 5 and of System 4, which replace the
+run lengths of the emulation in the parameters of the initial condition.
+:::
+
+:::lemma_ "Smith.System4.run_bound" (parent := "t4_run_bounds") (lean := "Smith.System4.run_bound, Smith.phi4, Smith.phi4_step")
+System 4 always halts: a run of `n` steps from a configuration whose tape has
+`L` elements has `n <= (2 L + 2) (L + 1)`.
+:::
+
+:::proof "Smith.System4.run_bound"
+In state A the head moves left, in states B and C right. A leftward run ends
+at a star (rule 2 deletes it) or at the left end (rule 1 turns round); a
+rightward run ends at a star in state B (rule 4 deletes it) or at the right
+end. So the phase `phase4`, twice the number of stars plus one in state A,
+never increases and drops at every change of direction, and within a phase the
+head moves monotonically; the offset `off4` is the head position while it
+moves left and its distance to the right end while it moves right. The measure
+`phi4 K c = phase4 c * K + off4 K c`, for `K` above the tape length, drops by
+at least one at every step and never lets the tape grow (`phi4_step`, by
+cases on the rules of {uses "BiTM.System4.step"}[]); it starts below
+`(2 L + 2) (L + 1)`.
+:::
+
+:::lemma_ "Smith.System5.run_bound" (parent := "t4_run_bounds") (lean := "Smith.System5.run_bound, Smith.Inv5, Smith.maxInt5, Smith.Bound5_maxInt5")
+System 5 halts from configurations whose bag is duplicate-free with positive
+elements and whose rule entries are non-negative (`Inv5`, kept by every step
+and true of the encoder's output, `Inv5_ctsToSystem5`): with `R` rules and
+every integer at most `B` ({uses "Smith.Bound5"}[]), a run has at most
+`B * 2 ^ R` steps. `maxInt5 s`, the largest integer of the program, is such a
+`B`.
+:::
+
+:::proof "Smith.System5.run_bound"
+Every step either pops a rule (a P-step) or decrements the bag and increments
+the rules (a D-step) (`step5_cases`); a step raises the largest integer by at
+most one (`Bound5_step`, as in {uses "Smith.Bound5_nSteps"}[]), and an empty bag
+or an empty rule list halts. With every integer at most `B` the bag has an
+element at most `B`, which forces a P-step within `B` steps (`run5_phase`, by
+induction on `v` for an element at most `v`); after it one rule fewer is left
+and every integer is at most `2 B`. Induction on the number of rules
+(`run5_bound`) gives the bound `G5 B R`, with `G5 B (R + 1) = B + G5 (2 B) R`,
+which is `B (2^R - 1)` (`G5_eq`).
+:::
+
+# The closed-form initial condition
+
+:::definition "Smith.icStart" (parent := "t4_conjecture0") (lean := "Smith.icStart, Smith.icB, Smith.icT5, Smith.icM, Smith.icH, Smith.icF, Smith.icBand, Smith.icRest, Smith.icLen4, Smith.icT4, Smith.icFuel, Smith.icW")
+The initial condition of T4 for a System 5 program `s`, computed from the text
+of `s` alone: the parameters `icB` to `icW` of the table in the proof of
+{uses "Smith.conjecture0_closed"}[], then the System 3 rendering
+`initAC (icW s) (icFuel s) _ _` ({uses "Smith.initAC"}[]) of the System 4 tape
+`system5ToSystem4 s (icF s)` ({uses "BiTM.system5ToSystem4"}[]), relabeled to
+System 0 (`phi2 (phi3 _)`, {uses "Smith.phi2"}[], {uses "Smith.phi3"}[]) and read
+as a wolfram23 configuration ({uses "Smith.toBi"}[]). No system is run: every
+parameter is an arithmetic expression in `maxInt5 s`, the number of rules and
+the length of the System 4 tape.
+:::
+
 # The System 4 emulation
 
 :::proposition "Smith.system4_emulation" (parent := "t4_conjecture0") (lean := "Smith.system4_emulation")
 The System 4 half of T4, shared with the infinite form. For `C0`, `cfg`, `N`
-and `c'` as in the theorem, there are the System 5 program
-`s0 = ctsToSystem5 C0 cfg N` ({uses "BiTM.ctsToSystem5"}[]), a parameter `f` with
-`1 ≤ f`, every bag entry of `s0` in `[1, f)` and every rule entry in `[0, f)`, a
-band `b`, an exit time `T4` at which the System 4 run from the encoder tape
-`system5ToSystem4 s0 f` ({uses "BiTM.system5ToSystem4"}[]) reaches a
+and `c'` as in the theorem and `s = ctsToSystem5 C0 cfg N`
+({uses "BiTM.ctsToSystem5"}[]), there are an exit time `T4 <= icT4 s`
+({uses "Smith.icStart"}[]) at which the System 4 run from the encoder tape
+`system5ToSystem4 s (icF s)` ({uses "BiTM.system5ToSystem4"}[]) reaches a
 configuration in state C with the head past the right end
 (`active = elems.length`), and strictly increasing times `times i` with
-`times i + 1 ≤ T4` such that one step after `times i` the System 4
+`times i + 1 <= T4` such that one step after `times i` the System 4
 configuration is `⟨sets K ++ star :: R, 0, B⟩` for a nonempty list of sets `K`
 (the head on the first set in state B, a star after the leading conglomerate),
-and `decodeS4` ({uses "Smith.decodeS4"}[]) of it below `b`, read by `decodeBag`
-({uses "Smith.decodeBag"}[]), is the doubled working string `dbl ci.data`
-({uses "Smith.dbl"}[]) of the `i`-th cyclic tag configuration `ci`.
+and `decodeS4` ({uses "Smith.decodeS4"}[]) of it below the band `icBand s`, read
+by `decodeBag` ({uses "Smith.decodeBag"}[]), is the doubled working string
+`dbl ci.data` ({uses "Smith.dbl"}[]) of the `i`-th cyclic tag configuration
+`ci`. The encoder's facts with the parameter `icF s` (`1 <= icF s`, bag entries
+in `[1, icF s)`, rule entries `k` with `k + 2 icH s < icF s`) are `icF_facts`.
 :::
 
 :::proof "Smith.system4_emulation"
-The first half of the proof of the theorem: the parameters `t5`, `B0`, `M`,
-`H`, `f`, `b`, `t4`, `k` and `T4` of the list below, from
-{uses "Smith.conjecture5_finite_exact"}[], {uses "Smith.Bound5_nSteps"}[],
-{uses "Smith.conjecture4_finite"}[] and {uses "Smith.repS4_terminal"}[]. At the
-T2 time `t4 (t5 i)` the tape stands in `RepS4` ({uses "Smith.RepS4"}[]) with the
-head on the first set in state A; one step (`step_setA_zero`) turns it to
-state B, and the star after the leading sets is the first element of the
-starred empty pairs. {uses "Smith.RepS4_decode_band"}[] reads the bag below `b`
-and the `Represents` relation of T1 ({uses "Smith.Represents"}[],
-`decodeBag_of_perm`) reads the doubled working string off it.
+The System 5 run of T1 exact ({uses "Smith.conjecture5_finite_exact"}[]) lasts
+`t5 n` steps, at most `icT5 s` by {uses "Smith.System5.run_bound"}[]; every
+inequality T2 ({uses "Smith.conjecture4_finite"}[]) and the terminal phase
+({uses "Smith.repS4_terminal"}[]) put on their parameters holds for any value
+at least the exact run length, so they hold with the bounds. At the end of the
+budget the rule list is empty, and by {uses "Smith.Bound5_nSteps"}[] some bag
+element is at most `icM s + 1`, which bounds the terminal decrements; the exit
+time `T4 = t4 (t5 n) + k` is at most `icT4 s` by
+{uses "Smith.System4.run_bound"}[]. At the T2 time `t4 (t5 i)` the tape stands
+in `RepS4` ({uses "Smith.RepS4"}[]) with the head on the first set in state A;
+one step (`step_setA_zero`) turns it to state B, and the star after the leading
+sets is the first element of the starred empty pairs.
+{uses "Smith.RepS4_decode_band"}[] reads the bag below the band and the
+`Represents` relation of T1 ({uses "Smith.Represents"}[], `decodeBag_of_perm`)
+reads the doubled working string off it.
 :::
 
 # The parameter choices, and what they mean
 
-::::proof "Smith.conjecture0_finite"
+::::proof "Smith.conjecture0_closed"
 The proof composes the finite forms by their schedules rather than by
 `ForwardSim_comp` ({uses "Smith.ForwardSim_comp"}[]), because the fuel lives in
 a different source system at each link. Write `n` for
-`C0.appendants.length * N`. The parameters are picked in order, each from
-quantities the earlier schedules produced:
+`C0.appendants.length * N` and `s` for the System 5 program. Each parameter is
+a closed form of `s` and of the ones before it; where the proof used to read
+a run length off a schedule, it now uses a bound on it:
 
 :::table +header
 *
   * parameter
-  * choice
+  * closed form
   * why
 *
-  * `t5`
-  * the System 5 schedule of T1 exact ({uses "Smith.conjecture5_finite_exact"}[])
-  * `t5 n` is the System 5 run length for the whole budget
+  * `icB s`
+  * `maxInt5 s`, the largest integer of the program
+  * a bound on the integers of the program ({uses "Smith.Bound5"}[], `Bound5_maxInt5`)
 *
-  * `B0`
-  * a bound on the integers of the System 5 program ({uses "Smith.Bound5"}[], from `exists_int_bound` through `exists_Bound5`)
-  * every integer of the program stays below it
+  * `icT5 s`
+  * `icB s * 2 ^ s.rules.length`
+  * above the System 5 run length `t5 n` ({uses "Smith.System5.run_bound"}[])
 *
-  * `M`
-  * `(B0 + t5 n).toNat`
-  * by {uses "Smith.Bound5_nSteps"}[] some bag element is at most `M + 1` at the end of the run, so at most `M` terminal decrements happen
+  * `icM s`
+  * `icB s + icT5 s`
+  * by {uses "Smith.Bound5_nSteps"}[] some bag element is at most `icM s + 1` at the end of the run, so at most `icM s` terminal decrements happen
 *
-  * `H`
-  * `t5 n + M + 1`
+  * `icH s`
+  * `icT5 s + icM s + 1`
   * T2's budget: the run plus the terminal phase
 *
-  * `f`
-  * `B0.toNat + 2 * H + 2 * t5 n + 5`
+  * `icF s`
+  * `icB s + 2 * icH s + 2 * icT5 s + 5`
   * T2's bounds `e < f`, `k + 2 * H < f` and `2 * H < f` ({uses "Smith.conjecture4_finite"}[])
 *
-  * `b`
-  * `2 * f - 2 * t5 n - 2`
+  * `icBand s`
+  * `2 * icF s - 2 * icT5 s - 2`
   * the band lies under the debris for every `j ≤ t5 n` and above every bag position ({uses "Smith.RepS4_decode_band"}[])
 *
-  * `t4`, `k`, `T4`
-  * T2's schedule, the terminal count of {uses "Smith.repS4_terminal"}[] (which needs the empty rule list that T1 exact gives at the end of the budget), and `T4 = t4 (t5 n) + k`
-  * the System 4 exit time
+  * `icT4 s`
+  * `(2 L + 2) (L + 1)` for the length `L = icLen4 s` of `system5ToSystem4 s (icF s)`
+  * above the System 4 exit time `T4` ({uses "Smith.System4.run_bound"}[])
 *
-  * `h4`
-  * `T4 + b`
+  * `icFuel s`
+  * `icT4 s + icBand s`
   * T3's fuel must cover the System 4 run and the band
 *
-  * `w`
-  * `h4 + 3 * f + 6`
+  * `icW s`
+  * `icFuel s + 3 * icF s + 6`
   * `w < 2 ^ w` covers `h4 + 3 ≤ 2 ^ w` and `3 * f + 3 ≤ 2 ^ w` (every set element below the width)
 :::
 
+{uses "Smith.system4_emulation"}[] supplies the System 4 run, its exit at
+`T4 <= icT4 s` and its decoding events.
 The hypotheses of T3 ({uses "Smith.conjecture3_finite"}[]) on the encoder tape
 are supplied by {uses "Smith.system5ToSystem4_wellFormed"}[],
 {uses "Smith.system5ToSystem4_last_set"}[] and
@@ -367,8 +457,8 @@ are supplied by {uses "Smith.system5ToSystem4_wellFormed"}[],
 
 The tape `start` is `toBi` ({uses "Smith.toBi"}[]) of the relabeling
 `phi2 (phi3 _)` ({uses "Smith.phi2"}[], {uses "Smith.phi3"}[]) of the System 3
-tape `initAC w h4 _ _` ({uses "Smith.initAC"}[]) built from the encoder tape; it
-is valid because its state is not C (`toBi_valid`, `phi2_state_ne_C`), and it is
+tape `initAC w h4 _ _` ({uses "Smith.initAC"}[]) built from the encoder tape, which
+is `icStart s` by definition; it is valid because its state is not C (`toBi_valid`, `phi2_state_ne_C`), and it is
 in state A. With `times0` the T3 schedule, the decoding times are
 `times0 (t4 (t5 i) + 1)`, one System 4 step after each T2 time; there
 {uses "Smith.rep3_decode"}[] (through `rep3_decode_zero`) turns `decodeW23` into
@@ -387,20 +477,15 @@ System 3 head on the closing 1 in state C; `phi_exit` relabels this to
 cell `0` right of the tape.
 ::::
 
-Every parameter therefore depends on the run lengths `t5 n`, `T4` and `k` of the
-emulation itself. The tape `start` exhibited by the proof is sized by running
-Systems 5 and 4, which are themselves emulating the machine. This is the
-Pratt-style objection to Smith's proof, instantiated rather than answered: Smith
-computes `f` and `w` from an a priori bound on the System 5 finish time
-(`3^(n-1) M`, p. 20-21) and argues on p. 22-26 that the initial condition can be
-produced by an obviously non-universal algorithm. Closing this gap needs (i) the
-finish-time bound for T2, (ii) a System 4 exit-time bound (the step counts of
-the D-step and P-step lemmas are explicit, so this is bookkeeping), (iii) a
-bound on the tag steps of the chapter on {ref "tm-to-cts"}[the machine reduction]
-in terms of the tape length and the number of machine steps, and (iv) a
-definition `IC` of the tape from those bounds with the theorem restated as
-`start = IC ...` or with `biSize start <= F ...` for a closed form `F`. The
-chapter on {ref "open-items"}[open items] lists this as the main open item.
+The tape is thereby a definition of the program: the encoder does no
+computation beyond writing down the encodings and evaluating these
+expressions. This answers the Pratt-style objection the way Smith does (he
+computes `f` and `w` from an a priori bound on the System 5 finish time,
+`3^(n-1) M`, p. 20-21, and argues on p. 22-26 that the initial condition is
+produced by an obviously non-universal algorithm). The bounds here are
+coarser than Smith's (`B 2^R` for System 5, quadratic in the tape length for
+System 4) but play the same role. The chapter on {ref "open-items"}[open
+items] records this as item 1, done.
 
 # Corrections to Smith's statement
 
@@ -420,20 +505,24 @@ chapter on {ref "open-items"}[open items] lists this as the main open item.
 - "Never visits a cell outside the tape" is `biSize` constant, since a wolfram23
   step onto an implicit blank grows the explicit tape and the zipper run is
   defined ({bpref "Smith.lnSteps_length"}[`Smith.lnSteps_length`], {bpref "Smith.toBi_run"}[`Smith.toBi_run`]).
-- The times `times` and `T` are existential, with no closed form and no event in
-  the wolfram23 run that marks them. Nothing is stated about `decodeW23` at other
+- The times `times` and `T` are existential (only the tape is in closed form),
+  with no event in the wolfram23 run that marks them. Nothing is stated about `decodeW23` at other
   times; on the D9 test tape it returns `some` at several unscheduled times as
   well.
 - The D9 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) exercise `decodeW23` on System 3
   tapes built by `initAC`, with negative instances (a state-A head, an odd parity
-  position, a tape without whole blocks). No vector runs `conjecture0_finite` end
-  to end; with `w = h4 + 3 * f + 6` the block width of the smallest instance is
-  far beyond `decide`.
+  position, a tape without whole blocks). No vector runs `conjecture0_closed` end
+  to end; with `w = icW s` the block width of the smallest instance is far beyond
+  `decide`. [`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/ClosedFormVectors.lean) checks the run bounds against the exact run
+  lengths on the programs of D1 and D4 and evaluates the closed-form parameters
+  of D4.
 
 # Depends on
 
-The module is [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) (`Smith.Conjecture0`), which imports
-`Smith.Conjecture3`, `Smith.ConjectureFive` and `Smith.Wolfram23Bridge`. The
+The modules are [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) (`Smith.Conjecture0`), which imports
+`Smith.Conjecture3`, `Smith.ConjectureFive` and `Smith.Wolfram23Bridge`,
+[`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/RunBounds.lean) (the run bounds) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ClosedForm.lean) (the
+closed-form initial condition, `system4_emulation` and the two statements). The
 chapter depends on the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through
 {ref "system5-to-system4"}[System 5 to System 4],

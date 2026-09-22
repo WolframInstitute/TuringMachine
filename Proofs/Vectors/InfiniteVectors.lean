@@ -5,12 +5,13 @@
   two small programs. E1 to E5: the program of D9 (`Vectors.SmithVectors`),
   `{0, 2} * {}`, whose System 4 run lasts 4 steps, exits in state C and never
   turns at its left end; the block around it has the guard parameter `n = 7`
-  and `r = 5` guards, as `block_exists` would choose (`n = T4 + 3`,
-  `r = T4 + 1`), the width `2^5` and the band 4. E6: the program
+  and `r = 5` guards, the shape of `closedBlock` with the exact System 4 run
+  length in place of its bound `icT4` (`n = T4 + 3`, `r = T4 + 1`), the
+  width `2^5` and the band 4. E6: the program
   `{0} {0, 1} * {2}`, whose run of 9 steps turns once at its left end, so
   that a guard is consumed (`pad_turn`, `merged`). E7: two blocks of
   different widths chained. E8: the side conditions of `BlockSpec` and the
-  halting reading of the block index.
+  raw run that block `k` emulates on a halting machine.
 
   Everything closes by `decide +kernel` (kernel reduction, no extra axiom)
   or `decide`; nothing outside this file depends on it.
@@ -369,16 +370,19 @@ example : (System4.nSteps ⟨bdE.tape, 0, System4State.C⟩ 10).bind
     (fun c => (decodeS4 ⟨c.elems.drop c.active, 0, System4State.B⟩ 4).bind decodeBag) = some [false] := by
   decide +kernel
 
-/-- The halting reading of the block index: for `tmH` of
-    `Vectors/TMToCTSVectors.lean`, which halts after one step, the last defined
-    step below `j` is `min j 1`. -/
-example : (List.range 6).map (fun j =>
-    Nat.findGreatest (fun i => (BiTM.nSteps tmH ⟨1, [], 0, []⟩ i).isSome = true) j)
-    = [0, 1, 1, 1, 1, 1] := by decide
+/-- The raw run that block `k` emulates, on `tmH` of
+    `Vectors/TMToCTSVectors.lean`, which halts after one step: it agrees with
+    the run while the run is defined (step 1) and goes on after it (step 2,
+    where the run is `none`), so every block reproduces the halted run. -/
+example : BiTM.nSteps tmH ⟨1, [], 0, []⟩ 1 = some (TagSystem.rawRun tmH ⟨1, [], 0, []⟩ 1) ∧
+    BiTM.nSteps tmH ⟨1, [], 0, []⟩ 2 = none ∧
+    TagSystem.rawRun tmH ⟨1, [], 0, []⟩ 2 = ⟨0, [0, 1], 0, []⟩ := by decide
 
 /-- The theorem applies to `tmH` from `1, [], 0, []`: its hypotheses are
     decidable and hold. -/
 example : True := by
+  have := wolfram23_infinite_ic tmH (by decide) ⟨1, [], 0, []⟩
+    ⟨by decide, fun a ha => by simp at ha, fun a ha => by simp at ha⟩ (by decide)
   have := wolfram23_infinite tmH (by decide) ⟨1, [], 0, []⟩
     ⟨by decide, fun a ha => by simp at ha, fun a ha => by simp at ha⟩ (by decide)
   trivial
