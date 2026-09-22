@@ -559,9 +559,11 @@ def blkH (tm : Machine) (c : Config) (k : Nat) : Nat :=
   (2 * (blockTape (blkN tm c k) (blkR tm c k) (blkOrig tm c k)).length + 2) *
     ((blockTape (blkN tm c k) (blkR tm c k) (blkOrig tm c k)).length + 1)
 
-/-- The width exponent of block `k`. -/
+/-- The width exponent of block `k`: the bit length of the fuel, the guard
+    parameter and the bound on the set elements, so that the block width
+    `2 ^ blkW` is linear in them. -/
 def blkW (tm : Machine) (c : Config) (k : Nat) : Nat :=
-  blkH tm c k + icBand (blkProg tm c k) + blkN tm c k + 3 * icF (blkProg tm c k) + 6
+  Nat.size (blkH tm c k + icBand (blkProg tm c k) + blkN tm c k + 3 * icF (blkProg tm c k) + 6)
 
 /-- Block `k` in closed form (the run data `H`, `dt` set to 0; see
     `block_exists` for the actual ones). -/
@@ -629,8 +631,8 @@ theorem block_exists (tm : Machine) (hwf : WF tm) (c : BiTM.Config) (hv : ValidC
     rw [blkH, ← hn, ← hr, horig]
     exact this
   obtain ⟨w, hw⟩ : ∃ w, w = blkW tm c k := ⟨_, rfl⟩
-  have hwe : w = blkH tm c k + icBand s + n + 3 * icF s + 6 := by rw [hw, hn, hsd]; rfl
-  have hw2 : w < 2 ^ w := Nat.lt_two_pow_self
+  have hw2 : blkH tm c k + icBand s + n + 3 * icF s + 6 < 2 ^ w := by
+    rw [hw, blkW, ← hn, ← hsd]; exact Nat.lt_size_self _
   have hwf4 := system5ToSystem4_wellFormed s (icF s) hf1
   have hlast4 := system5ToSystem4_last_set s (icF s) hf1
   rw [hc40, horig] at hwf4 hlast4

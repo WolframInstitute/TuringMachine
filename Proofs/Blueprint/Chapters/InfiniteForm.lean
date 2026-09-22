@@ -291,7 +291,8 @@ Block `k` in closed form. Its program is `blkProg tm c k = icProg tm c k`
 System 4 run; `blkH` is the bound `(2 L + 2) (L + 1)` of
 {uses "Smith.System4.run_bound"}[] for the length `L` of the whole block tape
 {uses "Smith.blockTape"}[]; the width exponent is
-`blkW = blkH + icBand + blkN + 3 icF + 6` and the band `icBand`. The run data `H` and
+`blkW = Nat.size (blkH + icBand + blkN + 3 icF + 6)`, the bit length, and the band
+`icBand`. The run data `H` and
 `dt` of `closedBlock tm c k` are set to 0: the cells of a block
 (`BlockData.cells`) do not read them.
 :::

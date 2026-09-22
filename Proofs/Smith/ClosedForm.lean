@@ -21,7 +21,10 @@
     * `icT4 s = (2 L + 2) (L + 1)` for the length `L` of the System 4 tape
       `system5ToSystem4 s (icF s)`, above every System 4 run
       (`System4.run_bound`);
-    * `icFuel = icT4 + icBand` and `icW = icFuel + 3 icF + 6`.
+    * `icFuel = icT4 + icBand` and `icW`, the bit length of
+      `icFuel + 3 icF + 6` (`Nat.size`), the least width whose blocks
+      hold the fuel and every set element; the block width `2 ^ icW` is
+      then linear, not exponential, in those quantities.
   Every hypothesis T4 places on its parameters is an inequality that holds
   for any value at least the exact run length, so the proof of T4 goes
   through with the bounds (`conjecture0_closed`).
@@ -34,6 +37,7 @@
 -/
 
 import Smith.RunBounds
+import Mathlib.Data.Nat.Size
 
 namespace Smith
 
@@ -75,7 +79,7 @@ def icT4 (s : System5Config) : Nat := (2 * icLen4 s + 2) * (icLen4 s + 1)
 def icFuel (s : System5Config) : Nat := icT4 s + icBand s
 
 /-- The width exponent of the parity blocks. -/
-def icW (s : System5Config) : Nat := icFuel s + 3 * icF s + 6
+def icW (s : System5Config) : Nat := Nat.size (icFuel s + 3 * icF s + 6)
 
 /-- The closed-form initial condition of T4 for the System 5 program `s`:
     the System 3 rendering (`initAC`) of the System 4 tape of `s`, relabeled
@@ -293,8 +297,8 @@ theorem conjecture0_closed (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfi
   rw [← hf] at hrunT4 h4tr hf1 hbag1 hrules0
   rw [← hb] at h4tr
   have hh4e : h4 = icT4 s0 + b := by rw [hh4, hb]; rfl
-  have hwe : w = h4 + 3 * f + 6 := by rw [hw, hh4, hf]; rfl
-  have hw2 : w < 2 ^ w := Nat.lt_two_pow_self
+  have hw2 : h4 + 3 * f + 6 < 2 ^ w := by
+    rw [hw, icW, ← hh4, ← hf]; exact Nat.lt_size_self _
   have hN3 : h4 + 3 ≤ 2 ^ w := by omega
   have h3f : 3 * f + 3 ≤ 2 ^ w := by omega
   have hrules0' : ∀ r ∈ s0.rules, ∀ k ∈ r, 0 ≤ k ∧ k < f := by

@@ -62,7 +62,7 @@ example : icF s5D4 = 601 ∧ icBand s5D4 = 1008 := by decide +kernel
     many to count in the kernel; from that length on the parameters are
     arithmetic. -/
 example : (2 * 20435 + 2) * (20435 + 1) = 835260192 ∧
-    835260192 + icBand s5D4 + 3 * icF s5D4 + 6 = 835263009 := by decide +kernel
+    Nat.size (835260192 + icBand s5D4 + 3 * icF s5D4 + 6) = 30 := by decide +kernel
 
 /-! ## F4: the raw run and the tag times -/
 

@@ -1326,7 +1326,9 @@ the parameters of T4 in closed form: `icB = maxInt5`, `icT5 = icB * 2 ^ R`,
 `icM = icB + icT5`, `icH = icT5 + icM + 1`, `icF = icB + 2 icH + 2 icT5 + 5`,
 `icBand = 2 icF - 2 icT5 - 2`, `icT4 = (2 L + 2) (L + 1)` for the length `L`
 of `system5ToSystem4 s icF`, `icFuel = icT4 + icBand`,
-`icW = icFuel + 3 icF + 6`. Every hypothesis T4 put on its parameters is an
+`icW = Nat.size (icFuel + 3 icF + 6)` (the bit length; first
+`icFuel + 3 icF + 6` itself, cut to its bit length on 2026-09-23 so that the
+block width `2 ^ icW` is linear in the fuel). Every hypothesis T4 put on its parameters is an
 inequality that holds for any value at least the exact run length, so the
 old proof goes through with the bounds: `conjecture0_closed` (start
 `icStart s`, width `2 ^ icW s`, band `icBand s`); `conjecture0_finite` is
@@ -1348,8 +1350,8 @@ T6 (`Smith/Infinite.lean`). Block `k` now emulates the first `k` raw steps
 `Nat.findGreatest` case analysis: for a halting machine the blocks go on
 emulating the raw run, which nothing decodes as a step. `closedBlock tm c k`
 is block `k` in closed form: program `icProg tm c k`, guards
-`blkN = icT4 + 3`, `blkR = icT4 + 1`, width `blkW = blkH + icBand + blkN +
-3 icF + 6` with `blkH` the System 4 bound on the whole block tape; its run
+`blkN = icT4 + 3`, `blkR = icT4 + 1`, width `blkW = Nat.size (blkH + icBand +
+blkN + 3 icF + 6)` with `blkH` the System 4 bound on the whole block tape; its run
 data `H`, `dt` (read by the proofs, not by the tape) are 0 in the closed
 form and filled in by `block_exists`. `ITape tm c = tape (closedBlock tm c)`
 and `wolfram23_infinite_ic` states T6 on it, with width `2 ^ blkW tm c k`

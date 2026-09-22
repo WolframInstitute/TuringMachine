@@ -444,8 +444,8 @@ a run length off a schedule, it now uses a bound on it:
   * T3's fuel must cover the System 4 run and the band
 *
   * `icW s`
-  * `icFuel s + 3 * icF s + 6`
-  * `w < 2 ^ w` covers `h4 + 3 ≤ 2 ^ w` and `3 * f + 3 ≤ 2 ^ w` (every set element below the width)
+  * `Nat.size (icFuel s + 3 * icF s + 6)`, the bit length
+  * `x < 2 ^ Nat.size x` covers `h4 + 3 ≤ 2 ^ w` and `3 * f + 3 ≤ 2 ^ w` (every set element below the width); the block width `2 ^ w` is at most twice `h4 + 3 f + 6`, so the System 3 tape is linear, not exponential, in the System 4 data
 :::
 
 {uses "Smith.system4_emulation"}[] supplies the System 4 run, its exit at
