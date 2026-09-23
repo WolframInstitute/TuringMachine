@@ -3921,6 +3921,13 @@ Options[inductionProofGraph] = {"GraftDerived" -> True, "MergeAsAxiom" -> False,
 
 SyntaxInformation[inductionProofGraph] = {"ArgumentsPattern" -> {_, OptionsPattern[]}}
 
+(* A public proof (cachedProofFor, mergedProofFor, FindInductiveProof) carries its equations in
+   the formal variables; the graph is built from its ProofObjects, which run on the Private ones,
+   so the equation fields go back to the Private vocabulary first. A raw proof is unchanged. *)
+inductionProofGraph[p_Association, opts : OptionsPattern[]] /;
+    ! FreeQ[p[[Intersection[Keys[p], $formalProofKeys]]], \[FormalX] | \[FormalY] | \[FormalM] | \[FormalN]] :=
+    inductionProofGraph[MapAt[fromFormalVars, p, {#}& /@ Intersection[Keys[p], $formalProofKeys]], opts]
+
 inductionProofGraph[p_, opts : OptionsPattern[]] := Module[
     {records, mergeAsAxiom = TrueQ[OptionValue["MergeAsAxiom"]], lemmaProofs, g, inductiveLemmas}
     ,

@@ -5,8 +5,8 @@ Name: WolframInstitute/TuringMachine
 Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 Description: Tools for exploring and analyzing Turing machines
-ContributedBy: Nik Murzin and Willem Nielsen
-Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic, enumeration, NKS]
+ContributedBy: Wolfram Institute
+Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic, enumeration, NKS, universality, tag system, cyclic tag system, Wolfram 2,3 Turing machine]
 MainGuide: Documentation/English/Guides/TuringMachine.nb
 License: MIT
 WolframVersion: 14.3+
@@ -15,7 +15,7 @@ Disclosures: [PacletDependencies, WLSystemSymbols]
 Sources: ["Stephen Wolfram, A New Kind of Science (Wolfram Media, 2002), Notes for Chapter 12, Section 8 (One-Sided Turing Machines), p. 1143"]
 SourceControlURL: https://github.com/WolframInstitute/TuringMachine
 RelatedResources: [TuringMachineFromNumber, TuringMachineToNumber, TuringMachineImport, Wolfram/Lambda]
-Links: ["[One-sided Turing machines — A New Kind of Science | Online (Note (d), p. 1143)](https://www.wolframscience.com/nks/notes-12-8--one-sided-turing-machines/)"]
+Links: ["[One-sided Turing machines — A New Kind of Science | Online (Note (d), p. 1143)](https://www.wolframscience.com/nks/notes-12-8--one-sided-turing-machines/)", "[Wolfram (2,3) universality in Lean: the blueprint](https://wolframinstitute.github.io/TuringMachine/)"]
 ---
 
 ## Details & Options
@@ -25,10 +25,11 @@ Links: ["[One-sided Turing machines — A New Kind of Science | Online (Note (d)
 - A machine that does not halt within the given step bound reports `Infinity` / `Undefined` for the parts it could not resolve.
 - The multiway functions explore nondeterministic machines, where a `{state, color}` pair may carry several transitions, and return all reachable configurations.
 - A Rust backend (loaded from the paclet's `Binaries`) accelerates the bulk enumeration and search functions over whole rule spaces.
+- The chain of Alex Smith's proof that Wolfram's 2,3 Turing machine is universal has one function per arrow, from a binary Turing machine through a 2-tag system, a cyclic tag system and Smith's Systems 5, 4 and 3 to the 2,3 machine, with a decoder for each way back and an evolution function for each system. Each follows the Lean formalization of the proof in the paclet's repository.
 
 ## Usage
 
-The paclet identifies a Turing machine by its enumeration number and its `{s, k}` state/color counts. [OneSidedTuringMachineFunction]() runs a one-sided machine on an integer input and returns its halting value, step count, or tape width; [OneSidedTuringMachinePlot]() draws the space-time evolution; and [OneSidedTuringMachineFind]() searches for machines reproducing given outputs. The [MultiwayTuringMachineFunction]() family explores nondeterministic (multiway) machines, while [TuringMachineRuleCount]() and the [TuringMachineOutput]() primitives tabulate behavior across whole rule spaces.
+The paclet identifies a Turing machine by its enumeration number and its `{s, k}` state/color counts. [OneSidedTuringMachineFunction]() runs a one-sided machine on an integer input and returns its halting value, step count, or tape width; [OneSidedTuringMachinePlot]() draws the space-time evolution; and [OneSidedTuringMachineFind]() searches for machines reproducing given outputs. The [MultiwayTuringMachineFunction]() family explores nondeterministic (multiway) machines, while [TuringMachineRuleCount]() and the [TuringMachineOutput]() primitives tabulate behavior across whole rule spaces. [TuringMachineToTagSystem](), [TagSystemToCyclicTagSystem](), [CyclicTagSystemToSystem5](), [System5ToSystem4](), [System4ToSystem3]() and [System3ToWolfram23]() carry a Turing machine along the chain of Smith's universality proof to Wolfram's 2,3 machine.
 
 ## Basic Examples
 
@@ -120,6 +121,22 @@ Compare how a single machine transforms several different inputs:
 GraphicsRow[OneSidedTuringMachinePlot[{600720, 3, 2}, #, 16, "LabelOutput" -> False] & /@ {1, 3, 6}]
 ```
 
+---
+
+Carry Smith's cyclic tag example `1 10` on the working string `01` to his System 5 for one cycle of its appendants:
+
+```wl
+CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]
+```
+
+---
+
+The sizes of every stage of the emulation of one step of a two-state machine by Wolfram's 2,3 machine:
+
+```wl
+EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
+```
+
 ## Properties and Relations
 
 The `All` property is exactly the `"Steps"`, `"Value"`, and `"Width"` properties assembled into a triple:
@@ -192,4 +209,4 @@ With[{
 
 ## Author Notes
 
-The paclet's Wolfram Language and Rust implementation and its worked examples are by Nik Murzin and Willem Nielsen. This Paclet Repository definition — its markdown source, metadata, and landing-page text — was drafted with help from Claude (Anthropic) and reviewed and edited by Nik Murzin. The one-sided Turing machine conventions follow Stephen Wolfram, *A New Kind of Science*, Note (d) for Section 12.8 (p. 1143).
+The paclet's Wolfram Language and Rust implementation and its worked examples are by Nik Murzin and Willem Nielsen. This Paclet Repository definition — its markdown source, metadata, and landing-page text — was drafted with help from Claude (Anthropic) and reviewed and edited by Nik Murzin. The one-sided Turing machine conventions follow Stephen Wolfram, *A New Kind of Science*, Note (d) for Section 12.8 (p. 1143). The functions for Smith's universality proof transcribe the Lean formalization in the repository's `Proofs/` directory and are tested against it.
