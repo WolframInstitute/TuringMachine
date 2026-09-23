@@ -92,12 +92,14 @@ Alex Smith's proof that Wolfram's 2,3 Turing machine is universal, formalized in
 - `System5EvolutionPlot` the bag of a System 5 program along its run
 - `System4EvolutionPlot` the tape of System 4 along its run, the head colored by the state
 - `System3EvolutionPlot` the tape of System 3 along its run
+- `TuringMachineEvolutionPlot` the tape of a binary Turing machine along its run, the head colored by the state
 - `Wolfram23EvolutionPlot` the tape of Wolfram's 2,3 machine along its run
 
 ### Parameters
 
 - `EmulationParameters` the parameters of the emulation of a System 5 program, exact or in closed form
 - `EmulationSizes` the size of every stage of the emulation of a Turing machine
+- `ParityBlock` Smith's System 3 block of a System 4 set
 
 ## Inductive proofs
 

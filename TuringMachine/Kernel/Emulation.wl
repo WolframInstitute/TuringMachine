@@ -80,6 +80,10 @@ System3EvolutionPlot::usage = "System3EvolutionPlot[s3, n] plots the tape of the
 
 Wolfram23EvolutionPlot::usage = "Wolfram23EvolutionPlot[config, n] plots the tape of Wolfram's 2,3 machine from config for n steps, the head colored by the state."
 
+TuringMachineEvolutionPlot::usage = "TuringMachineEvolutionPlot[machine, config, n] plots the tape of the binary Turing machine machine from config for n steps or until it halts, the head colored by the state."
+
+ParityBlock::usage = "ParityBlock[set, w] gives Smith's block of 2^w cells 1 and 2 for the System 4 set set, whose successive parity scans read the set back (Lean Smith.encSet)."
+
 Begin["`Private`"]
 
 (* ::Section:: *)
@@ -185,8 +189,20 @@ tagWord[{q_, l_, h_, r_}] := cword[q, tapeValue[l], h + 2 tapeValue[r]]
 TuringMachineToTagSystem[rules_List] := Module[{m = machineAssoc[rules], s},
     s = numStates[m];
     <|"Productions" -> Table[encSym[s, #] & /@ cmProduction[m, decSym[s, i]], {i, 0, 84 s}],
-      "States" -> s|>
+      "States" -> s,
+      "SymbolNames" -> Table[symbolName[decSym[s, i]], {i, 0, 84 s}]|>
 ]
+
+(* the name of a Cocke-Minsky symbol: its kind, its state as a subscript and, for the
+   kinds that carry them, the scanned bit and the parity bit as superscripts *)
+$subscripts = AssociationThread[Range[0, 9] -> Characters["\:2080\:2081\:2082\:2083\:2084\:2085\:2086\:2087\:2088\:2089"]];
+$superscripts = <|0 -> "\:2070", 1 -> "\:00b9"|>;
+subscript[q_Integer] := StringJoin[$subscripts /@ IntegerDigits[q]]
+symbolName[X] := "x"
+symbolName[sym[kd_, q_, h_, b_]] := kd <> subscript[q] <> Which[
+    MemberQ[{"I", "i", "J", "j"}, kd], $superscripts[h] <> $superscripts[b],
+    MemberQ[{"E", "e", "F", "f", "G", "g", "H", "k"}, kd], $superscripts[h],
+    True, ""]
 
 TuringMachineToTagSystem[rules_List, cfg : {_Integer, _List, _Integer, _List}] := With[
     {tag = TuringMachineToTagSystem[rules]},
@@ -593,7 +609,21 @@ CyclicTagSystemEvolution[cts_Association, n_Integer?NonNegative, crit_] :=
 (* ::Section:: *)
 (* Plots *)
 
-Options[evolutionPlot] = {"MaxRows" -> 400, ImageSize -> Automatic, AspectRatio -> 1};
+Options[evolutionPlot] = {"MaxRows" -> 400, ImageSize -> Automatic, AspectRatio -> 1, "Labels" -> Automatic};
+
+(* a labeled run as a grid of colored cells with their names: rows is a list of rows of
+   values (None for an empty cell), labels the matching names, rules the colors of the values,
+   steps the step of each row *)
+(* every column at least as wide as a cell is high, wider for its longest label *)
+labeledGrid[rows_List, labels_List, rules_, steps_List] := With[
+    {widths = Max[1.6, 0.62 Max[StringLength[ToString[#]] & /@ #] + 0.5] & /@
+        Transpose[PadRight[Replace[labels, None -> "", {2}], Automatic, ""]]},
+    Grid[
+    MapThread[Prepend[
+        MapThread[If[#1 === None, "", Item[Style[#2, 10, FontFamily -> "Source Code Pro", FontColor -> Black, LineBreakWithin -> False],
+            Background -> Replace[#1, rules], Frame -> GrayLevel[1]]] &, {#1, #2}],
+        Style[#3, 9, GrayLevel[0.5]]] &, {rows, labels, steps}],
+    Spacings -> {0.1, 0.1}, Alignment -> Center, ItemSize -> {{Prepend[widths, Automatic]}, 1.4}]]
 
 (* the configurations of a run at no more than "MaxRows" evenly spaced steps, without
    keeping the others *)
@@ -607,11 +637,17 @@ sampledRun[step_, c0_, n_, maxRows_] := Module[{k = Max[1, Ceiling[n/maxRows]], 
 rowTicks[k_, rows_] := {{Table[{i, (i - 1) k}, {i, 1, rows, Max[1, Floor[rows/6]]}], None}, {None, None}}
 
 (* a queue: row t starts where the word has been consumed to, so the run slants *)
-queuePlot[rows_List, offsets_List, k_, rules_, opts___] := Module[{w = Max[offsets + Length /@ rows]},
-    ArrayPlot[MapThread[PadRight[Join[ConstantArray[-1, #2], #1], w, -1] &, {rows, offsets}],
-        ColorRules -> Append[rules, -1 -> White], FrameTicks -> rowTicks[k, Length[rows]],
-        Frame -> True, opts]
+queuePlot[rows_List, offsets_List, k_, rules_, labels_, opts___] := Module[{w = Max[offsets + Length /@ rows]},
+    If[labels === None,
+        ArrayPlot[MapThread[PadRight[Join[ConstantArray[-1, #2], #1], w, -1] &, {rows, offsets}],
+            ColorRules -> Append[rules, -1 -> White], FrameTicks -> rowTicks[k, Length[rows]], Frame -> True, opts],
+        labeledGrid[MapThread[PadRight[Join[ConstantArray[None, #2], #1], w, None] &, {rows, offsets}],
+            MapThread[PadRight[Join[ConstantArray[None, #2], #1], w, None] &, {labels, offsets}],
+            rules, k Range[0, Length[rows] - 1]]]
 ]
+
+showLabels[opt_, rows_] := Which[opt === True, True, opt === False, False,
+    True, Length[rows] <= 40 && Max[Length /@ rows, 0] <= 40]
 
 TagSystemEvolutionPlot[tag_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
     {run, k, s = Lookup[tag, "States", None], color},
@@ -620,15 +656,21 @@ TagSystemEvolutionPlot[tag_Association, n_Integer?NonNegative, opts : OptionsPat
     color[0] = GrayLevel[0.85];
     color[i_] := If[IntegerQ[s], ColorData[54][Quotient[i - 1, 4 s] + 1], ColorData[54][i]];
     queuePlot[run, 2 k Range[0, Length[run] - 1], k,
-        Table[i -> color[i], {i, 0, Max[Flatten[run], 0]}], ImageSize -> OptionValue[ImageSize],
-        AspectRatio -> OptionValue[AspectRatio]]
+        Table[i -> color[i], {i, 0, Max[Flatten[run], 0]}],
+        If[showLabels[OptionValue["Labels"], run],
+            With[{nm = Lookup[tag, "SymbolNames", Automatic]}, If[ListQ[nm], Map[nm[[# + 1]] &, run, {2}], Map[ToString, run, {2}]]],
+            None],
+        ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
 ]
 
 CyclicTagSystemEvolutionPlot[cts_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
     {run, k},
     {run, k} = sampledRun[ctsStep[cts["Appendants"]], cts, n, OptionValue["MaxRows"]];
     queuePlot[If[#["Phase"] == 0, 2 #["Data"] + 2, #["Data"]] & /@ run, k Range[0, Length[run] - 1], k,
-        {0 -> GrayLevel[0.92], 1 -> GrayLevel[0.2], 2 -> RGBColor[1, 0.85, 0.8], 4 -> RGBColor[0.7, 0.1, 0.1]},
+        If[showLabels[OptionValue["Labels"], run[[All, "Data"]]],
+            {0 -> GrayLevel[0.95], 1 -> GrayLevel[0.7], 2 -> RGBColor[1, 0.9, 0.87], 4 -> RGBColor[0.95, 0.55, 0.5]},
+            {0 -> GrayLevel[0.92], 1 -> GrayLevel[0.2], 2 -> RGBColor[1, 0.85, 0.8], 4 -> RGBColor[0.7, 0.1, 0.1]}],
+        If[showLabels[OptionValue["Labels"], run[[All, "Data"]]], Map[ToString, run[[All, "Data"]], {2}], None],
         ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
 ]
 
@@ -651,13 +693,21 @@ system4Row[c_Association] := ReplacePart[
 $stateColors = {RGBColor[0.85, 0.2, 0.2], RGBColor[0.2, 0.45, 0.85], RGBColor[0.95, 0.65, 0.1]};
 
 System4EvolutionPlot[s4_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
-    {run, k},
+    {run, k, labels},
     {run, k} = sampledRun[system4Step, s4, n, OptionValue["MaxRows"]];
-    ArrayPlot[PadRight[system4Row /@ run, Automatic, 0],
-        ColorRules -> {0 -> White, 1 -> GrayLevel[0.15], 2 -> GrayLevel[0.6], 3 -> GrayLevel[0.9],
-            4 -> $stateColors[[1]], 5 -> $stateColors[[2]], 6 -> $stateColors[[3]]},
-        FrameTicks -> rowTicks[k, Length[run]], Frame -> True,
-        ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
+    labels = If[showLabels[OptionValue["Labels"], run[[All, "Elements"]]],
+        With[{w = Max[Length /@ run[[All, "Elements"]]]},
+            PadRight[Replace[#["Elements"], {"*" -> "\[FivePointedStar]", l_List :> "{" <> StringRiffle[ToString /@ l, ","] <> "}"}, {1}], w, None] & /@ run],
+        None];
+    If[labels =!= None,
+        labeledGrid[PadRight[system4Row /@ run, Automatic, None], labels,
+            {1 -> GrayLevel[0.55], 2 -> GrayLevel[0.8], 3 -> GrayLevel[0.93], 4 -> Lighter[$stateColors[[1]], 0.3],
+             5 -> Lighter[$stateColors[[2]], 0.4], 6 -> Lighter[$stateColors[[3]], 0.3]}, k Range[0, Length[run] - 1]],
+        ArrayPlot[PadRight[system4Row /@ run, Automatic, 0],
+            ColorRules -> {0 -> White, 1 -> GrayLevel[0.15], 2 -> GrayLevel[0.6], 3 -> GrayLevel[0.9],
+                4 -> $stateColors[[1]], 5 -> $stateColors[[2]], 6 -> $stateColors[[3]]},
+            FrameTicks -> rowTicks[k, Length[run]], Frame -> True,
+            ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]]
 ]
 
 (* cells 0, 1, 2 and the active cell as 3 + the index of the state *)
@@ -691,6 +741,42 @@ Wolfram23EvolutionPlot[{q0_Integer, l0_List, h0_Integer, r0_List}, n_Integer?Non
         If[Mod[t, k] == 0, AppendTo[rows, row[]]]];
     tapePlot[Join[ConstantArray[0, shift - #[[1]]], #[[2]]] & /@ rows, k, OptionValue[ImageSize], OptionValue[AspectRatio]]
 ]
+
+
+TuringMachineEvolutionPlot[rules_List, {q0_Integer, l0_List, h0_Integer, r0_List}, n_Integer?NonNegative,
+        opts : OptionsPattern[evolutionPlot]] := Module[
+    {m = machineAssoc[rules], tape = Join[Reverse[l0], {h0}, r0], pos = Length[l0] + 1, q = q0, t = 0, rule,
+     rows = {}, shift = 0, s, colors},
+    s = numStates[m];
+    colors = Table[ColorData[97][i], {i, s}];
+    AppendTo[rows, {shift, pos, q, tape}];
+    While[t < n && q != 0,
+        rule = transition[m, q, tape[[pos]]];
+        tape[[pos]] = rule[[2]]; q = rule[[1]]; pos += rule[[3]];
+        If[pos == 0, PrependTo[tape, 0]; pos = 1; shift++];
+        If[pos > Length[tape], AppendTo[tape, 0]];
+        t++;
+        AppendTo[rows, {shift, pos, q, tape}]];
+    If[showLabels[OptionValue["Labels"], rows[[All, 4]]],
+        (* a labeled grid: the bits, the head cell colored by the state (gray once halted) *)
+        With[{w = Max[shift - #[[1]] + Length[#[[4]]] & /@ rows]},
+            Return[labeledGrid[
+                PadRight[ReplacePart[Join[ConstantArray[0, shift - #[[1]]], #[[4]]], shift - #[[1]] + #[[2]] -> 10 + #[[3]]], w, 0] & /@ rows,
+                PadRight[ReplacePart[ToString /@ Join[ConstantArray[0, shift - #[[1]]], #[[4]]], shift - #[[1]] + #[[2]] ->
+                    ToString[#[[4, #[[2]]]]]], w, "0"] & /@ rows,
+                Join[{0 -> GrayLevel[0.97], 1 -> GrayLevel[0.8], 10 -> GrayLevel[0.6]},
+                    Table[10 + i -> Lighter[colors[[i]], 0.35], {i, s}]],
+                Range[0, Length[rows] - 1]], Module]]];
+    With[{grid = PadRight[Join[ConstantArray[0, shift - #[[1]]], #[[4]] + 1] & /@ rows, Automatic, 1],
+          heads = {shift - #[[1]] + #[[2]], #[[3]]} & /@ rows},
+        ArrayPlot[grid, ColorRules -> {1 -> White, 2 -> GrayLevel[0.3]}, Mesh -> All, MeshStyle -> GrayLevel[0.85],
+            Epilog -> MapIndexed[{If[#1[[2]] == 0, GrayLevel[0.5], colors[[#1[[2]]]]], Thickness[Medium],
+                Circle[{#1[[1]] - 0.5, Length[grid] - First[#2] + 0.5}, 0.35]} &, heads],
+            FrameTicks -> rowTicks[1, Length[grid]], Frame -> True,
+            ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]]
+]
+
+ParityBlock[set_List, w_Integer?NonNegative] := encSet[2^w, set] + 1
 
 End[]
 

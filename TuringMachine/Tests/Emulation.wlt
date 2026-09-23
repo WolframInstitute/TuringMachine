@@ -152,3 +152,16 @@ VerificationTest[Head[System5EvolutionPlot[s5D1n1, 20]], Legended, TestID -> "Sy
 VerificationTest[Head[System4EvolutionPlot[s4Small, 60]], Graphics, TestID -> "System4Plot"]
 VerificationTest[Head[System3EvolutionPlot[s3D9, 100]], Graphics, TestID -> "System3Plot"]
 VerificationTest[Head[Wolfram23EvolutionPlot[w23D9, 10^5, "MaxRows" -> 50]], Graphics, TestID -> "Wolfram23Plot"]
+VerificationTest[Head /@ {TuringMachineEvolutionPlot[tmEx, cfgEx, 4], TuringMachineEvolutionPlot[tmEx, cfgEx, 60]}, {Grid, Graphics},
+    TestID -> "TuringMachinePlot"]
+VerificationTest[Head[TagSystemEvolutionPlot[TuringMachineToTagSystem[tmEx, cfgEx], 18]], Grid, TestID -> "TagPlotLabeled"]
+
+(* ::Section:: *)
+(* Parity blocks *)
+
+(* the successive scans of a block read its set back, for every set below 2^w - 2 *)
+VerificationTest[
+    AllTrue[Subsets[Range[0, 2^4 - 3]], Function[s,
+        Flatten[Position[Mod[Total /@ NestList[Mod[Accumulate[#], 2] &, ParityBlock[s, 4] - 1, 2^4 - 3], 2], 1]] - 1 == s]],
+    True, TestID -> "ParityBlockScans"]
+VerificationTest[First /@ (ParityBlock[#, 3] & /@ {{}, {0}, {1}, {0, 2}}), {2, 2, 2, 2}, TestID -> "ParityBlockStartsWith2"]

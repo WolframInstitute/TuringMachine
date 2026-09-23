@@ -879,7 +879,7 @@ findInductionHypothesisAxiom[stepProof_ProofObject, ih_] := Module[{ds, labels, 
     ds = stepProof["ProofDataset"];
     labels = Normal[Keys[ds]];
     nRows = Length[ds];
-    ihRev = ih[[2]] == ih[[1]];
+    ihRev = (ih[[2]] == ih[[1]]);
     axiomIndices = Select[Range[nRows], MatchQ[labels[[#]], {"Axiom", _}]&];
     match = SelectFirst[
         axiomIndices
@@ -976,9 +976,9 @@ scanFlipProofFor[ru_] := Module[{
     states = DeleteDuplicates[rules[[All, 1, 1]]];
     tmAx = encodeTransitionAxioms[rules];
     boundaryAxioms = Map[ForAll[x, seq[seq[x, bnd], #] == seq[x, bnd]]&, states];
-    goalD = ones[succ[n], y] == ones[n, seq[y, s1]];
-    goalL1 = seq[ones[n, x], qA] == ones[n, seq[x, qA]];
-    goalG = ones[n, seq[seq[x, s1], qB]] == seq[seq[zeros[n, x], s1], qB];
+    goalD = (ones[succ[n], y] == ones[n, seq[y, s1]]);
+    goalL1 = (seq[ones[n, x], qA] == ones[n, seq[x, qA]]);
+    goalG = (ones[n, seq[seq[x, s1], qB]] == seq[seq[zeros[n, x], s1], qB]);
     pD = FindInductiveProof[goalD, rawOnesRunDefinitions, 30];
     pL1 = FindInductiveProof[goalL1, Join[tmAx, rawOnesRunDefinitions], 30];
     pG = FindInductiveProof[goalG, Join[tmAx, rawOnesRunDefinitions, rawZerosRunDefinitions], 30];
@@ -2826,7 +2826,7 @@ $buggyMachines = {
    multiwaySystemFor is its public formal view. *)
 rawSystemFor[ru_] := rawSystemFor[ru] = Module[{st = tmStatesFor[ru], p, eq},
     If[ MemberQ[$buggyMachines, ru],
-        eq = seq[seq[ones[succ[n], seq[x, s0]], qA], bnd] == seq[zeros[succ[n], seq[x, s1]], bnd];
+        eq = (seq[seq[ones[succ[n], seq[x, s0]], qA], bnd] == seq[zeros[succ[n], seq[x, s1]], bnd]);
         <|
             "Axioms" -> rawAxiomsForMachine[ru, st],
             "IH" -> {},
@@ -5368,7 +5368,7 @@ z3IndCons[info_, xOf_, ind_] := Module[{rs = info["ranksep"], entries, k, offs, 
             {0}
         ,
         True,
-            Table[rs (-1 + 2 (j - 1) / (k - 1)), {j, k}]
+            Table[rs * (-1 + 2 (j - 1) / (k - 1)), {j, k}]
     ];
     soft = MapThread[{$indWeight, xOf[#1] - xOf[ind] - #2}&, {entries, offs}];
     goalV = SelectFirst[z3Out[info, ind], goalNodeQ, None];
@@ -5821,7 +5821,7 @@ proofDiscShapes[g_, scale_] := With[{colA = z3ColorOf[g], funcA = Association[gr
                     discVertex[
                         fs[[1]],
                         fs[[2]],
-                        scale (If[inductionNodeQ[v], $indCircleDiam, $circleDiam]),
+                        scale * (If[inductionNodeQ[v], $indCircleDiam, $circleDiam]),
                         If[inductionNodeQ[v], 1.4, 0.8]
                     ]
             ]

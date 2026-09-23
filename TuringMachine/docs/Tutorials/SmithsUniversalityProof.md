@@ -25,7 +25,7 @@ This paclet has one function for each arrow of the chain, one for each way back,
 
 ## Definition
 
-The examples: a three-state binary machine that moves both ways, started on the tape `0 1 1`; a small 2-tag system; Smith's cyclic tag system `1 10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and two small System 5 programs.
+The examples: a three-state binary machine that moves both ways, started on the tape `011`; a small 2-tag system; Smith's cyclic tag system with the appendants `1` and `10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and two small System 5 programs.
 
 ```wl
 machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}};
@@ -103,7 +103,7 @@ TagSystemEvolution[tag3, 5]
 
 Smith's System 5 keeps a bag of integers and a list of rules. Every step decrements the bag and increments the rules; when a bag element reaches 0 it is removed and the next rule is merged into the bag, an integer already present cancelling. It emulates the *doubled* cyclic tag system, which has every bit of the working string twice and an empty appendant after each doubled one. A bit becomes two pairs of bag integers, with gaps 1 for a 0 and 2 for a 1.
 
-Smith's example, `1 10` on `01`, for two cycles:
+Smith's example with the appendants `1` and `10` on `01`, for two cycles:
 
 ```wl
 s5 = CyclicTagSystemToSystem5[cts, 2]

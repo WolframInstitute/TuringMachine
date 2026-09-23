@@ -63,6 +63,8 @@ PacletObject[
           "WolframInstitute`TuringMachine`System4EvolutionPlot",
           "WolframInstitute`TuringMachine`System3EvolutionPlot",
           "WolframInstitute`TuringMachine`Wolfram23EvolutionPlot",
+          "WolframInstitute`TuringMachine`TuringMachineEvolutionPlot",
+          "WolframInstitute`TuringMachine`ParityBlock",
           "WolframInstitute`TuringMachine`InductiveProofs`DecodeTuringMachineRules",
           "WolframInstitute`TuringMachine`InductiveProofs`RunMachine",
           "WolframInstitute`TuringMachine`InductiveProofs`CompressToRunLength",

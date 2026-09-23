@@ -24,7 +24,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The run of Smith's example `1 10` on `01`:
+The run of Smith's example with the appendants `1` and `10` on `01`:
 
 ```wl
 run = CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 12]

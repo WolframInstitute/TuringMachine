@@ -12,11 +12,11 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Usage
 
-<code>[Wolfram23ToSystem5]()[*config*, *w*, *b*]</code> decodes the blocks of width `2^`*w* from the head of the wolfram23 configuration *config* up to the first 0 to a System 5 bag, reading the band *b*.
+<code>[Wolfram23ToSystem5]()[*config*, *w*, *b*]</code> decodes the blocks of width <code>2^*w*</code> from the head of the wolfram23 configuration *config* up to the first 0 to a System 5 bag, reading the band *b*.
 
 ## Details & Options
 
-- The cells from the head to the first 0 on its right must be 1s and 2s forming whole blocks of `2^`*w* cells. Their XOR, read by *b* successive parity scans, gives the parity set, which must be even; `x` gives the bag element `x/2 + 1`. Otherwise the result is <code>[Missing]()</code>`["NotAnEncoding"]`.
+- The cells from the head to the first 0 on its right must be 1s and 2s forming whole blocks of <code>2^*w*</code> cells. Their XOR, read by *b* successive parity scans, gives the parity set, which must be even; `x` gives the bag element `x/2 + 1`. Otherwise the result is <code>[Missing]()</code>`["NotAnEncoding"]`.
 - The decode is meaningful at the times the proof schedules: wolfram23 back at the left end of its tape in state B. At other times it may return a bag that is not a configuration of the emulated system.
 - It transcribes the Lean definition `Smith.decodeBlocks` of the formal proof in the paclet repository (`Proofs/`), and the paclet tests compare the two on shared vectors.
 

@@ -30,7 +30,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The tag system of a three-state machine that moves both ways, started on the tape `0 1 1`, with the tag times of its first four steps:
+The tag system of a three-state machine that moves both ways, started on the tape `011`, with the tag times of its first four steps:
 
 ```wl
 tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]

@@ -22,7 +22,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The bag of Smith's example decodes to `0 0 1 1`, the doubled `01`:
+The bag of Smith's example decodes to `0011`, the doubled `01`:
 
 ```wl
 System5ToCyclicTagSystem[{1, 2, 3, 4, 5, 7, 8, 10}]

@@ -24,7 +24,7 @@ RelatedGuides: [TuringMachine]
 
 ## Basic Examples
 
-Run the binary-incrementer machine 453 on the tape `1 0 1`:
+Run the binary-incrementer machine 453 on the tape `101`:
 
 ```wl
 RunMachine[DecodeTuringMachineRules[453, 2, 2], {s1, s0, s1}]

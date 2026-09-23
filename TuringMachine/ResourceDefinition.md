@@ -123,7 +123,7 @@ GraphicsRow[OneSidedTuringMachinePlot[{600720, 3, 2}, #, 16, "LabelOutput" -> Fa
 
 ---
 
-Carry Smith's cyclic tag example `1 10` on the working string `01` to his System 5 for one cycle of its appendants:
+Carry Smith's cyclic tag example with the appendants `1` and `10` on the working string `01` to his System 5 for one cycle of its appendants:
 
 ```wl
 CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]

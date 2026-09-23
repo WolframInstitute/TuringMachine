@@ -23,7 +23,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-Smith's example of p. 29, the cyclic tag system `1 10` on the working string `01`, for one cycle:
+Smith's example of p. 29, the cyclic tag system with the appendants `1` and `10` on the working string `01`, for one cycle:
 
 ```wl
 CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]
