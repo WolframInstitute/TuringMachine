@@ -142,3 +142,13 @@ With[{s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]},
                 Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[s4, 7, 120]], 50000, #1 == 2 && #2 == 123 &]],
                 Length[d4]],
             d4, TestID -> "Wolfram23TracksSystem4"]]]
+
+(* ::Section:: *)
+(* Plots *)
+
+VerificationTest[Head[TagSystemEvolutionPlot[TuringMachineToTagSystem[tmEx, cfgEx], 85]], Graphics, TestID -> "TagPlot"]
+VerificationTest[Head[CyclicTagSystemEvolutionPlot[ctsD1, 40]], Graphics, TestID -> "CyclicTagPlot"]
+VerificationTest[Head[System5EvolutionPlot[s5D1n1, 20]], Legended, TestID -> "System5Plot"]
+VerificationTest[Head[System4EvolutionPlot[s4Small, 60]], Graphics, TestID -> "System4Plot"]
+VerificationTest[Head[System3EvolutionPlot[s3D9, 100]], Graphics, TestID -> "System3Plot"]
+VerificationTest[Head[Wolfram23EvolutionPlot[w23D9, 10^5, "MaxRows" -> 50]], Graphics, TestID -> "Wolfram23Plot"]

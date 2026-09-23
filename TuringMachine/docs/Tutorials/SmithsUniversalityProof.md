@@ -35,7 +35,6 @@ cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>;
 program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>;
 twoRules = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>;
 small = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>;
-cellColors = {0 -> White, 1 -> LightGray, 2 -> Gray};
 ```
 
 ## A Turing machine as a 2-tag system
@@ -54,22 +53,16 @@ The alphabet has `1 + 84 s` symbols for states below *s*:
 Length[tag["Productions"]]
 ```
 
-The run of the tag system during those four steps:
+The run of the tag system during those four steps, drawn by <code>[TagSystemEvolutionPlot]()</code>: each row is a tag word at its place in the queue, each color a kind of symbol:
 
 ```wl
-tagRun = TagSystemEvolution[tag, 85]
-```
-
-The run drawn, one row per tag step:
-
-```wl
-ArrayPlot[PadRight[tagRun], ColorFunction -> "Rainbow"]
+TagSystemEvolutionPlot[tag, 85]
 ```
 
 At the tag times the words decode, by <code>[TagSystemToTuringMachine]()</code>, to the machine's configurations:
 
 ```wl
-TagSystemToTuringMachine[#, 3] & /@ tagRun[[tag["TagTimes"] + 1]]
+TagSystemToTuringMachine[#, 3] & /@ TagSystemEvolution[tag, 85][[tag["TagTimes"] + 1]]
 ```
 
 ## A 2-tag system as a cyclic tag system
@@ -80,6 +73,12 @@ The cyclic tag system:
 
 ```wl
 cts3 = TagSystemToCyclicTagSystem[tag3]
+```
+
+Its run, drawn by <code>[CyclicTagSystemEvolutionPlot]()</code>; the rows where a cycle of the six appendants starts are marked in red:
+
+```wl
+CyclicTagSystemEvolutionPlot[cts3, 30]
 ```
 
 Its configurations at the start of every cycle:
@@ -110,16 +109,16 @@ Smith's example, `1 10` on `01`, for two cycles:
 s5 = CyclicTagSystemToSystem5[cts, 2]
 ```
 
-Its run:
+Its run, drawn by <code>[System5EvolutionPlot]()</code>: the bag at every step, red after a rule is popped:
 
 ```wl
-run5 = System5Evolution[s5, 1000]
+System5EvolutionPlot[s5, 1000]
 ```
 
 The bags decode, by <code>[System5ToCyclicTagSystem]()</code>, to the run of the doubled cyclic tag system:
 
 ```wl
-First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ run5[[All, "Bag"]]]]
+First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ System5Evolution[s5, 1000][[All, "Bag"]]]]
 ```
 
 The run of the doubled cyclic tag system, for comparison:
@@ -144,22 +143,23 @@ A smaller program with two rules is shown in full. Its parameters:
 params = EmulationParameters[twoRules]
 ```
 
-Its System 4 tape, `1 + 2 f + 8 f r` elements:
+Its System 4 tape has `1 + 2 f + 8 f r` elements:
 
 ```wl
-s4 = System5ToSystem4[twoRules, params["f"]]
+Length[System5ToSystem4[twoRules, params["f"]]["Elements"]]
 ```
 
-The configurations of the run at which the head is back at the left end in state B:
+Its run, drawn by <code>[System4EvolutionPlot]()</code>: stars black, sets gray, the active element colored by the state (A red, B blue, C orange):
 
 ```wl
-events = System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]
+System4EvolutionPlot[System5ToSystem4[twoRules, params["f"]], 20000]
 ```
 
-Decoded by <code>[System4ToSystem5]()</code>, they give the System 5 bags in order, then the decrements of the terminal phase:
+Each time the head is back at the left end in state B, the leading sets decode by <code>[System4ToSystem5]()</code> to a bag. In order, consecutive repeats removed, they are the System 5 bags, then the decrements of the terminal phase:
 
 ```wl
-First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, params["Band"]] & /@ Values[events]]]
+First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, params["Band"]] & /@
+    Values[System4Evolution[System5ToSystem4[twoRules, params["f"]], 10^6, #["Active"] == 0 && #["State"] === "B" &]]]]
 ```
 
 The System 5 run, for comparison:
@@ -181,7 +181,7 @@ s4small = System5ToSystem4[small, 1]
 Its run:
 
 ```wl
-System4Evolution[s4small, 1000]
+System4EvolutionPlot[s4small, 200]
 ```
 
 Its decodes at its left-end turns:
@@ -190,34 +190,28 @@ Its decodes at its left-end turns:
 System4ToSystem5[#, 20] & /@ Values[System4Evolution[s4small, 1000, #["Active"] == 0 && #["State"] === "B" &]]
 ```
 
-The System 3 tape, with blocks of width `2^7` and a left end of 120 zeros:
+The run of its System 3 tape, with blocks of width `2^7` and a left end of 120 zeros, drawn by <code>[System3EvolutionPlot]()</code>; cells 1 are gray, 2 black, and the head is colored by the state:
 
 ```wl
-s3 = System4ToSystem3[s4small, 7, 120]
+System3EvolutionPlot[System4ToSystem3[s4small, 7, 120], 20000]
 ```
 
-The wolfram23 configuration:
+The tape has this many cells:
 
 ```wl
-w23 = System3ToWolfram23[s3]
+Length[System3ToWolfram23[System4ToSystem3[s4small, 7, 120]][[4]]] + 124
 ```
 
-The first 3000 steps of wolfram23, which scan the first block:
+The run of wolfram23, drawn by <code>[Wolfram23EvolutionPlot]()</code> with one row every 150 steps; the head is red in state A and blue in state B:
 
 ```wl
-ArrayPlot[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]][[100 ;; 400]] & /@ Wolfram23Evolution[w23, 3000][[;; ;; 10]], ColorRules -> cellColors]
+Wolfram23EvolutionPlot[System3ToWolfram23[System4ToSystem3[s4small, 7, 120]], 60000]
 ```
 
-The first six times wolfram23 is back at the left end of the tape in state B, 123 cells from the edge:
+The first six times wolfram23 is back at the left end of the tape in state B, 123 cells from the edge, the blocks right of the head decode by <code>[Wolfram23ToSystem5]()</code> to System 4's bags:
 
 ```wl
-returns = Take[Wolfram23Evolution[w23, 50000, #1 == 2 && #2 == 123 &], 6]
-```
-
-Their decodes, by <code>[Wolfram23ToSystem5]()</code>, are System 4's:
-
-```wl
-Wolfram23ToSystem5[#, 7, 20] & /@ Values[returns]
+Wolfram23ToSystem5[#, 7, 20] & /@ Values[Take[Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[s4small, 7, 120]], 50000, #1 == 2 && #2 == 123 &], 6]]
 ```
 
 ## How large the emulation is

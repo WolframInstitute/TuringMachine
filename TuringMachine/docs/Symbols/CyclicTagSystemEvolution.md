@@ -5,7 +5,7 @@ Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/ref/CyclicTagSystemEvolution
 Keywords: [evolution, cyclic tag system, Smith, universality]
-SeeAlso: [TagSystemToCyclicTagSystem, CyclicTagSystemToTagSystem, CyclicTagSystemToSystem5, TagSystemEvolution]
+SeeAlso: [TagSystemToCyclicTagSystem, CyclicTagSystemToTagSystem, CyclicTagSystemToSystem5, TagSystemEvolution, CyclicTagSystemEvolutionPlot]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [SmithsUniversalityProof]
 ---

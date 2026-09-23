@@ -5,7 +5,7 @@ Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/ref/System4Evolution
 Keywords: [evolution, System 4 tape, Smith, universality]
-SeeAlso: [System5ToSystem4, System4ToSystem5, System4ToSystem3, EmulationParameters]
+SeeAlso: [System5ToSystem4, System4ToSystem5, System4ToSystem3, EmulationParameters, System4EvolutionPlot]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [SmithsUniversalityProof]
 ---

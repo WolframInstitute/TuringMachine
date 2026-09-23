@@ -72,6 +72,12 @@ Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic,
 - [System4Evolution](paclet:WolframInstitute/TuringMachine/ref/System4Evolution)
 - [System3Evolution](paclet:WolframInstitute/TuringMachine/ref/System3Evolution)
 - [Wolfram23Evolution](paclet:WolframInstitute/TuringMachine/ref/Wolfram23Evolution)
+- [TagSystemEvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/TagSystemEvolutionPlot)
+- [CyclicTagSystemEvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystemEvolutionPlot)
+- [System5EvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/System5EvolutionPlot)
+- [System4EvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/System4EvolutionPlot)
+- [System3EvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/System3EvolutionPlot)
+- [Wolfram23EvolutionPlot](paclet:WolframInstitute/TuringMachine/ref/Wolfram23EvolutionPlot)
 - [EmulationParameters](paclet:WolframInstitute/TuringMachine/ref/EmulationParameters)
 - [EmulationSizes](paclet:WolframInstitute/TuringMachine/ref/EmulationSizes)
 

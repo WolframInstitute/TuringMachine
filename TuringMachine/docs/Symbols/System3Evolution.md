@@ -5,7 +5,7 @@ Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/ref/System3Evolution
 Keywords: [evolution, System 3 tape, Smith, universality]
-SeeAlso: [System4ToSystem3, System3ToWolfram23, Wolfram23Evolution]
+SeeAlso: [System4ToSystem3, System3ToWolfram23, Wolfram23Evolution, System3EvolutionPlot]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [SmithsUniversalityProof]
 ---

@@ -85,6 +85,15 @@ Alex Smith's proof that Wolfram's 2,3 Turing machine is universal, formalized in
 - `System3Evolution` the run of a System 3 tape
 - `Wolfram23Evolution` the run of Wolfram's 2,3 machine, or the configurations at selected steps
 
+### Plots
+
+- `TagSystemEvolutionPlot` the run of a 2-tag system, each word at its place in the queue
+- `CyclicTagSystemEvolutionPlot` the run of a cyclic tag system, the starts of the cycles marked
+- `System5EvolutionPlot` the bag of a System 5 program along its run
+- `System4EvolutionPlot` the tape of System 4 along its run, the head colored by the state
+- `System3EvolutionPlot` the tape of System 3 along its run
+- `Wolfram23EvolutionPlot` the tape of Wolfram's 2,3 machine along its run
+
 ### Parameters
 
 - `EmulationParameters` the parameters of the emulation of a System 5 program, exact or in closed form

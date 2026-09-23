@@ -5,7 +5,7 @@ Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/ref/System5Evolution
 Keywords: [evolution, System 5 program, Smith, universality]
-SeeAlso: [CyclicTagSystemToSystem5, System5ToCyclicTagSystem, System5ToSystem4, EmulationParameters]
+SeeAlso: [CyclicTagSystemToSystem5, System5ToCyclicTagSystem, System5ToSystem4, EmulationParameters, System5EvolutionPlot]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [SmithsUniversalityProof]
 ---

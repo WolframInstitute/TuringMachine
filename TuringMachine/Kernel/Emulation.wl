@@ -68,6 +68,18 @@ EmulationParameters::usage = "EmulationParameters[s5] gives the parameters of th
 
 EmulationSizes::usage = "EmulationSizes[machine, config, n] gives the size of every stage of the emulation of n steps of machine from config, without building the large stages."
 
+TagSystemEvolutionPlot::usage = "TagSystemEvolutionPlot[tag, n] plots the words of the 2-tag system tag for n steps, each word at its position in the queue."
+
+CyclicTagSystemEvolutionPlot::usage = "CyclicTagSystemEvolutionPlot[cts, n] plots the working strings of the cyclic tag system cts for n steps, each at its position in the queue, the rows where a cycle starts marked."
+
+System5EvolutionPlot::usage = "System5EvolutionPlot[s5, n] plots the bag of the System 5 program s5 at every step of its run, the steps where a rule is popped marked."
+
+System4EvolutionPlot::usage = "System4EvolutionPlot[s4, n] plots the tape of the System 4 configuration s4 at every step: sets, stars and the active element colored by the state."
+
+System3EvolutionPlot::usage = "System3EvolutionPlot[s3, n] plots the tape of the System 3 configuration s3 at every step, the active cell colored by the state."
+
+Wolfram23EvolutionPlot::usage = "Wolfram23EvolutionPlot[config, n] plots the tape of Wolfram's 2,3 machine from config for n steps, the head colored by the state."
+
 Begin["`Private`"]
 
 (* ::Section:: *)
@@ -576,6 +588,109 @@ CyclicTagSystemEvolution[cts_Association, n_Integer?NonNegative] :=
 
 CyclicTagSystemEvolution[cts_Association, n_Integer?NonNegative, crit_] :=
     evolveSelect[ctsStep[cts["Appendants"]], cts, n, crit]
+
+
+(* ::Section:: *)
+(* Plots *)
+
+Options[evolutionPlot] = {"MaxRows" -> 400, ImageSize -> Automatic, AspectRatio -> 1};
+
+(* the configurations of a run at no more than "MaxRows" evenly spaced steps, without
+   keeping the others *)
+sampledRun[step_, c0_, n_, maxRows_] := Module[{k = Max[1, Ceiling[n/maxRows]], c = c0, next, t = 0, out = {c0}},
+    While[t < n && !MissingQ[next = step[c]],
+        c = next; t++;
+        If[Mod[t, k] == 0, AppendTo[out, c]]];
+    {out, k}
+]
+
+rowTicks[k_, rows_] := {{Table[{i, (i - 1) k}, {i, 1, rows, Max[1, Floor[rows/6]]}], None}, {None, None}}
+
+(* a queue: row t starts where the word has been consumed to, so the run slants *)
+queuePlot[rows_List, offsets_List, k_, rules_, opts___] := Module[{w = Max[offsets + Length /@ rows]},
+    ArrayPlot[MapThread[PadRight[Join[ConstantArray[-1, #2], #1], w, -1] &, {rows, offsets}],
+        ColorRules -> Append[rules, -1 -> White], FrameTicks -> rowTicks[k, Length[rows]],
+        Frame -> True, opts]
+]
+
+TagSystemEvolutionPlot[tag_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
+    {run, k, s = Lookup[tag, "States", None], color},
+    {run, k} = sampledRun[tagStep[tag["Productions"]], tag["Word"], n, OptionValue["MaxRows"]];
+    (* symbols colored by their kind when the tag system comes from a machine, else by index *)
+    color[0] = GrayLevel[0.85];
+    color[i_] := If[IntegerQ[s], ColorData[54][Quotient[i - 1, 4 s] + 1], ColorData[54][i]];
+    queuePlot[run, 2 k Range[0, Length[run] - 1], k,
+        Table[i -> color[i], {i, 0, Max[Flatten[run], 0]}], ImageSize -> OptionValue[ImageSize],
+        AspectRatio -> OptionValue[AspectRatio]]
+]
+
+CyclicTagSystemEvolutionPlot[cts_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
+    {run, k},
+    {run, k} = sampledRun[ctsStep[cts["Appendants"]], cts, n, OptionValue["MaxRows"]];
+    queuePlot[If[#["Phase"] == 0, 2 #["Data"] + 2, #["Data"]] & /@ run, k Range[0, Length[run] - 1], k,
+        {0 -> GrayLevel[0.92], 1 -> GrayLevel[0.2], 2 -> RGBColor[1, 0.85, 0.8], 4 -> RGBColor[0.7, 0.1, 0.1]},
+        ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
+]
+
+System5EvolutionPlot[s5_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
+    {run, k, pops},
+    {run, k} = sampledRun[system5Step, s5, n, OptionValue["MaxRows"]];
+    pops = Flatten[Position[Differences[Length /@ run[[All, "Rules"]]], _?Negative]];
+    ListPlot[{Catenate[MapIndexed[Thread[{#1, (First[#2] - 1) k}] &, run[[All, "Bag"]]]],
+            Catenate[Thread[{#, pops[[#2]] k}] & @@@ Transpose[{run[[pops + 1, "Bag"]], Range[Length[pops]]}]]},
+        PlotStyle -> {Directive[GrayLevel[0.2], PointSize[Small]], Directive[RGBColor[0.8, 0.1, 0.1], PointSize[Medium]]},
+        ScalingFunctions -> {None, "Reverse"}, Frame -> True, FrameLabel -> {"bag element", "step"},
+        PlotLegends -> {"bag", "after a pop"}, ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
+]
+
+(* 1 star, 2 set, 3 empty set, 4/5/6 the active element in state A/B/C *)
+system4Row[c_Association] := ReplacePart[
+    Replace[c["Elements"], {"*" -> 1, {} -> 3, _List -> 2}, {1}],
+    If[c["Active"] < Length[c["Elements"]], {c["Active"] + 1 -> (c["State"] /. {"A" -> 4, "B" -> 5, "C" -> 6})}, {}]]
+
+$stateColors = {RGBColor[0.85, 0.2, 0.2], RGBColor[0.2, 0.45, 0.85], RGBColor[0.95, 0.65, 0.1]};
+
+System4EvolutionPlot[s4_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
+    {run, k},
+    {run, k} = sampledRun[system4Step, s4, n, OptionValue["MaxRows"]];
+    ArrayPlot[PadRight[system4Row /@ run, Automatic, 0],
+        ColorRules -> {0 -> White, 1 -> GrayLevel[0.15], 2 -> GrayLevel[0.6], 3 -> GrayLevel[0.9],
+            4 -> $stateColors[[1]], 5 -> $stateColors[[2]], 6 -> $stateColors[[3]]},
+        FrameTicks -> rowTicks[k, Length[run]], Frame -> True,
+        ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]
+]
+
+(* cells 0, 1, 2 and the active cell as 3 + the index of the state *)
+tapeRow[left_, head_, right_, stateIndex_] := Join[Reverse[left], {3 + stateIndex}, right]
+
+tapePlot[rows_, k_, size_, aspect_] := ArrayPlot[PadRight[rows, Automatic, 0],
+    ColorRules -> {0 -> White, 1 -> GrayLevel[0.65], 2 -> GrayLevel[0.15],
+        4 -> $stateColors[[1]], 5 -> $stateColors[[2]], 6 -> $stateColors[[3]]},
+    FrameTicks -> rowTicks[k, Length[rows]], Frame -> True, ImageSize -> size, AspectRatio -> aspect]
+
+System3EvolutionPlot[s3_Association, n_Integer?NonNegative, opts : OptionsPattern[evolutionPlot]] := Module[
+    {run, k},
+    {run, k} = sampledRun[system3Step, s3, n, OptionValue["MaxRows"]];
+    tapePlot[tapeRow[#["Left"], #["Head"], #["Right"], #["State"] /. {"A" -> 1, "B" -> 2, "C" -> 3}] & /@ run,
+        k, OptionValue[ImageSize], OptionValue[AspectRatio]]
+]
+
+Wolfram23EvolutionPlot[{q0_Integer, l0_List, h0_Integer, r0_List}, n_Integer?NonNegative,
+        opts : OptionsPattern[evolutionPlot]] := Module[
+    {tape = Join[Reverse[l0], {h0}, r0], pos = Length[l0] + 1, q = q0, t = 0, rule, rows, k, row, shift = 0},
+    k = Max[1, Ceiling[n/OptionValue["MaxRows"]]];
+    (* rows hold absolute positions: a cell added at the left end shifts the earlier rows *)
+    row[] := {shift, ReplacePart[tape, pos -> 3 + q]};
+    rows = {row[]};
+    While[t < n,
+        rule = $wolfram23Table[[q, tape[[pos]] + 1]];
+        tape[[pos]] = rule[[2]]; q = rule[[1]]; pos += rule[[3]];
+        If[pos == 0, PrependTo[tape, 0]; pos = 1; shift++];
+        If[pos > Length[tape], AppendTo[tape, 0]];
+        t++;
+        If[Mod[t, k] == 0, AppendTo[rows, row[]]]];
+    tapePlot[Join[ConstantArray[0, shift - #[[1]]], #[[2]]] & /@ rows, k, OptionValue[ImageSize], OptionValue[AspectRatio]]
+]
 
 End[]
 

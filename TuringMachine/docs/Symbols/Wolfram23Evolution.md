@@ -5,7 +5,7 @@ Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/ref/Wolfram23Evolution
 Keywords: [wolfram23, Wolfram 2,3 Turing machine, evolution, universality]
-SeeAlso: [System3ToWolfram23, Wolfram23ToSystem5, EmulationSizes]
+SeeAlso: [System3ToWolfram23, Wolfram23ToSystem5, EmulationSizes, Wolfram23EvolutionPlot]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [SmithsUniversalityProof]
 ---
