@@ -46,8 +46,8 @@ initial condition that emulates forever, p. 21-22) is {bpref "Smith.wolfram23_in
 definition, from which wolfram23 runs for ever and reproduces every prefix of the
 run of the machine; the chapter on the infinite form describes its construction.
 Both have corollaries with the tape existential,
-{bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] and {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`], the form in which they were
-first proved. The chapter on open items lists what remains open.
+{bpref "Smith.wolfram23_universal"}[`Smith.wolfram23_universal`] and {bpref "Smith.wolfram23_infinite"}[`Smith.wolfram23_infinite`]. The chapter on open items lists
+what remains open.
 
 # The statements
 
@@ -149,8 +149,7 @@ the infinite form reads it clause by clause.
   appendants, and the parameters grow exponentially in the number of System 5
   rules (the chapter on Conjecture 0 lists them). That they are computed without
   running anything is Smith's answer (p. 20-26) to "is the initial condition doing
-  the computation", and it was the main finding of the independent review (the
-  chapter on open items, item 1, now done).
+  the computation".
 - The times are existential. Nothing in the statement lets an observer of the
   wolfram23 run locate `times i`, and nothing is said about what the decoder returns
   at other times.
@@ -212,6 +211,4 @@ which the links were proved (that order is in [`docs/PLAN.md`](https://github.co
 has: an orientation paragraph; the mathematics in prose with the formal statements
 linked to their declarations; notes and caveats. A reader checking a single link
 needs only that chapter, its module, and the chapter on the machine model. The
-chapter on the infinite form was written as a specification before its proof and
-reconciled with the source when the theorem landed; the chapter on open items is
-the list of debts.
+chapter on open items lists what is not proved.

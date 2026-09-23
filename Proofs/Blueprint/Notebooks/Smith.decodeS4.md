@@ -1,0 +1,56 @@
+---
+Template: ComputationalEssay
+ResourceType: ComputationalEssay
+Name: Reading the bag off System 4
+Author: Wolfram Institute
+Context: WolframInstitute`TuringMachine`
+Date: 2026
+Description: A computational footnote to the Lean declaration Smith.decodeS4
+Abstract: With the parameters of the proof, the leading sets of System 4, each time its head is back at the left end in state B, decode to the System 5 bags in order, then the decrements of a terminal phase.
+Keywords: [Wolfram 2,3 Turing machine, universality, Lean, Smith.decodeS4]
+Links: ["[Smith.decodeS4 in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+---
+
+The functions come from the paclet `WolframInstitute/TuringMachine`:
+
+```wl
+#| eval: false
+PacletInstall["https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/WolframInstitute__TuringMachine.paclet"];
+Needs["WolframInstitute`TuringMachine`"]
+```
+
+A System 5 program with two rules:
+
+```wl
+s5 = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
+```
+
+The parameters of its emulation:
+
+```wl
+p = EmulationParameters[s5]
+```
+
+The System 4 tape:
+
+```wl
+s4 = System5ToSystem4[s5, p["f"]]
+```
+
+The configurations of its run at which the head is back at the left end in state B:
+
+```wl
+events = System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]
+```
+
+Their decodes, consecutive repeats removed:
+
+```wl
+First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, p["Band"]] & /@ Values[events]]]
+```
+
+The System 5 run:
+
+```wl
+System5Evolution[s5, 100]
+```

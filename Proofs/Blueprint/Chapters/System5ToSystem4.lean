@@ -12,6 +12,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import BiTM.System4
 import BiTM.System5ToSystem4
 import Smith.System4Runs
@@ -21,6 +22,7 @@ import Smith.Conjecture0
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T2: from System 5 to System 4" =>
 
@@ -57,6 +59,9 @@ the active element and a state A, B or C: the five rules above, dispatched on th
 state and on the kind of the active element. The result is `none` when the active
 index is past the end of the tape (the halt) and in two branches that an encoder tape
 never reaches (the notes below). `BiTM.System4.nSteps` iterates it.
+:::
+
+:::notebook "BiTM.System4.step"
 :::
 
 # The encoder and the relation
@@ -106,6 +111,9 @@ entry `k`, `2f` pairs, star, the all-integers set `0..3f`, `2f - 2` pairs). The 
 stars that open the rule set and the all-integers set are the ones [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/REVIEW.md)
 section 4.3 found missing from the old transcription; without them the System 4 run
 is observably different (the module header of [`BiTM/System5ToSystem4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/System5ToSystem4.lean)).
+:::
+
+:::notebook "BiTM.system5ToSystem4"
 :::
 
 :::lemma_ "Smith.system5ToSystem4_eq" (parent := "t2_system5_to_system4") (lean := "Smith.system5ToSystem4_eq")
@@ -491,6 +499,9 @@ and maps `x` to `x / 2 + 1`, returning `none` if an odd integer is set.
 `x / 2 + 1`, otherwise `none`.
 :::
 
+:::notebook "Smith.decodeS4"
+:::
+
 :::theorem "Smith.RepS4_decode" (parent := "t2_system5_to_system4") (lean := "Smith.RepS4_decode") (tags := "T2, decoder")
 If {uses "Smith.RepS4"}[] `c s f j h` holds, then {uses "Smith.decodeS4"}[]
 `c (2f - 2j - 2)` is `some l` with `l` a permutation of the bag of `s`: at a scheduled
@@ -551,9 +562,9 @@ The finish-time bound. Smith's T2 (p. 20-21) computes `f` from an a priori bound
 `finishTime P <= 3^(n-1) M` on the System 5 run. That bound is not formalized:
 {bpref "Smith.conjecture4_finite"}[`Smith.conjecture4_finite`] takes the System 5 run length `h` as its budget and
 requires `k + 2h < f` on the rule entries and `2h < f`, a differently shaped
-condition. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 still advertises `finishTime`; the M3 notes say it
-is left undone. This is one of the ingredients of a closed-form initial condition
-({ref "open-items"}[the chapter on open items]).
+condition. The closed-form initial condition of {ref "conjecture0"}[the chapter on
+Conjecture 0] bounds that run length by {bpref "Smith.System5.run_bound"}[`Smith.System5.run_bound`] instead, a coarser
+bound than Smith's that plays the same role.
 
 Two branches of {bpref "BiTM.System4.step"}[`BiTM.System4.step`] differ from `system4.pl`: rule 5 with the star
 last returns `none` (the Perl autovivifies a set past the end), and rule 4 at index 0

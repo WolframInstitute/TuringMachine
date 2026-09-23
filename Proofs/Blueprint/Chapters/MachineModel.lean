@@ -10,6 +10,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import TM.Defs
 import BiTM.Basic
 import BiTM.Wolfram23Valid
@@ -20,6 +21,7 @@ import Smith.Conjecture0
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "The machine model" =>
 
@@ -141,6 +143,9 @@ symbol before, then the written symbol, the move and the new state. Every other
 unused.
 :::
 
+:::notebook "BiTM.wolfram23"
+:::
+
 Wolfram's table, in the form of his own presentation: each entry is the symbol
 written, the move and the new state.
 
@@ -166,8 +171,8 @@ written, the move and the new state.
 Entry by entry this is Wolfram's rule 596440 as published (`A0 -> 1RB`,
 `A1 -> 2LA`, `A2 -> 1LA`, `B0 -> 2LA`, `B1 -> 2RB`, `B2 -> 0RA`) and Smith's
 System 0 table on p. 3, whose four rows read: before (symbol, state), after
-(symbol, new active position and state). The independent review of 2026-09-21
-checked all six entries against both sources and the p. 47 trace. State 0 is
+(symbol, new active position and state); all six entries agree with both
+sources and with the p. 47 trace. State 0 is
 never entered from states 1 and 2, so the halt row is dead.
 
 :::definition "BiTM.IsValidWolfram23Cfg" (parent := "machine-model-wolfram23") (lean := "BiTM.IsValidWolfram23Cfg")
@@ -501,7 +506,7 @@ By computation (`rfl`): the rule `B2 -> 0RA` and `BiTM.readHead []`.
   `exitRight sys3` are both `none`; the exit
   that the theorems report is realized after relabeling, by the `BiTM` step
   {bpref "Smith.wolfram23_exit_step"}[`Smith.wolfram23_exit_step`] (`B2 -> 0RA` onto the implicit blank). The
-  Lookahead header says so since 2026-09-22; `exitRight` records one-cell exits
+  Lookahead header says so; `exitRight` records one-cell exits
   only and is used only by the p. 47 check.
 - Two branches of {bpref "BiTM.System4.step"}[`BiTM.System4.step`]
   ({ref "system5-to-system4"}[the chapter on System 5 to System 4]) and none of

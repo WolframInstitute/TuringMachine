@@ -87,7 +87,8 @@ End[];
 EndPackage[];
 
 (* Script entry: arguments are the site directory and the base path. *)
-If[MemberQ[$CommandLine, "-file"] || MemberQ[$CommandLine, "-script"],
+If[$EvaluationEnvironment === "Script" && $ScriptCommandLine =!= {} &&
+        FileBaseName[First[$ScriptCommandLine]] === "CloudDeployBlueprint",
   Module[{args = Rest[$ScriptCommandLine], siteDir, basePath},
     siteDir = If[Length[args] >= 1, args[[1]], "_out/site/html-multi"];
     basePath = If[Length[args] >= 2, args[[2]], "wolfram23-blueprint"];

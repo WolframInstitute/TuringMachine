@@ -11,6 +11,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import TagSystem.Basic
 import BiTM.XorMerge
 import BiTM.System5
@@ -25,6 +26,7 @@ import Smith.ConjectureFive
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T1: from a cyclic tag system to System 5" =>
 
@@ -132,9 +134,8 @@ The clause `1 <= k` forbids a target that stands still. It does not by itself ma
 a simulation meaningful: a relation that ignores the source is a `ForwardSim` for
 any target that never gets stuck. The content of each link is in its relation,
 which is a decoder graph or an encoding invariant, and the headline conclusions
-are stated as decoder equalities. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 6 says this, and the
-docstring of `ForwardSim` in [`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean) now says it too (item 7 of
-the {ref "open-items"}[chapter on open items]).
+are stated as decoder equalities. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 6 and the docstring of `ForwardSim` in
+[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean) say this.
 
 # Doubling
 
@@ -241,6 +242,9 @@ XOR-merged into the bag ({uses "BiTM.xorMerge"}[]) and dropped from the rule
 list; otherwise the step is the pure decrement. `BiTM.System5.nSteps` iterates it.
 :::
 
+:::notebook "BiTM.System5.step"
+:::
+
 :::definition "BiTM.ctsToSystem5" (parent := "cts_to_system5") (lean := "BiTM.ctsToSystem5")
 The encoder, Smith's `cy2s5.pl` (p. 28-29). `ctsToSystem5 C cfg N` has as bag the
 working string of `cfg` doubled bit by bit into pairs from the counter 1, and as
@@ -248,6 +252,9 @@ rules `N` full cycles over the appendants of `C` starting at the appendant the
 next step of `C` reads, each original appendant as a block of four System 5
 rules (the two rules of its doubled appendant and the two empty rules of the
 blank appendant that follows it).
+:::
+
+:::notebook "BiTM.ctsToSystem5"
 :::
 
 :::lemma_ "Smith.ctsToSystem5_represents" (parent := "cts_to_system5") (lean := "Smith.ctsToSystem5_represents")
@@ -451,6 +458,9 @@ The decoder of this link: sort the bag, then read it two integers at a time from
 the bound 0, a gap of 1 for a 0 bit and of 2 for a 1 bit ({uses "Smith.gap"}[]);
 `none` on an odd-length bag, on a start not above the previous pair, or on a gap
 that is neither 1 nor 2.
+:::
+
+:::notebook "Smith.decodeBag"
 :::
 
 :::lemma_ "Smith.Represents_decode" (parent := "cts_to_system5") (lean := "Smith.Represents_decode")

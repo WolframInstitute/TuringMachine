@@ -346,15 +346,11 @@ direction, what the old code base treated as open.
 
 - T5 is standalone. `grep` shows `sys0_leaves`, `wolfram23_leaves` and
   `wolfram23_not_periodic` are referenced only in [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean) and
-  [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean). [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 used to say T6 "follows
-  from T4 and T5"; the {ref "infinite-form"}[infinite form] does not use T5,
+  [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean). The {ref "infinite-form"}[infinite form] does not use T5,
   because it has explicit exit times. Smith needs T5 because his Conjecture 0
   does not come with a schedule.
 - The exit time is existential (bounded by the measure); no closed form is
   stated.
-- [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) used to import `LoopFree` only for {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`];
-  the lemma lives in [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean) since 2026-09-22 and the import is gone
-  (the chapter on {ref "system4-to-system3"}[System 4 to System 3]).
 
 # Depends on
 

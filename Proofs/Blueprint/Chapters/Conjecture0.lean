@@ -12,6 +12,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import Smith.Conjecture0
 import Smith.ClosedForm
 import Smith.Wolfram23Bridge
@@ -20,6 +21,7 @@ import BiTM.XorMerge
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T4: Conjecture 0 in finite form" =>
 
@@ -242,6 +244,9 @@ the head cell and the cells right of it up to the first 0 are handed to
 bag it returns is read by {uses "Smith.decodeBag"}[] as a working string.
 :::
 
+:::notebook "Smith.decodeW23"
+:::
+
 The head cell and the cells right of it up to the first 0 are the blocks of the
 leading conglomerate (the star after the leading sets is a 0 standing in for the
 first cell of the next set, so the run of nonzero cells is exactly `|K| * N`
@@ -308,6 +313,9 @@ System 4 always halts: a run of `n` steps from a configuration whose tape has
 `L` elements has `n <= (2 L + 2) (L + 1)`.
 :::
 
+:::notebook "Smith.System4.run_bound"
+:::
+
 :::proof "Smith.System4.run_bound"
 In state A the head moves left, in states B and C right. A leftward run ends
 at a star (rule 2 deletes it) or at the left end (rule 1 turns round); a
@@ -329,6 +337,9 @@ and true of the encoder's output, `Inv5_ctsToSystem5`): with `R` rules and
 every integer at most `B` ({uses "Smith.Bound5"}[]), a run has at most
 `B * 2 ^ R` steps. `maxInt5 s`, the largest integer of the program, is such a
 `B`.
+:::
+
+:::notebook "Smith.System5.run_bound"
 :::
 
 :::proof "Smith.System5.run_bound"
@@ -355,6 +366,9 @@ System 0 (`phi2 (phi3 _)`, {uses "Smith.phi2"}[], {uses "Smith.phi3"}[]) and rea
 as a wolfram23 configuration ({uses "Smith.toBi"}[]). No system is run: every
 parameter is an arithmetic expression in `maxInt5 s`, the number of rules and
 the length of the System 4 tape.
+:::
+
+:::notebook "Smith.icStart"
 :::
 
 # The System 4 emulation
@@ -402,8 +416,8 @@ The proof composes the finite forms by their schedules rather than by
 `ForwardSim_comp` ({uses "Smith.ForwardSim_comp"}[]), because the fuel lives in
 a different source system at each link. Write `n` for
 `C0.appendants.length * N` and `s` for the System 5 program. Each parameter is
-a closed form of `s` and of the ones before it; where the proof used to read
-a run length off a schedule, it now uses a bound on it:
+a closed form of `s` and of the ones before it, with a bound in place of each
+run length:
 
 :::table +header
 *
@@ -484,8 +498,8 @@ computes `f` and `w` from an a priori bound on the System 5 finish time,
 `3^(n-1) M`, p. 20-21, and argues on p. 22-26 that the initial condition is
 produced by an obviously non-universal algorithm). The bounds here are
 coarser than Smith's (`B 2^R` for System 5, quadratic in the tape length for
-System 4) but play the same role. The chapter on {ref "open-items"}[open
-items] records this as item 1, done.
+System 4) but play the same role; no theorem yet bounds the size of the tape
+({ref "open-items"}[open items]).
 
 # Corrections to Smith's statement
 
@@ -493,9 +507,7 @@ items] records this as item 1, done.
   of the first block, as in Smith's `s42s0-3.pl` output; the leftmost cell is a
   0, as the conjecture says, but the tape started on it in state A walks off its
   left end in three steps (the chapter on
-  {ref "system4-to-system3"}[System 4 to System 3]). [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 T4
-  still says "started on its leftmost cell in state A" and must be corrected
-  (the chapter on {ref "open-items"}[open items]).
+  {ref "system4-to-system3"}[System 4 to System 3]).
 - The run must be assumed to last the budget without emptying the word: an
   emptied word empties the System 5 bag, System 4 then sweeps forever and never
   exits.

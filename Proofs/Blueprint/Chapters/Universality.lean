@@ -12,12 +12,14 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import Smith.Universality
 import Blueprint.Chapters.Overview
 
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T8: the composition" =>
 
@@ -125,6 +127,9 @@ For a valid configuration `c` with state in range, with `sz c` the number of
 explicit tape cells, `tagTime tm c n <= n * 15 * 2 ^ (sz c + n)`.
 :::
 
+:::notebook "TagSystem.tagTime_le"
+:::
+
 :::proof "TagSystem.tagTime_le"
 A round costs at most five passes over the tag word, whose halves are the numbers
 `val left` and `head + 2 val right`, below `2 ^ sz c` and `2 ^ (sz c + 1)`
@@ -145,6 +150,9 @@ condition is `IC tm c n = icStart (icProg tm c n)` ({uses "Smith.icStart"}[]), w
 width exponent `ICw tm c n = icW (icProg tm c n)` and the band
 `ICb tm c n = icBand (icProg tm c n)`. Every part is an encoder applied to `tm`, `c`
 and `n`, or an arithmetic expression in the sizes of their outputs.
+:::
+
+:::notebook "Smith.IC"
 :::
 
 # The composition
@@ -184,12 +192,6 @@ below `S`, `rawRun_valid`). So {uses "Smith.decodeTM"}[] `S (2^w) b` of the wolf
 configuration at time `times i` is `some (canon c_i)` ({uses "TagSystem.canon"}[]). The
 validity of the start, its state A, the confinement clause and the exit clause are
 those of `conjecture0_closed`, unchanged.
-
-Before the closed form the proof went through the forward simulation
-{uses "TagSystem.tm_tag_forwardSim"}[] unrolled by {uses "Smith.ForwardSim_nSteps"}[],
-whose tag schedule is existential; the raw run replaces it because it gives the tag
-time as a function (`tagTime`) with a bound, and because it keeps the tag run going
-past the budget whatever the machine does.
 :::
 
 # What the statement answers, and what it leaves open
@@ -205,8 +207,7 @@ Answered by the statement as it stands:
 - No axiom beyond `propext`, `Classical.choice`, `Quot.sound`; no `sorry`; no
   `native_decide` in the cone.
 
-Left open by the statement (the independent review of 2026-09-21;
-{ref "open-items"}[the chapter on open items]):
+Left open by the statement ({ref "open-items"}[the chapter on open items]):
 
 - One tape per machine, configuration and budget `n`. The standard notion of
   universality asks for one encoding of `(M, x)` independent of the running time;
@@ -218,18 +219,13 @@ Left open by the statement (the independent review of 2026-09-21;
   laid out in advance) is answered by the closed form: the tape is the definition
   `IC tm c n` (or `ITape tm c`), which writes down encodings of the machine's
   description and evaluates closed-form bounds, and never runs the machine or the
-  emulating systems (the chapter on open items, item 1, done). No theorem bounds
+  emulating systems. No theorem bounds
   the size of the tape or the cost of computing it; it is exponential in `n` and
   in the size of `c`, through the budget `icN c n`, and the System 5 bound
   `icT5` is exponential again in the number of rules.
 - Binary machines only.
 - Decoding up to `canon`, at existential times, with nothing said about other
   times.
-- The name `wolfram23_universal` claims more than the statement, as did the
-  phrase "universality in the literal sense" of the M8 notes in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md)
-  (since removed; the chapter on open items, item 17). The docstring of the
-  theorem in the module ([`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean)) states the
-  `n`-step form correctly.
 
 # Notes and caveats
 
@@ -246,11 +242,8 @@ Left open by the statement (the independent review of 2026-09-21;
   the D9 positive tape `decodeTM` returns `none` because the word there has odd
   length (one symbol); on the D10 tape it passes `undbl` with the word `0`, which
   `decodeCTS 2` rejects ([`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) D10). A hand-picked positive
-  instance for `decodeTM` is still wanted; the chapter on open items (item 9)
-  records it as out of reach of `decide` on a rendered tape.
-- [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md)'s M8 row named the type `BiTM.Machine`; the type is
-  {bpref "TM.Machine"}[`TM.Machine`] (the row has since been corrected; the chapter on open items,
-  item 18).
+  instance for `decodeTM` is still wanted ({ref "open-items"}[the chapter on open
+  items]).
 
 # Depends on
 

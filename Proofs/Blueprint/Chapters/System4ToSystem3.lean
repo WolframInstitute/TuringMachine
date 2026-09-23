@@ -12,6 +12,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import Smith.ParityBlocks
 import Smith.System3Runs
 import Smith.Conjecture3
@@ -19,6 +20,7 @@ import Smith.Conjecture3
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T3, first half: from System 4 to System 3" =>
 
@@ -110,6 +112,9 @@ Smith's strings for the one-element sets (p. 8), the rows of the rule-60 automat
 `row n 0` is the block `2 1 1 ... 1` of length `n`, a single 2, and `row n (i + 1)`
 is `row n i` XOR its shift ({uses "Smith.stepR"}[]). One scan takes `row n (i + 1)`
 back to `row n i`.
+:::
+
+:::notebook "Smith.row"
 :::
 
 :::lemma_ "Smith.stepR_iterate_two_pow" (parent := "parity-blocks") (lean := "Smith.stepR_iterate_two_pow")
@@ -555,6 +560,9 @@ and the head on the first cell of the block of `S0` in state A
 ({uses "Smith.Focus"}[] `setA`).
 :::
 
+:::notebook "Smith.initAC"
+:::
+
 :::lemma_ "Smith.rep3_init" (parent := "system4-system3") (lean := "Smith.rep3_init")
 The initial condition of the link: under `h + 3 <= 2^w`, a well-formed System 4
 configuration ({uses "BiTM.System4Config.WellFormed"}[]) with elements
@@ -644,9 +652,9 @@ is `h - i`.
 - `Rep3` is stated on the System 3 tape and leaves the swap of the cells left of the
   head to `phi3` ({ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0]), so
   Smith's `s42s0-3.pl 3` output is `phi3` of `initAC`'s tape.
-- T3 does not use loop-freeness: [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) used to import
-  [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean) only for the generic run lemma {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`], which
-  lives in [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean) since 2026-09-22.
+- T3 does not use loop-freeness: [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) does not import
+  [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean); the generic run lemma {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`] is in
+  [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean).
 - The D8 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) run a six-step System 4 program
   through System 3 by `decide`.
 

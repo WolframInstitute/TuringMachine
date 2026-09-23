@@ -37,10 +37,8 @@ solution of the problem posed in the introduction, and it is the form that answe
 the objection of {ref "universality"}[the chapter on the composition] that a
 budget-indexed family of tapes is not one encoding.
 
-This chapter states what is proved ([`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean), [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean),
-2026-09-22), describes the construction, and says what remains existential. The
-narrative was written before the proof and guided it; the sections below were
-reconciled with the source when the theorem landed.
+This chapter states what is proved ([`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean), [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean)),
+describes the construction, and says what remains existential.
 
 # The statement
 
@@ -470,11 +468,6 @@ hypothesis on halting, where the finite form needs the run to last the budget.
 {uses "Smith.stage_infinite"}[] gives the per-`k` clauses, and its "no left move"
 clause holds at every time because the schedule of block `k` ends after time `k`
 (each block takes at least one System 3 step).
-
-Before the closed form, block `k` emulated the longest run of at most `k` steps
-(`Nat.findGreatest` of "step `i` exists") and was sized from the run lengths of that
-emulation; the raw run removes the case distinction and the bounds remove the run
-lengths.
 :::
 
 # Tests
@@ -512,8 +505,7 @@ instances instead.
 # What remains existential
 
 - Nothing about the tape is existential any more: `ITape tm c` is a definition, and
-  block `k` is a closed form of `tm`, `c` and `k` ({ref "open-items"}[open items]
-  item 1, done). Only the run data `H` and `dt` of the blocks, which the proofs read
+  block `k` is a closed form of `tm`, `c` and `k`. Only the run data `H` and `dt` of the blocks, which the proofs read
   and the tape does not, are chosen classically.
 - The conclusion template alone is satisfied by machines that do nothing (an
   infinite tape can hold the run laid out in advance, and in the corollary's

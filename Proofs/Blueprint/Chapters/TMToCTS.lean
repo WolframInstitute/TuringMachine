@@ -11,6 +11,7 @@
 import Verso
 import VersoManual
 import VersoBlueprint
+import Blueprint.Notebook
 import TagSystem.Basic
 import TagSystem.TagRounds
 import TagSystem.CockeMinsky
@@ -22,6 +23,7 @@ import BiTM.Basic
 open Verso.Genre
 open Verso.Genre.Manual
 open Informal
+open Blueprint (notebook)
 
 #doc (Manual) "T7: from a binary Turing machine to a cyclic tag system" =>
 
@@ -307,6 +309,9 @@ with the productions {uses "TagSystem.prod"}[] take {uses "TagSystem.word"}[]
 `c` to `word c'`.
 :::
 
+:::notebook "TagSystem.tm_step_tag"
+:::
+
 :::proof "TagSystem.tm_step_tag"
 By cases on the direction of the transition. For a move to the right the rounds
 {uses "TagSystem.round1"}[], {uses "TagSystem.round2"}[] and
@@ -380,6 +385,9 @@ the symbol or the next state of the transition.
 {uses "TagSystem.enc"}[].
 :::
 
+:::notebook "TagSystem.tagK"
+:::
+
 :::lemma_ "TagSystem.nStepsP_enc" (parent := "t7_cts") (lean := "TagSystem.nStepsP_enc")
 Runs are carried over: when the transitions keep the states below `S`, `k`
 steps of {uses "TagSystem.nStepsP"}[] with the productions of
@@ -404,6 +412,9 @@ concatenation, `TagSystem.tagWordEncode`), the first `k` appendants are the
 encoded productions, the next `k` are empty (they consume the second deleted
 symbol). `TagSystem.tagConfigToCTS` encodes a tag word as a cyclic tag
 configuration at phase 0.
+:::
+
+:::notebook "TagSystem.tagToCTS"
 :::
 
 :::lemma_ "TagSystem.tagToCTS_appendants_length" (parent := "t7_cts") (lean := "TagSystem.tagToCTS_appendants_length")
@@ -630,28 +641,26 @@ run, which is valid with state below `numStates`;
 
 - Binary machines only. `WF` quantifies over `s < 2` and never reads
   `numSymbols`; a machine with `numSymbols := 17` and junk on symbols 2 and up is
-  `WF` if its bit rows are. The docs of [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 2 that say "every
-  well-formed TM" overstate this ({ref "open-items"}[the chapter on open items]).
+  `WF` if its bit rows are ({ref "open-items"}[the chapter on open items]).
 - The halt row. {bpref "BiTM.step"}[`BiTM.step`] returns `none` in state 0 before consulting the
   table, but `WF` requires the row of state 0 to be in range, because the tag
   productions keep applying `tm.transition 0 _` after the machine has halted and
   `prod_OK` needs the states to stay bounded. A machine whose halt row is out of
   range can be patched without changing any run; the wrapper lemma is not written
   ({ref "open-items"}[the chapter on open items]).
-- The tag system is stated for machine steps only; a halted machine makes none,
-  and nothing relates the tag system's own halting to the machine's.
+- The tag system carries out the halting row too: its run never stops, and past
+  the machine's halt it follows the raw run of {bpref "TagSystem.rawRun"}[`TagSystem.rawRun`] ({ref "universality"}[the
+  chapter on the composition]).
 - `decodeCTS` is proved complete (it inverts the encoder:
-  {bpref "TagSystem.decodeCTS_word"}[`TagSystem.decodeCTS_word`]), and its block stage is also sound since
-  2026-09-22: {bpref "TagSystem.symbolDecode"}[`TagSystem.symbolDecode`] accepts exactly the one-hot blocks of
+  {bpref "TagSystem.decodeCTS_word"}[`TagSystem.decodeCTS_word`]), and its block stage is also sound:
+  {bpref "TagSystem.symbolDecode"}[`TagSystem.symbolDecode`] accepts exactly the one-hot blocks of
   length `k` ({bpref "TagSystem.symbolDecode_sound"}[`TagSystem.symbolDecode_sound`]) and {bpref "TagSystem.tagWordDecode"}[`TagSystem.tagWordDecode`]
   exactly their concatenations ({bpref "TagSystem.tagWordDecode_sound"}[`TagSystem.tagWordDecode_sound`]), so a word with
   a short last block or a stray bit is rejected. The later stages
   (`decodeWord`, `cfgOfNums`) are used for completeness only. Only completeness
   is used by the headline.
-- The header of [`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean) used to say the cyclic tag system has
-  `k` appendants; the definition and its lemma say `2k` (the header does too
-  since 2026-09-22), and the factor 2 is load-bearing in
-  {ref "universality"}[the chapter on the composition].
+- The cyclic tag system has `2k` appendants, not `k`, and the factor 2 is
+  load-bearing in {ref "universality"}[the chapter on the composition].
 
 # Depends on
 

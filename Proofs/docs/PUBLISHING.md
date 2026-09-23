@@ -61,6 +61,25 @@ workflow (build, `sorry`/`native_decide` scan, axiom check of both headline theo
 `vbp build`, upload, deploy); `workflow_dispatch` runs it by hand. The first run
 compiles Verso from source (the Lake packages are cached between runs).
 
+Computational footnotes: each `:::notebook "Lean.Name"` directive in a chapter
+(defined in `Blueprint/Notebook.lean`) needs `Blueprint/Notebooks/<Lean.Name>.md`, a
+MarkdownToNotebook computational essay using the paclet functions; the build fails
+without it. The pages show a button that opens a panel on the right with the footnote's
+preview and, on request, the live notebook (`wolfram-notebook-embedder` from jsdelivr).
+The notebooks, their previews and the paclet archive the notebooks install are
+deployed under `wolfram23-blueprint/` on the cloud, for both sites:
+
+```
+wolframscript -file scripts/CloudDeployNotebooks.wl                 # build into _out/notebooks
+wolframscript -file scripts/CloudDeployNotebooks.wl Smith.row       # build one footnote
+wolframscript -file scripts/CloudDeployNotebooks.wl deploy          # build and deploy
+```
+
+The build does not use MarkdownToNotebook's output cache (`"UseCache" -> False`): the
+cache is keyed by the notebook title, and an entry written while the paclet was not
+loaded would otherwise be served again. `wolframscript` takes `-`-prefixed words as
+its own options, so the script's arguments are plain words.
+
 Wolfram Cloud: after `lake exe vbp build`,
 
 ```
