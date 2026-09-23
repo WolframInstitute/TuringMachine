@@ -34,7 +34,8 @@ $mtn := $mtn = ResourceFunction[ResourceObject[
 BuildFootnote[md_String, outDir_String] := Module[{out},
     Quiet @ CreateDirectory[outDir, CreateIntermediateDirectories -> True];
     out = FileNameJoin[{outDir, FileBaseName[md] <> ".nb"}];
-    $mtn[md, out, "UseCache" -> False];
+    (* essays thread their bindings through the whole notebook, across headings *)
+    $mtn[md, out, "UseCache" -> False, "EvaluateSeparator" -> None];
     out
 ];
 
