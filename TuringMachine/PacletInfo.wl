@@ -5,7 +5,7 @@ PacletObject[
     "Creator" -> "Wolfram Institute",
     "License" -> "MIT",
     "PublisherID" -> "WolframInstitute",
-    "Version" -> "1.3.0",
+    "Version" -> "1.4.0",
     "WolframVersion" -> "14.3+",
     "PrimaryContext" -> "WolframInstitute`TuringMachine`",
     "Extensions" -> {
