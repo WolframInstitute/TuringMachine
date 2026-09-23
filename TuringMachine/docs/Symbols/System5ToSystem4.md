@@ -26,23 +26,58 @@ RelatedTutorials: [SmithsUniversalityProof]
 The System 4 tape of a one-rule program with *f* = 1:
 
 ```wl
-System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]["Elements"]
+System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
 ```
 
 ---
 
-The length of the tape of Smith's example on p. 33 with *f* = 16:
+Smith's program of p. 33 with *f* = 2:
 
 ```wl
-Length[System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 16]["Elements"]]
+s4 = System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 2]
+```
+
+The tape has `1 + 2 f + 8 f r` elements:
+
+```wl
+Length[s4["Elements"]]
 ```
 
 ## Scope
 
-With the proof's parameters the System 4 decodes at the left end are the System 5 bags, then a terminal phase:
+A program with two rules:
 
 ```wl
-With[{p = EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]},
-    DeleteDuplicates[Sort /@ DeleteMissing[System4ToSystem5[#, p["Band"]] & /@
-        Values[System4Evolution[System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, p["f"]], 10^6, #["Active"] == 0 && #["State"] === "B" &]]]]]
+s5 = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
 ```
+
+The parameters of its emulation:
+
+```wl
+p = EmulationParameters[s5]
+```
+
+Its System 4 tape:
+
+```wl
+s4 = System5ToSystem4[s5, p["f"]]
+```
+
+The configurations with the head back at the left end in state B:
+
+```wl
+events = System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]
+```
+
+Their decodes are the System 5 bags in order, then a terminal phase:
+
+```wl
+First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, p["Band"]] & /@ Values[events]]]
+```
+
+The System 5 run:
+
+```wl
+System5Evolution[s5, 100]
+```
+

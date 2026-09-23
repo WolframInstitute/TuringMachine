@@ -24,24 +24,31 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The start of the run:
+The run of the tag system `a -> bc`, `b -> a`, `c -> aaa` on `baa`:
 
 ```wl
-Take[TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 18], 4]
+TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 10]
 ```
 
 ---
 
-Visualize the run:
+The tag run of a three-state machine during its first four steps:
 
 ```wl
-ArrayPlot[PadRight[TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 85]], ColorFunction -> "Rainbow"]
+run = TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 85]
+```
+
+The run drawn:
+
+```wl
+ArrayPlot[PadRight[run], ColorFunction -> "Rainbow"]
 ```
 
 ## Scope
 
-The tag steps at which the word starts with the symbol 5:
+The steps at which the word starts with the symbol 5, with their words:
 
 ```wl
-Keys[TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 85, First[#] == 5 &]]
+TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 85, First[#] == 5 &]
 ```
+

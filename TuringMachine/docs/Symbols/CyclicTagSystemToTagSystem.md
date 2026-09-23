@@ -34,3 +34,4 @@ A block with two 1s is not an encoding:
 ```wl
 CyclicTagSystemToTagSystem[{1, 1, 0, 0}, 4]
 ```
+

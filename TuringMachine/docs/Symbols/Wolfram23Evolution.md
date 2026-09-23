@@ -24,16 +24,17 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-Run wolfram23 for 20 steps from a blank tape:
+Twenty steps of wolfram23 from a blank tape:
 
 ```wl
-ArrayPlot[PadRight[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]] & /@ Wolfram23Evolution[{1, {}, 0, {}}, 20]]]
+run = Wolfram23Evolution[{1, {}, 0, {}}, 20]
 ```
 
 ## Scope
 
-The steps at which wolfram23 is in state B at the left end of an emulated System 4 tape:
+The configurations at which wolfram23 is in state B at the left end of an emulated System 4 tape:
 
 ```wl
-Keys[Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]], 2000, #1 == 2 && #2 == 6 &]]
+Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]], 2000, #1 == 2 && #2 == 6 &]
 ```
+

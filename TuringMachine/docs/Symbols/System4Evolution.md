@@ -24,24 +24,23 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The length of the run, counting the start:
+The run of a small System 4 tape:
 
 ```wl
-Length[System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4]]
+run = System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4]
 ```
 
----
-
-Plot the position of the head:
+The position of the head along it:
 
 ```wl
-ListLinePlot[#["Active"] & /@ System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4]]
+ListLinePlot[run[[All, "Active"]]]
 ```
 
 ## Scope
 
-The steps at which the head is back at the left end in state B:
+The configurations at which the head is back at the left end in state B:
 
 ```wl
-Keys[System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4, #["Active"] == 0 && #["State"] === "B" &]]
+System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4, #["Active"] == 0 && #["State"] === "B" &]
 ```
+

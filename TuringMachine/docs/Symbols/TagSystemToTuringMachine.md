@@ -22,16 +22,29 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-Decode the word of a configuration:
+The tag system of a configuration:
 
 ```wl
-TagSystemToTuringMachine[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {2, {1, 0}, 1, {0, 1, 0, 0}}]["Word"], 3]
+tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {2, {1, 0}, 1, {0, 1, 0, 0}}]
+```
+
+Its word decodes to the configuration, without trailing blanks:
+
+```wl
+TagSystemToTuringMachine[tag["Word"], 3]
 ```
 
 ---
 
+A tag run:
+
+```wl
+run = TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 5]
+```
+
 A word from the middle of a round is not the word of a configuration:
 
 ```wl
-TagSystemToTuringMachine[TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 5][[-1]], 3]
+TagSystemToTuringMachine[Last[run], 3]
 ```
+

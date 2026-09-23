@@ -27,14 +27,18 @@ RelatedTutorials: [SmithsUniversalityProof]
 The System 3 tape of the System 4 tape `{0, 2} * {}` with blocks of width 8:
 
 ```wl
-System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]
+s3 = System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]
 ```
 
----
-
-Plot the first 60 steps of its run:
+Its run:
 
 ```wl
-ArrayPlot[PadRight[Join[Reverse[#["Left"]], {#["Head"]}, #["Right"]] & /@ System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 60]],
-    ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
+run = System3Evolution[s3, 60]
 ```
+
+The run drawn:
+
+```wl
+ArrayPlot[PadRight[Join[Reverse[#["Left"]], {#["Head"]}, #["Right"]] & /@ run], ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
+```
+

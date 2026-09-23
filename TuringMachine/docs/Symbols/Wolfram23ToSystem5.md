@@ -22,19 +22,47 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The initial wolfram23 tape of `{0, 2} * {}` decodes to the bag of its first set:
+The initial wolfram23 tape of `{0, 2} * {}`:
 
 ```wl
-Wolfram23ToSystem5[System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]], 3, 4]
+w23 = System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
+```
+
+It decodes to the bag of the first set:
+
+```wl
+Wolfram23ToSystem5[w23, 3, 4]
 ```
 
 ## Scope
 
-Decode wolfram23 every time it is back at the left end of the tape in state B, and compare with System 4 at its left-end turns:
+A small System 4 tape:
 
 ```wl
-With[{s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]},
-    {System4ToSystem5[#, 20] & /@ Values[System4Evolution[s4, 1000, #["Active"] == 0 && #["State"] === "B" &]],
-     Take[Wolfram23ToSystem5[#, 7, 20] & /@ Values[Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[s4, 7, 120]], 50000,
-        #1 == 2 && #2 == 123 &]], 6]}]
+s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
 ```
+
+Its decodes each time the head is back at the left end in state B:
+
+```wl
+System4ToSystem5[#, 20] & /@ Values[System4Evolution[s4, 1000, #["Active"] == 0 && #["State"] === "B" &]]
+```
+
+The wolfram23 configuration of the tape with blocks of width 128:
+
+```wl
+w23 = System3ToWolfram23[System4ToSystem3[s4, 7, 120]]
+```
+
+Its first six returns to the left end in state B:
+
+```wl
+events = Take[Wolfram23Evolution[w23, 50000, #1 == 2 && #2 == 123 &], 6]
+```
+
+Their decodes, the same as System 4's:
+
+```wl
+Wolfram23ToSystem5[#, 7, 20] & /@ Values[events]
+```
+

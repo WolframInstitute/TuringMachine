@@ -35,3 +35,4 @@ A gap of 3 is not an encoding:
 ```wl
 System5ToCyclicTagSystem[{1, 4}]
 ```
+

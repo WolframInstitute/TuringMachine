@@ -23,7 +23,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-Smith's example of p. 29, the cyclic tag system `1 10` on the working string `01`:
+Smith's example of p. 29, the cyclic tag system `1 10` on the working string `01`, for one cycle:
 
 ```wl
 CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]
@@ -31,17 +31,21 @@ CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Pha
 
 ## Scope
 
-The bags of the run decode to the doubled working strings, in order:
+The program for two cycles:
 
 ```wl
-First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@
-    System5Evolution[CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2], 1000][[All, "Bag"]]]]
+s5 = CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2]
 ```
 
----
-
-The number of rules grows linearly with the number of cycles:
+Its run:
 
 ```wl
-Table[Length[CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, n]["Rules"]], {n, 5}]
+run = System5Evolution[s5, 1000]
 ```
+
+The bags decode to the doubled working strings, in order:
+
+```wl
+First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ run[[All, "Bag"]]]]
+```
+

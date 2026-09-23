@@ -24,24 +24,23 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The start of the run:
+The run of Smith's example `1 10` on `01`:
 
 ```wl
-CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 4][[All, "Data"]]
+run = CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 12]
 ```
 
----
-
-Visualize the run:
+The working strings drawn:
 
 ```wl
-ArrayPlot[PadRight[CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 40][[All, "Data"]]]]
+ArrayPlot[PadRight[run[[All, "Data"]]]]
 ```
 
 ## Scope
 
-The steps at which a cycle begins:
+The configurations at which a cycle begins:
 
 ```wl
-Keys[CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 40, #["Phase"] == 0 &]]
+CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 40, #["Phase"] == 0 &]
 ```
+

@@ -22,17 +22,29 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The bag of a freshly encoded program:
+A freshly encoded System 4 tape:
 
 ```wl
-System4ToSystem5[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 20]
+s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+```
+
+Its leading set decodes to the bag:
+
+```wl
+System4ToSystem5[s4, 20]
 ```
 
 ## Scope
 
-Decode every configuration at which the head is back at the left end in state B:
+The configurations of a run at which the head is back at the left end in state B:
 
 ```wl
-System4ToSystem5[#, 20] & /@ Values[System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 1000,
-    #["Active"] == 0 && #["State"] === "B" &]]
+events = System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 1000, #["Active"] == 0 && #["State"] === "B" &]
 ```
+
+Their decodes:
+
+```wl
+System4ToSystem5[#, 20] & /@ Values[events]
+```
+

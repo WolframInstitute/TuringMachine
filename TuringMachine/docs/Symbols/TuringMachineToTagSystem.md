@@ -30,41 +30,43 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The tag word of a three-state machine started on the tape `0 1 1`:
+The tag system of a three-state machine that moves both ways, started on the tape `0 1 1`, with the tag times of its first four steps:
 
 ```wl
-TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}]["Word"]
+tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]
 ```
 
----
-
-The number of tag symbols:
+The word of the configuration:
 
 ```wl
-Length[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}]["Productions"]]
+tag["Word"]
 ```
 
----
-
-The tag times of the first four steps:
+The alphabet has `1 + 84 s` symbols for states below *s*:
 
 ```wl
-TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]["TagTimes"]
+Length[tag["Productions"]]
 ```
 
 ## Scope
 
+The tag system with the tag times of four steps:
+
+```wl
+tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]
+```
+
 At each tag time the tag word decodes to the configuration of the machine:
 
 ```wl
-With[{tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]},
-    TagSystemToTuringMachine[TagSystemEvolution[tag, 85][[# + 1]], 3] & /@ tag["TagTimes"]]
+TagSystemToTuringMachine[#, 3] & /@ TagSystemEvolution[tag, 85][[tag["TagTimes"] + 1]]
 ```
 
 ---
 
-Plot the lengths of the tag words during the first four steps:
+The tag system alone:
 
 ```wl
-ListLinePlot[Length /@ TagSystemEvolution[TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}], 85]]
+TuringMachineToTagSystem[{{1, 0} -> {0, 1, 1}}]
 ```
+

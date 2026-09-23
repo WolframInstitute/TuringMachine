@@ -23,27 +23,41 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The number of appendants for the tag system of a two-state machine:
+The cyclic tag system of the tag system `a -> bc`, `b -> a`, `c -> aaa` on the word `baa`:
 
 ```wl
-Length[TagSystemToCyclicTagSystem[TuringMachineToTagSystem[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}]]["Appendants"]]
+cts = TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>]
 ```
 
----
-
-The length of the working string:
+There are twice as many appendants as symbols:
 
 ```wl
-Length[TagSystemToCyclicTagSystem[TuringMachineToTagSystem[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}]]["Data"]]
+Length[cts["Appendants"]]
 ```
 
 ## Scope
 
-At the end of every cycle the working string is the encoding of the next tag word:
+The cyclic tag system:
 
 ```wl
-With[{tag = TuringMachineToTagSystem[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}]},
-    CyclicTagSystemToTagSystem[#["Data"], 169] & /@
-        Values[CyclicTagSystemEvolution[TagSystemToCyclicTagSystem[tag], 338 * 6, #["Phase"] == 0 &]] ===
-    TagSystemEvolution[tag, 6]]
+cts = TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>]
 ```
+
+Its configurations at the start of every cycle:
+
+```wl
+starts = CyclicTagSystemEvolution[cts, 24, #["Phase"] == 0 &]
+```
+
+They decode to the run of the tag system:
+
+```wl
+CyclicTagSystemToTagSystem[#["Data"], 3] & /@ Values[starts]
+```
+
+The run of the tag system:
+
+```wl
+TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 4]
+```
+

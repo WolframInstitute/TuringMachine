@@ -28,7 +28,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The parameters of Smith's example from the exact runs:
 
 ```wl
-Dataset[EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]]
+EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]
 ```
 
 ---
@@ -36,5 +36,6 @@ Dataset[EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|
 The same from the closed-form bounds:
 
 ```wl
-Dataset[EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, "ClosedForm"]]
+EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, "ClosedForm"]
 ```
+

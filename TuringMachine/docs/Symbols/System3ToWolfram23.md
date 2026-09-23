@@ -26,15 +26,18 @@ RelatedTutorials: [SmithsUniversalityProof]
 The wolfram23 configuration of a System 3 tape:
 
 ```wl
-System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
+w23 = System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
 ```
 
-## Scope
-
-Plot the wolfram23 run from it:
+The run of wolfram23 from it:
 
 ```wl
-ArrayPlot[PadRight[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]] & /@
-    Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]], 150]],
-    ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
+run = Wolfram23Evolution[w23, 150]
 ```
+
+The run drawn:
+
+```wl
+ArrayPlot[PadRight[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]] & /@ run], ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
+```
+

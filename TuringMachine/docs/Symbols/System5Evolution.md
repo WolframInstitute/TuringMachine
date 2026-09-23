@@ -27,10 +27,10 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The bags of the run of Smith's example on p. 33:
+The run of Smith's program of p. 33:
 
 ```wl
-System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20][[All, "Bag"]]
+System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
 ```
 
 ---
@@ -43,8 +43,9 @@ System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, Infinity
 
 ## Scope
 
-The steps after the first rule has been used:
+The configurations after the first rule has been used:
 
 ```wl
-Keys[System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20, Length[#["Rules"]] < 4 &]]
+System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20, Length[#["Rules"]] < 4 &]
 ```
+

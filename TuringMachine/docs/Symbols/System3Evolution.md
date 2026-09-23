@@ -24,25 +24,23 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Basic Examples
 
-The length of the run, counting the start:
+The run of the System 3 tape of `{0, 2} * {}`:
 
 ```wl
-Length[System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 1000]]
+run = System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 120]
 ```
 
----
-
-Visualize the run:
+The run drawn:
 
 ```wl
-ArrayPlot[PadRight[Join[Reverse[#["Left"]], {#["Head"]}, #["Right"]] & /@ System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 120]],
-    ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
+ArrayPlot[PadRight[Join[Reverse[#["Left"]], {#["Head"]}, #["Right"]] & /@ run], ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
 ```
 
 ## Scope
 
-The steps in state C:
+The configurations in state C:
 
 ```wl
-Keys[System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 1000, #["State"] === "C" &]]
+System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 1000, #["State"] === "C" &]
 ```
+

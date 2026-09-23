@@ -24,5 +24,6 @@ RelatedTutorials: [SmithsUniversalityProof]
 The sizes for one step of a two-state machine that halts:
 
 ```wl
-Dataset[EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]]
+EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
 ```
+

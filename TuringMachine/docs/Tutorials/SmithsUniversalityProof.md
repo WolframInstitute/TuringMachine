@@ -25,34 +25,28 @@ This paclet has one function for each arrow of the chain, one for each way back,
 
 ## Definition
 
-The examples: a three-state binary machine that moves both ways, started on the tape `0 1 1`; Smith's cyclic tag system `1 10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and a small System 5 program for the last arrows. The objects built from them along the way are defined here too.
+The examples: a three-state binary machine that moves both ways, started on the tape `0 1 1`; a small 2-tag system; Smith's cyclic tag system `1 10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and two small System 5 programs.
 
 ```wl
 machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}};
 config = {1, {}, 0, {1, 1}};
-tag = TuringMachineToTagSystem[machine, config, 4];
-ctsOfMachine = TagSystemToCyclicTagSystem[tag];
+tag3 = <|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>;
 cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>;
-s5 = CyclicTagSystemToSystem5[cts, 2];
 program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>;
-params = EmulationParameters[program];
-s4 = System5ToSystem4[program, params["f"]];
+twoRules = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>;
 small = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>;
-s4small = System5ToSystem4[small, 1];
-w23 = System3ToWolfram23[System4ToSystem3[s4small, 7, 120]];
+cellColors = {0 -> White, 1 -> LightGray, 2 -> Gray};
 ```
 
 ## A Turing machine as a 2-tag system
 
 A 2-tag system deletes the first two symbols of its word and appends the production of the first one. Cocke and Minsky's construction writes the two halves of the machine's tape as numbers, in unary, and moves the head by rounds that halve and double them. <code>[TuringMachineToTagSystem]()</code> builds the tag system; with a number of steps it also gives the tag times, at which the tag word is the word of the next configuration.
 
-The tag times of the machine's first four steps:
+The tag system of the machine, with the tag times of its first four steps:
 
 ```wl
-tag["TagTimes"]
+tag = TuringMachineToTagSystem[machine, config, 4]
 ```
-
----
 
 The alphabet has `1 + 84 s` symbols for states below *s*:
 
@@ -60,39 +54,50 @@ The alphabet has `1 + 84 s` symbols for states below *s*:
 Length[tag["Productions"]]
 ```
 
----
-
-The run of the tag system, one row per tag step:
+The run of the tag system during those four steps:
 
 ```wl
-ArrayPlot[PadRight[TagSystemEvolution[tag, 85]], ColorFunction -> "Rainbow"]
+tagRun = TagSystemEvolution[tag, 85]
 ```
 
----
+The run drawn, one row per tag step:
+
+```wl
+ArrayPlot[PadRight[tagRun], ColorFunction -> "Rainbow"]
+```
 
 At the tag times the words decode, by <code>[TagSystemToTuringMachine]()</code>, to the machine's configurations:
 
 ```wl
-TagSystemToTuringMachine[TagSystemEvolution[tag, 85][[# + 1]], 3] & /@ tag["TagTimes"]
+TagSystemToTuringMachine[#, 3] & /@ tagRun[[tag["TagTimes"] + 1]]
 ```
 
 ## A 2-tag system as a cyclic tag system
 
-A cyclic tag system deletes the first bit of its working string and, if the bit was 1, appends the current appendant; the appendants are used in turn. Cook's construction writes each tag symbol as a block of bits with a single 1 and gives one appendant for each symbol's production, then as many empty ones. One cycle of the appendants is one tag step.
+A cyclic tag system deletes the first bit of its working string and, if the bit was 1, appends the current appendant; the appendants are used in turn. Cook's construction writes each tag symbol as a block of bits with a single 1 and gives one appendant for each symbol's production, then as many empty ones. One cycle of the appendants is one tag step. For the tag system of a Turing machine the cyclic tag system is large (the section on sizes below counts it), so the construction is shown on the tag system `a -> bc`, `b -> a`, `c -> aaa` started on `baa`.
 
-The number of appendants of the machine's cyclic tag system, twice the number of tag symbols:
+The cyclic tag system:
 
 ```wl
-Length[ctsOfMachine["Appendants"]]
+cts3 = TagSystemToCyclicTagSystem[tag3]
 ```
 
----
-
-At the start of every cycle the working string decodes, by <code>[CyclicTagSystemToTagSystem]()</code>, to the next tag word:
+Its configurations at the start of every cycle:
 
 ```wl
-CyclicTagSystemToTagSystem[#["Data"], 253] & /@
-    Values[CyclicTagSystemEvolution[ctsOfMachine, 506 * 18, #["Phase"] == 0 &]] === TagSystemEvolution[tag, 18]
+starts = CyclicTagSystemEvolution[cts3, 30, #["Phase"] == 0 &]
+```
+
+They decode, by <code>[CyclicTagSystemToTagSystem]()</code>, to the run of the tag system:
+
+```wl
+CyclicTagSystemToTagSystem[#["Data"], 3] & /@ Values[starts]
+```
+
+The run of the tag system, for comparison:
+
+```wl
+TagSystemEvolution[tag3, 5]
 ```
 
 ## A cyclic tag system as System 5
@@ -102,32 +107,25 @@ Smith's System 5 keeps a bag of integers and a list of rules. Every step decreme
 Smith's example, `1 10` on `01`, for two cycles:
 
 ```wl
-Dataset[s5]
+s5 = CyclicTagSystemToSystem5[cts, 2]
 ```
 
----
-
-The bags of the run:
+Its run:
 
 ```wl
-System5Evolution[s5, 1000][[All, "Bag"]] // Short[#, 5] &
+run5 = System5Evolution[s5, 1000]
 ```
-
----
 
 The bags decode, by <code>[System5ToCyclicTagSystem]()</code>, to the run of the doubled cyclic tag system:
 
 ```wl
-First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ System5Evolution[s5, 1000][[All, "Bag"]]]]
+First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ run5[[All, "Bag"]]]]
 ```
-
----
 
 The run of the doubled cyclic tag system, for comparison:
 
 ```wl
-First /@ Split[CyclicTagSystemEvolution[<|"Appendants" -> Catenate[{Riffle[#, #], {}} & /@ cts["Appendants"]],
-    "Data" -> Riffle[cts["Data"], cts["Data"]], "Phase" -> 0|>, 8][[All, "Data"]]]
+CyclicTagSystemEvolution[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 8]
 ```
 
 ## System 5 as System 4
@@ -137,83 +135,89 @@ System 4 is a tape of sets of integers and stars with a moving head. In state A 
 The parameters for Smith's program of p. 33:
 
 ```wl
-Dataset[params]
+EmulationParameters[program]
 ```
 
----
-
-The System 4 tape has `1 + 2 f + 8 f r` elements:
+A smaller program with two rules is shown in full. Its parameters:
 
 ```wl
-Length[s4["Elements"]]
+params = EmulationParameters[twoRules]
 ```
 
----
-
-The configurations of the run at which the head is back at the left end in state B, decoded by <code>[System4ToSystem5]()</code>, give the System 5 bags in order, then the decrements of the terminal phase:
+Its System 4 tape, `1 + 2 f + 8 f r` elements:
 
 ```wl
-DeleteDuplicates[Sort /@ DeleteMissing[System4ToSystem5[#, params["Band"]] & /@
-    Values[System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]]]]
+s4 = System5ToSystem4[twoRules, params["f"]]
 ```
 
----
+The configurations of the run at which the head is back at the left end in state B:
+
+```wl
+events = System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]
+```
+
+Decoded by <code>[System4ToSystem5]()</code>, they give the System 5 bags in order, then the decrements of the terminal phase:
+
+```wl
+First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, params["Band"]] & /@ Values[events]]]
+```
 
 The System 5 run, for comparison:
 
 ```wl
-Sort /@ System5Evolution[program, 100][[All, "Bag"]]
+System5Evolution[twoRules, 100]
 ```
 
 ## System 4 as System 3 and wolfram23
 
-System 3 writes each set as a block of `2^w` cells of 1s and 2s whose parity scans give the set's members, and each star as a 0. Its head carries out a System 4 step by scanning a block. Systems 3, 2, 1 and 0 differ only by relabelings of cells and states, and System 0 is wolfram23. The emulation is faithful while the System 4 run fits in the blocks, which needs `2^w` above the length of the run.
+System 3 writes each set as a block of `2^w` cells of 1s and 2s whose parity scans give the set's members, and each star as a 0. Its head carries out a System 4 step by scanning a block. Systems 3, 2, 1 and 0 differ only by relabelings of cells and states, and System 0 is wolfram23. The emulation is faithful while the System 4 run fits in the blocks, which needs `2^w` above the length of the run; with the proof's parameters `w` is 18 even for Smith's program of p. 33. The last arrows are therefore shown on a System 4 tape small enough to run: the tape of the program `small` with *f* = 1, not the proof's *f*. System 3 emulates any System 4 tape, so this one serves as well.
 
-With the proof's parameters `w` is large even for Smith's small program:
-
-```wl
-params["w"]
-```
-
----
-
-The last arrows are shown on a System 4 tape that is small enough to run: the tape of the program `small` with *f* = 1, not the proof's *f*. System 3 emulates any System 4 tape, so this one serves as well. Its run:
+The System 4 tape:
 
 ```wl
-Length[System4Evolution[s4small, 1000]] - 1
+s4small = System5ToSystem4[small, 1]
 ```
 
----
-
-The wolfram23 tape, with blocks of width `2^7` and a left end of 120 zeros:
+Its run:
 
 ```wl
-Length[w23[[2]]] + 1 + Length[w23[[4]]]
+System4Evolution[s4small, 1000]
 ```
 
----
-
-The first 3000 steps of wolfram23, which scan the first block:
-
-```wl
-ArrayPlot[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]][[100 ;; 400]] & /@ Wolfram23Evolution[w23, 3000][[;; ;; 10]],
-    ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}]
-```
-
----
-
-The System 4 decodes at its left-end turns:
+Its decodes at its left-end turns:
 
 ```wl
 System4ToSystem5[#, 20] & /@ Values[System4Evolution[s4small, 1000, #["Active"] == 0 && #["State"] === "B" &]]
 ```
 
----
-
-The wolfram23 decodes, by <code>[Wolfram23ToSystem5]()</code>, each time wolfram23 is back at the left end of the tape in state B, 123 cells from the edge:
+The System 3 tape, with blocks of width `2^7` and a left end of 120 zeros:
 
 ```wl
-Take[Wolfram23ToSystem5[#, 7, 20] & /@ Values[Wolfram23Evolution[w23, 50000, #1 == 2 && #2 == 123 &]], 6]
+s3 = System4ToSystem3[s4small, 7, 120]
+```
+
+The wolfram23 configuration:
+
+```wl
+w23 = System3ToWolfram23[s3]
+```
+
+The first 3000 steps of wolfram23, which scan the first block:
+
+```wl
+ArrayPlot[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]][[100 ;; 400]] & /@ Wolfram23Evolution[w23, 3000][[;; ;; 10]], ColorRules -> cellColors]
+```
+
+The first six times wolfram23 is back at the left end of the tape in state B, 123 cells from the edge:
+
+```wl
+returns = Take[Wolfram23Evolution[w23, 50000, #1 == 2 && #2 == 123 &], 6]
+```
+
+Their decodes, by <code>[Wolfram23ToSystem5]()</code>, are System 4's:
+
+```wl
+Wolfram23ToSystem5[#, 7, 20] & /@ Values[returns]
 ```
 
 ## How large the emulation is
@@ -223,15 +227,13 @@ Every encoder is a direct construction, but the sizes multiply. System 4 needs *
 The sizes for one step of a two-state machine that writes 1, moves right and halts:
 
 ```wl
-Dataset[EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]]
+EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
 ```
-
----
 
 The formal proof uses closed-form bounds in place of the run lengths, so that its initial condition is a definition that runs no system. The bounds are far larger than the runs:
 
 ```wl
-Dataset[EmulationParameters[program, "ClosedForm"]]
+EmulationParameters[program, "ClosedForm"]
 ```
 
 ## The formal proof
