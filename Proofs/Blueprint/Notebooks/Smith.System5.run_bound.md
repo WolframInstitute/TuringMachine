@@ -11,13 +11,7 @@ Keywords: [Wolfram 2,3 Turing machine, universality, Lean, Smith.System5.run_bou
 Links: ["[Smith.System5.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
 ---
 
-The functions come from the paclet `WolframInstitute/TuringMachine`:
-
-```wl
-#| eval: false
-PacletInstall["https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/WolframInstitute__TuringMachine.paclet"];
-Needs["WolframInstitute`TuringMachine`"]
-```
+The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
 The programs of a cyclic tag system for one to three cycles:
 

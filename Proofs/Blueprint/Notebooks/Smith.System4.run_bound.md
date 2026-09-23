@@ -11,13 +11,7 @@ Keywords: [Wolfram 2,3 Turing machine, universality, Lean, Smith.System4.run_bou
 Links: ["[Smith.System4.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
 ---
 
-The functions come from the paclet `WolframInstitute/TuringMachine`:
-
-```wl
-#| eval: false
-PacletInstall["https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/WolframInstitute__TuringMachine.paclet"];
-Needs["WolframInstitute`TuringMachine`"]
-```
+The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
 The System 4 tapes of Smith's p. 33 program for f from 1 to 3:
 

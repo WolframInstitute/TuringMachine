@@ -4,14 +4,14 @@
   Computational footnotes in the blueprint. `:::notebook "Lean.Name"` after a
   node marks the Wolfram notebook of that declaration: the footnote written
   in `Blueprint/Notebooks/<Lean.Name>.md` and deployed by
-  `scripts/CloudDeployNotebooks.wl` as a public cloud notebook with a PNG
-  preview. The directive fails the build when the footnote file is missing.
+  `scripts/CloudDeployNotebooks.wl` as a public cloud notebook. The directive
+  fails the build when the footnote file is missing.
 
   In the HTML the marker is a button under the node. It opens a panel on the
-  right (a sheet at the bottom on narrow screens) that shows the preview and,
-  on request, the live notebook through `wolfram-notebook-embedder`. While
-  the panel is open it follows the footnote nearest the top of the window
-  unless it is pinned.
+  right (a sheet at the bottom on narrow screens) with the notebook embedded
+  by `wolfram-notebook-embedder`; the border between the text and the panel
+  can be dragged, and the width is remembered. While the panel is open it
+  follows the footnote nearest the top of the window.
 -/
 
 import VersoManual
@@ -27,6 +27,7 @@ def notebookBase : String :=
   "https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/notebooks/"
 
 def notebookCss : String := r#"
+:root { --wl-nb-width: min(44vw, 680px); }
 .wl-nb { margin: 0.4em 0 1.2em; }
 .wl-nb-chip {
   font: inherit; font-size: 0.85em; cursor: pointer;
@@ -35,36 +36,32 @@ def notebookCss : String := r#"
 }
 .wl-nb-chip:hover { background: #ffe4df; }
 #wl-nb-panel {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(44vw, 680px);
-  display: flex; flex-direction: column; z-index: 1000;
-  background: #fff; color: #222; border-left: 1px solid #ddd;
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--wl-nb-width);
+  z-index: 1000; background: #fff; border-left: 1px solid #ddd;
   box-shadow: -4px 0 16px #0002; transform: translateX(105%);
   transition: transform 0.2s ease-out;
 }
 body.wl-nb-open #wl-nb-panel { transform: none; }
-body.wl-nb-open { padding-right: min(44vw, 680px); }
-#wl-nb-panel header {
-  display: flex; align-items: center; gap: 0.5em; padding: 0.5em 0.8em;
-  border-bottom: 1px solid #ddd; font-size: 0.9em;
+body.wl-nb-open { padding-right: var(--wl-nb-width); }
+body.wl-nb-resizing, body.wl-nb-resizing * { cursor: col-resize !important; user-select: none; }
+body.wl-nb-resizing #wl-nb-panel { transition: none; }
+#wl-nb-panel .wl-nb-body { position: absolute; inset: 0 0 0 6px; overflow: auto; }
+#wl-nb-panel .wl-nb-grip {
+  position: absolute; top: 0; bottom: 0; left: -3px; width: 9px; cursor: col-resize; z-index: 2;
 }
-#wl-nb-panel header .wl-nb-title { flex: 1; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#wl-nb-panel header button, #wl-nb-panel header a {
-  font: inherit; cursor: pointer; background: none; border: 1px solid #ccc;
-  border-radius: 0.3em; padding: 0.1em 0.5em; color: inherit; text-decoration: none;
+#wl-nb-panel .wl-nb-grip:hover, body.wl-nb-resizing .wl-nb-grip { background: #b2222233; }
+#wl-nb-panel .wl-nb-close {
+  position: absolute; top: 6px; right: 10px; z-index: 3; cursor: pointer;
+  font: 18px/1 sans-serif; width: 26px; height: 26px; border-radius: 13px;
+  border: 1px solid #ccc; background: #fffc; color: #555;
 }
-#wl-nb-panel header button[aria-pressed="true"] { background: #eee; }
-#wl-nb-panel .wl-nb-body { flex: 1; overflow: auto; padding: 0.5em; }
-#wl-nb-panel .wl-nb-body img { width: 100%; height: auto; display: block; }
-#wl-nb-panel .wl-nb-note { color: #666; font-size: 0.85em; padding: 0.3em 0.2em; }
+#wl-nb-panel .wl-nb-note { color: #666; font-size: 0.85em; padding: 1em; }
 @media (max-width: 900px) {
   #wl-nb-panel { top: auto; left: 0; width: 100vw; height: 70vh; border-left: 0;
     border-top: 1px solid #ddd; transform: translateY(105%); }
   body.wl-nb-open { padding-right: 0; }
-}
-@media (prefers-color-scheme: dark) {
-  #wl-nb-panel { background: #1e1e1e; color: #ddd; border-color: #444; }
-  #wl-nb-panel header { border-color: #444; }
-  .wl-nb-chip { background: #3a1f1f; color: #ffb4a8; }
+  #wl-nb-panel .wl-nb-grip { display: none; }
+  #wl-nb-panel .wl-nb-body { left: 0; }
 }
 @media print { #wl-nb-panel, .wl-nb-chip { display: none; } }
 "#
@@ -72,7 +69,8 @@ body.wl-nb-open { padding-right: min(44vw, 680px); }
 def notebookJs : String := r#"
 (function () {
   const EMBEDDER = "https://cdn.jsdelivr.net/npm/wolfram-notebook-embedder@0.3.0/dist/wolfram-notebook-embedder.min.js";
-  let panel, current = null, pinned = false, embedding = null, embedderLoading = null;
+  const WIDTH_KEY = "wl-nb-width";
+  let panel, body, current = null, embedding = null, embedderLoading = null;
 
   function loadEmbedder() {
     if (window.WolframNotebookEmbedder) return Promise.resolve(window.WolframNotebookEmbedder);
@@ -95,56 +93,59 @@ def notebookJs : String := r#"
     return e;
   }
 
+  function setWidth(px) {
+    const w = Math.max(280, Math.min(px, window.innerWidth - 320));
+    document.documentElement.style.setProperty("--wl-nb-width", w + "px");
+    return w;
+  }
+
   function buildPanel() {
     panel = el("aside", { id: "wl-nb-panel", "aria-label": "Computational footnote" });
-    const header = el("header");
-    header.append(el("span", { class: "wl-nb-title" }));
-    const live = el("button", { type: "button", class: "wl-nb-live" }, "Live");
-    live.title = "Load the live notebook";
-    live.onclick = () => showLive();
-    const pin = el("button", { type: "button", class: "wl-nb-pin", "aria-pressed": "false" }, "Pin");
-    pin.title = "Keep this notebook while scrolling";
-    pin.onclick = () => { pinned = !pinned; pin.setAttribute("aria-pressed", String(pinned)); };
-    const open = el("a", { class: "wl-nb-open", target: "_blank", rel: "noopener" }, "Cloud");
-    open.title = "Open in the Wolfram Cloud";
-    const close = el("button", { type: "button", "aria-label": "Close" }, "×");
+    const grip = el("div", { class: "wl-nb-grip", role: "separator", "aria-orientation": "vertical",
+      title: "Drag to resize" });
+    const close = el("button", { type: "button", class: "wl-nb-close", "aria-label": "Close" }, "×");
     close.onclick = () => document.body.classList.remove("wl-nb-open");
-    header.append(live, pin, open, close);
-    panel.append(header, el("div", { class: "wl-nb-body" }));
+    body = el("div", { class: "wl-nb-body" });
+    panel.append(grip, close, body);
     document.body.append(panel);
+    try { const w = parseInt(localStorage.getItem(WIDTH_KEY), 10); if (w) setWidth(w); } catch (e) {}
+    grip.addEventListener("pointerdown", ev => {
+      ev.preventDefault();
+      grip.setPointerCapture(ev.pointerId);
+      document.body.classList.add("wl-nb-resizing");
+      const move = e => setWidth(window.innerWidth - e.clientX);
+      const up = e => {
+        const w = setWidth(window.innerWidth - e.clientX);
+        try { localStorage.setItem(WIDTH_KEY, String(w)); } catch (err) {}
+        document.body.classList.remove("wl-nb-resizing");
+        grip.removeEventListener("pointermove", move);
+        grip.removeEventListener("pointerup", up);
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", up);
+    });
   }
 
   function show(marker) {
     if (!panel) buildPanel();
-    if (current === marker) { document.body.classList.add("wl-nb-open"); return; }
+    document.body.classList.add("wl-nb-open");
+    if (current === marker) return;
     current = marker;
     if (embedding) { embedding.then(e => e.detach()).catch(() => {}); embedding = null; }
-    const label = marker.dataset.label, url = marker.dataset.nb;
-    panel.querySelector(".wl-nb-title").textContent = label;
-    panel.querySelector(".wl-nb-open").href = url;
-    const body = panel.querySelector(".wl-nb-body");
-    body.replaceChildren(
-      el("img", { src: marker.dataset.preview, alt: "Notebook for " + label, loading: "lazy" }),
-      el("div", { class: "wl-nb-note" }, "Preview. Press Live to load the notebook itself."));
-    document.body.classList.add("wl-nb-open");
-  }
-
-  function showLive() {
-    if (!current) return;
-    const body = panel.querySelector(".wl-nb-body");
+    const note = el("div", { class: "wl-nb-note" }, "Loading the notebook of " + marker.dataset.label + "\u2026");
     const node = el("div");
-    body.replaceChildren(node);
-    embedding = loadEmbedder().then(E => E.embed(current.dataset.nb, node, { allowInteract: true }));
+    body.replaceChildren(note, node);
+    embedding = loadEmbedder().then(E => E.embed(marker.dataset.nb, node, { allowInteract: true }));
+    embedding.then(() => note.remove(), () => {});
     embedding.catch(() => {
-      body.replaceChildren(el("div", { class: "wl-nb-note" },
-        "The live notebook could not be loaded here; use the Cloud link."));
+      body.replaceChildren(el("div", { class: "wl-nb-note" }, "The notebook could not be loaded."));
     });
   }
 
   function follow() {
     const markers = Array.from(document.querySelectorAll(".wl-nb"));
     const observer = new IntersectionObserver(entries => {
-      if (pinned || !document.body.classList.contains("wl-nb-open")) return;
+      if (!document.body.classList.contains("wl-nb-open")) return;
       const visible = entries.filter(e => e.isIntersecting)
         .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
       if (visible.length) show(visible[0].target);
@@ -172,9 +173,7 @@ block_extension Block.notebook (label : String) where
       let .str label := data
         | Verso.reportError "Expected a string for a notebook" *> pure .empty
       let url := notebookBase ++ label ++ ".nb"
-      let preview := notebookBase ++ label ++ ".png"
-      pure <| .tag "div" #[("class", "wl-nb"), ("data-label", label), ("data-nb", url),
-          ("data-preview", preview)] <|
+      pure <| .tag "div" #[("class", "wl-nb"), ("data-label", label), ("data-nb", url)] <|
         .tag "button" #[("type", "button"), ("class", "wl-nb-chip"),
             ("title", "Show the Wolfram notebook of " ++ label)]
           (.text true "Notebook")

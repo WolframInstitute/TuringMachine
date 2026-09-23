@@ -11,13 +11,7 @@ Keywords: [Wolfram 2,3 Turing machine, universality, Lean, BiTM.wolfram23]
 Links: ["[BiTM.wolfram23 in the blueprint](https://wolframinstitute.github.io/TuringMachine/machine-model/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
 ---
 
-The functions come from the paclet `WolframInstitute/TuringMachine`:
-
-```wl
-#| eval: false
-PacletInstall["https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/WolframInstitute__TuringMachine.paclet"];
-Needs["WolframInstitute`TuringMachine`"]
-```
+The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
 The machine from a blank tape, drawn by the built-in [`RulePlot`]() (rule 596440 in Wolfram's numbering):
 

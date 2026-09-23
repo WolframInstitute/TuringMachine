@@ -7,11 +7,9 @@
    MarkdownToNotebook computational essay using the paclet
    WolframInstitute/TuringMachine) is converted with its outputs evaluated,
    written to _out/notebooks/<LeanName>.nb, deployed as a public cloud
-   notebook <base>/notebooks/<LeanName>.nb, and rasterized to a preview
-   <base>/notebooks/<LeanName>.png that the blueprint shows before the live
-   notebook loads. The paclet archive is deployed as
-   <base>/WolframInstitute__TuringMachine.paclet, which the footnotes'
-   first cell installs.
+   notebook <base>/notebooks/<LeanName>.nb in its published form: without
+   the toolbars of the essay template. The blueprint embeds it next to the
+   node.
 
    Usage, from the Lake root (Proofs/), with a connected cloud account:
 
@@ -25,8 +23,8 @@
 BeginPackage["CloudDeployNotebooks`"];
 
 BuildFootnote::usage = "BuildFootnote[md, outDir] converts a footnote to an evaluated notebook and returns its path.";
-DeployFootnote::usage = "DeployFootnote[nb, base] deploys a built footnote and its preview under base/notebooks.";
-DeployPaclet::usage = "DeployPaclet[pacletDir, base] builds the paclet archive and deploys it under base.";
+DeployFootnote::usage = "DeployFootnote[nb, base] deploys the published form of a built footnote under base/notebooks.";
+BuiltFootnote::usage = "BuiltFootnote[nb] gives the published form of a built footnote, without the template's toolbars.";
 
 Begin["`Private`"];
 
@@ -40,39 +38,16 @@ BuildFootnote[md_String, outDir_String] := Module[{out},
     out
 ];
 
-(* The preview is the top of the notebook: the full rasterization at 96 dpi,
-   or, for a notebook too tall for that, as many of its first cells as rasterize; cropped to 2400
-   pixels. *)
-preview[nb_String] := UsingFrontEnd @ Module[{obj, img},
-    obj = NotebookOpen[nb, Visible -> False];
-    SetOptions[obj, WindowSize -> {640, Automatic}];
-    img = Quiet @ Rasterize[obj, ImageResolution -> 96];
-    NotebookClose[obj];
-    If[!ImageQ[img],
-        Do[If[!ImageQ[img],
-            obj = NotebookOpen[nb, Visible -> False];
-            SetOptions[obj, WindowSize -> {640, Automatic}];
-            With[{cells = Cells[obj]}, If[Length[cells] > k, NotebookDelete[cells[[k + 1 ;;]]]]];
-            img = Quiet @ Rasterize[obj, ImageResolution -> 96];
-            NotebookClose[obj, Interactive -> False]], {k, {14, 11, 9, 7, 5}}]];
-    If[ImageQ[img], ImageTake[img, UpTo[2400]], img]
+(* The published form of a footnote: MarkdownToNotebook writes the authoring
+   notebook of the computational essay template, whose stylesheet docks the
+   template's toolbars and whose TaggingRules drive them; both go. *)
+BuiltFootnote[nb_String] := Module[{expr = Import[nb, "NB"]},
+    expr = DeleteCases[expr, (DockedCells -> _) | (TaggingRules -> _), Infinity];
+    Append[expr, Editable -> False]
 ];
 
-DeployFootnote[nb_String, base_String] := Module[{name = FileBaseName[nb], url, png},
-    url = CloudDeploy[Import[nb, "NB"], CloudObject[base <> "/notebooks/" <> name <> ".nb"],
-        Permissions -> "Public"];
-    png = ExportByteArray[preview[nb], "PNG"];
-    CloudDeploy[HTTPResponse[png, <|"ContentType" -> "image/png"|>],
-        CloudObject[base <> "/notebooks/" <> name <> ".png"], Permissions -> "Public"];
-    First[url]
-];
-
-DeployPaclet[pacletDir_String, base_String] := Module[{archive},
-    archive = CreatePacletArchive[pacletDir, $TemporaryDirectory];
-    CloudDeploy[HTTPResponse[ReadByteArray[archive], <|"ContentType" -> "application/octet-stream"|>],
-        CloudObject[base <> "/WolframInstitute__TuringMachine.paclet"], Permissions -> "Public"];
-    FileNameTake[archive]
-];
+DeployFootnote[nb_String, base_String] := First @ CloudDeploy[BuiltFootnote[nb],
+    CloudObject[base <> "/notebooks/" <> FileBaseName[nb] <> ".nb"], Permissions -> "Public"];
 
 End[];
 EndPackage[];
@@ -94,7 +69,6 @@ If[$EvaluationEnvironment === "Script" && $ScriptCommandLine =!= {} &&
             Print["connected as ", $CloudUserID];
             If[!StringStartsQ[ToString[$CloudUserID], "wolframinstitute"],
                 Print["refusing to deploy: not the wolframinstitute account"]; Exit[1]];
-            Print["paclet ", CloudDeployNotebooks`DeployPaclet[pacletDir, "wolfram23-blueprint"]];
             Scan[Print["deployed ", CloudDeployNotebooks`DeployFootnote[#, "wolfram23-blueprint"]] &, nbs]
         ]
     ]

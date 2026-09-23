@@ -64,10 +64,12 @@ compiles Verso from source (the Lake packages are cached between runs).
 Computational footnotes: each `:::notebook "Lean.Name"` directive in a chapter
 (defined in `Blueprint/Notebook.lean`) needs `Blueprint/Notebooks/<Lean.Name>.md`, a
 MarkdownToNotebook computational essay using the paclet functions; the build fails
-without it. The pages show a button that opens a panel on the right with the footnote's
-preview and, on request, the live notebook (`wolfram-notebook-embedder` from jsdelivr).
-The notebooks, their previews and the paclet archive the notebooks install are
-deployed under `wolfram23-blueprint/` on the cloud, for both sites:
+without it. The pages show a button that opens a panel on the right with the footnote
+embedded (`wolfram-notebook-embedder` from jsdelivr); the border between the text and
+the panel can be dragged. The footnotes are deployed in their published form, without
+the toolbars of MarkdownToNotebook's essay template, under
+`wolfram23-blueprint/notebooks/` on the cloud, for both sites. They name the paclet by
+its Paclet Repository page:
 
 ```
 wolframscript -file scripts/CloudDeployNotebooks.wl                 # build into _out/notebooks

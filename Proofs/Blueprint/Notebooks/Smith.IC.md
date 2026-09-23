@@ -11,13 +11,7 @@ Keywords: [Wolfram 2,3 Turing machine, universality, Lean, Smith.IC]
 Links: ["[Smith.IC in the blueprint](https://wolframinstitute.github.io/TuringMachine/universality/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
 ---
 
-The functions come from the paclet `WolframInstitute/TuringMachine`:
-
-```wl
-#| eval: false
-PacletInstall["https://www.wolframcloud.com/obj/wolframinstitute/wolfram23-blueprint/WolframInstitute__TuringMachine.paclet"];
-Needs["WolframInstitute`TuringMachine`"]
-```
+The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
 The sizes for one step of a two-state machine that writes 1, moves right and halts:
 
