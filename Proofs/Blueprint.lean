@@ -23,6 +23,7 @@ import Blueprint.Chapters.Systems3210
 import Blueprint.Chapters.Conjecture0
 import Blueprint.Chapters.Universality
 import Blueprint.Chapters.InfiniteForm
+import Blueprint.Chapters.Notebooks
 import Blueprint.Chapters.OpenItems
 
 open Verso.Genre
@@ -58,6 +59,7 @@ chapter and opens the module it names. Page numbers refer to [Smith's paper](htt
 {include 0 Blueprint.Chapters.Conjecture0}
 {include 0 Blueprint.Chapters.Universality}
 {include 0 Blueprint.Chapters.InfiniteForm}
+{include 0 Blueprint.Chapters.Notebooks}
 {include 0 Blueprint.Chapters.OpenItems}
 
 {blueprint_graph}

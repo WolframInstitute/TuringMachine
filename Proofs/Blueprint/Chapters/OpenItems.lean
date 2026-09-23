@@ -1,7 +1,7 @@
 /-
   Blueprint.Chapters.OpenItems
 
-  Chapter 11 of the blueprint: the open items, what is not proved and what
+  Chapter 12 of the blueprint: the open items, what is not proved and what
   the statements do not say. The chapter introduces no blueprint node; its
   declaration links resolve against the nodes of the other chapters.
 -/
