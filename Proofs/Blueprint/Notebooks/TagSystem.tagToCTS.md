@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 A cyclic tag system has a working string of bits and a list of appendants used in turn. A step deletes the first bit and, if it was a 1, appends the current appendant; then it moves on to the next appendant. Smith's example with the appendants `1` and `10` on the working string `01`:
 
 ```wl
-cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
+cts = CyclicTagSystem[{{1}, {1, 0}}, {0, 1}]
 ```
 
 Its run, every bit labeled; one bit leaves on the left each step, and the rows where the list of appendants starts over are shaded red:
@@ -32,7 +32,7 @@ CyclicTagSystemEvolutionPlot[cts, 12]
 A tag system over `k` symbols: here `k = 3`, with `0 -> 12`, `1 -> 0`, `2 -> 000` on the word `100`:
 
 ```wl
-tag3 = <|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>
+tag3 = TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]
 ```
 
 Each symbol `i` becomes a block of `k` bits with a single 1 at position `i`. The cyclic tag system has `2 k` appendants: the encodings of the `k` productions, then `k` empty ones:

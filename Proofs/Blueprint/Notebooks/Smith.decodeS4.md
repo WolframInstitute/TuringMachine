@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 A System 5 program with two rules:
 
 ```wl
-program = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
+program = System5[{2}, {{1, 2}, {}}]
 ```
 
 The parameters the proof takes for it: `f` (the tape's time budget) and the band `b` below which the decoder reads, among others:

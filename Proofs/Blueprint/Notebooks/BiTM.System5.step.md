@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 Smith's System 5 program of p. 33: a bag `{2}` and four rules:
 
 ```wl
-program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
+program = System5[{2}, {{1, 4}, {1, 6}, {}, {}}]
 ```
 
 ## Its run, step by step

@@ -31,10 +31,10 @@ Its first four steps: three moves to the right, then a move to the left:
 TuringMachineEvolutionPlot[machine, config, 4, ImageSize -> 220]
 ```
 
-The tag system with the tag times of those steps (its productions are too many to print):
+The tag system with the tag times of those steps, drawn as the productions its word reaches and the word:
 
 ```wl
-tag = TuringMachineToTagSystem[machine, config, 4];
+tag = TuringMachineToTagSystem[machine, config, 4]
 ```
 
 ```wl
@@ -60,7 +60,7 @@ Differences[tag["TagTimes"]]
 Before the fourth step the machine is in state 2 on a 0, with `111` on the left: `m = 7`, `N = 0`. The rule writes 1, moves left and goes to state 1. The first two rounds are those of every step: they copy the numbers and read the head bit. The remaining three halve the left number `m`, whose low bit becomes the new head cell, and double the right number with the written bit added. The run from tag time 48 to 85, every symbol labeled:
 
 ```wl
-TagSystemEvolutionPlot[<|tag, "Word" -> TagSystemEvolution[tag, 48][[-1]]|>, 37]
+TagSystemEvolutionPlot[TagSystem[<|Normal[tag], "Word" -> TagSystemEvolution[tag, 48][[-1]]|>], 37]
 ```
 
 The words at the two ends decode to the configurations before and after the step:

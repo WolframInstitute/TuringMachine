@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 Smith's System 5 program of p. 33:
 
 ```wl
-program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
+program = System5[{2}, {{1, 4}, {1, 6}, {}, {}}]
 ```
 
 The parameters taken from its actual runs: `T5` and `T4` are the lengths of the System 5 and System 4 runs, `f` the System 4 parameter, `Band` the decoder's band, `Fuel` what the System 3 blocks must hold, `w` the block width exponent:

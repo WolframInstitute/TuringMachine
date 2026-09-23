@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 A small System 5 program, as a System 4 tape with `f = 1`:
 
 ```wl
-tape4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+tape4 = System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1]
 ```
 
 Its wolfram23 tape has blocks of width `2^7` and a left end of 120 zeros; its length in cells:

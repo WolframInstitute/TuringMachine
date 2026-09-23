@@ -32,13 +32,13 @@ System5ToCyclicTagSystem[{1, 4}]
 Smith's cyclic tag system with the appendants `1` and `10` on `01`:
 
 ```wl
-cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
+cts = CyclicTagSystem[{{1}, {1, 0}}, {0, 1}]
 ```
 
 Its doubled system: every bit twice, every appendant doubled and followed by an empty one. Its run:
 
 ```wl
-CyclicTagSystemEvolutionPlot[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 12]
+CyclicTagSystemEvolutionPlot[CyclicTagSystem[{{1, 1}, {}, {1, 1, 0, 0}, {}}, {0, 0, 1, 1}], 12]
 ```
 
 The System 5 run of the encoded program:
@@ -56,5 +56,5 @@ First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ System5Evolution[Cyclic
 The working strings of the doubled system, consecutive repeats removed; they are the same:
 
 ```wl
-First /@ Split[CyclicTagSystemEvolution[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 8][[All, "Data"]]]
+First /@ Split[CyclicTagSystemEvolution[CyclicTagSystem[{{1, 1}, {}, {1, 1, 0, 0}, {}}, {0, 0, 1, 1}], 8][[All, "Data"]]]
 ```

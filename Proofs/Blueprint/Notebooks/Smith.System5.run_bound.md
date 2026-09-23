@@ -22,7 +22,7 @@ Take a program whose bag has no repeated elements, all positive, and whose rule 
 The programs of Smith's example with the appendants `1` and `10` on `01` for one to six cycles of its appendants:
 
 ```wl
-programs = Table[CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, n], {n, 6}]
+programs = Table[CyclicTagSystemToSystem5[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], n], {n, 6}]
 ```
 
 The largest integer `B` and the number of rules `r` of each:

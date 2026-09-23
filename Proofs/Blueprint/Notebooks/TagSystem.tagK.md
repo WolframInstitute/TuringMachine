@@ -20,7 +20,7 @@ A 2-tag system has a word and a production for each symbol. A step reads the fir
 A tag system over the symbols `0`, `1`, `2` with the productions `0 -> 12`, `1 -> 0`, `2 -> 000`, started on the word `100`:
 
 ```wl
-tag3 = <|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>
+tag3 = TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]
 ```
 
 Its run, each word drawn at its place in the queue: two symbols leave on the left, the production arrives on the right:
@@ -35,6 +35,12 @@ A binary Turing machine with states 1 and 2 (state 0 halts). Each rule reads the
 
 ```wl
 machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}
+```
+
+Its rule icons, as for any <code>TuringMachine</code>: the state and the cell read above, the cell written and the move below:
+
+```wl
+RulePlot[TuringMachine[machine]]
 ```
 
 The configuration: state 1, nothing on the left, the head on a 0, and `11` to its right:
@@ -57,10 +63,10 @@ The tag system does not keep a tape. It keeps two numbers: `m`, the left half of
 {FromDigits[Reverse[config[[2]]], 2], config[[3]] + 2 FromDigits[Reverse[config[[4]]], 2]}
 ```
 
-The word of a configuration in state `q` is `A x`, then `m` pairs `al x`, then `B x`, then `N` pairs `be x`, every symbol carrying the state `q` as a subscript; the numbers are written in unary. The tag system of the machine, with the tag times of its first four steps (it has a production for every symbol, too many to print):
+The word of a configuration in state `q` is `A x`, then `m` pairs `al x`, then `B x`, then `N` pairs `be x`, every symbol carrying the state `q` as a subscript; the numbers are written in unary. The tag system of the machine, with the tag times of its first four steps, drawn as the productions of the symbols its word reaches and the word itself:
 
 ```wl
-tag = TuringMachineToTagSystem[machine, config, 4];
+tag = TuringMachineToTagSystem[machine, config, 4]
 ```
 
 The word, symbol by symbol (`x` is the pad, subscripts are states):
@@ -75,12 +81,6 @@ There is a symbol for each of 21 kinds, each state below `s` and up to two bits,
 Length[tag["Productions"]]
 ```
 
-The productions of the symbols in this word; the pad has none:
-
-```wl
-With[{names = tag["SymbolNames"]},
-    Grid[{names[[# + 1]], "\[RightArrow]", Row[names[[tag["Productions"][[# + 1]] + 1]], " "]} & /@ Union[tag["Word"]], Alignment -> Left]]
-```
 
 ## One machine step, round by round
 

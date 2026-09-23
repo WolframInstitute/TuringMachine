@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 A System 5 program with a bag and two rules:
 
 ```wl
-program = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>
+program = System5[{1, 3}, {{1}, {}}]
 ```
 
 Its System 4 tape with the parameter `f = 1`:

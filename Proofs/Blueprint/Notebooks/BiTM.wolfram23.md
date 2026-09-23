@@ -32,7 +32,7 @@ Wolfram23EvolutionPlot[{1, {}, 0, {}}, 300, ImageSize -> 300]
 Smith's System 3 is the same machine seen through a relabeling: the cells left of the head have 1 and 2 swapped, and so has the head cell in state A; System 3's third state C is state B with the head cell swapped. The wolfram23 configuration of a System 3 tape (the tape of `{0, 2} * {}` of the companion notebook):
 
 ```wl
-tape3 = System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]
+tape3 = System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]
 ```
 
 ```wl

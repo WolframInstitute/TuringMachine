@@ -22,7 +22,7 @@ A System 5 program is a bag of integers and a list of rules, each a list of inte
 Smith emulates the doubled cyclic tag system, in which every bit of the working string appears twice (and each appendant is doubled and followed by an empty one). Each bit of the doubled string becomes a pair of integers `(x, x + 1)` for a 0 and `(x, x + 2)` for a 1. Smith's example with the appendants `1` and `10` on `01`:
 
 ```wl
-cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
+cts = CyclicTagSystem[{{1}, {1, 0}}, {0, 1}]
 ```
 
 Its System 5 program for one cycle of the appendants:

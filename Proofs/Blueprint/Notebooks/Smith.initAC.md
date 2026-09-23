@@ -18,7 +18,7 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 The System 4 tape `{0, 2} * {}`, the head on the first set in state A:
 
 ```wl
-tape4 = <|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>
+tape4 = System4[{{0, 2}, "*", {}}]
 ```
 
 Its System 3 tape with blocks of width `2^3` and a left end of 3 zeros:
@@ -62,5 +62,5 @@ The head turns at the left end, scans the first block (the set `{0, 2}` holds 0,
 A System 4 tape with 19 elements and blocks of width 128, sampled:
 
 ```wl
-System3EvolutionPlot[System4ToSystem3[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 7, 120], 20000, ImageSize -> 420]
+System3EvolutionPlot[System4ToSystem3[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 7, 120], 20000, ImageSize -> 420]
 ```

@@ -22,7 +22,7 @@ In state A the head moves left, in states B and C right. A leftward walk ends at
 The System 4 tapes of Smith's p. 33 program for `f` from 1 to 4:
 
 ```wl
-tapes = Table[System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, f], {f, 4}]
+tapes = Table[System5ToSystem4[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], f], {f, 4}]
 ```
 
 Their runs, one below the other; every run halts:

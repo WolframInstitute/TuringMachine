@@ -28,7 +28,7 @@ The head sits on one element of the tape.
 The tape `{0, 2} * {}`, the head on the first set in state A:
 
 ```wl
-tape = <|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>
+tape = System4[{{0, 2}, "*", {}}]
 ```
 
 Its run, every element labeled with its contents; the active element is red in state A, blue in B and orange in C:
@@ -44,7 +44,7 @@ At the left end the head turns into B. It decrements `{0, 2}`: the 0 is removed,
 The System 4 tape of a small System 5 program (see the companion notebook on the encoder):
 
 ```wl
-tape2 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+tape2 = System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1]
 ```
 
 The first 25 steps, labeled. The head turns at the left end, sweeps right in state C past the stars, switches back to B at a set holding 0, deletes the next star and walks back left:
