@@ -13,32 +13,27 @@ Links: ["[TagSystem.tagToCTS in the blueprint](https://wolframinstitute.github.i
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The cyclic tag system of the tag system `a -> bc`, `b -> a`, `c -> aaa` on the word `baa`:
+The tag system `a -> bc`, `b -> a`, `c -> aaa` on the word `baa`:
 
 ```wl
-cts = TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>]
+tag = <|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>
 ```
 
-Its run for four cycles of the six appendants:
+The run of the tag system `a -> bc`, `b -> a`, `c -> aaa` on the word `baa`:
 
 ```wl
-CyclicTagSystemEvolution[cts, 24]
+TagSystemEvolutionPlot[tag, 5, ImageSize -> 420]
 ```
 
-At the start of every cycle the working string decodes to the next tag word:
+The run of its cyclic tag system; the rows where a cycle of the six appendants starts are marked in red:
 
 ```wl
-CyclicTagSystemToTagSystem[#["Data"], 3] & /@ CyclicTagSystemEvolution[cts, 24][[1 ;; ;; 6]]
+CyclicTagSystemEvolutionPlot[TagSystemToCyclicTagSystem[tag], 30, ImageSize -> 420]
 ```
 
-The run of the tag system, for comparison:
+The working strings at those rows decode to the tag words:
 
 ```wl
-TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 4]
-```
-
-For the tag system of a Turing machine the cyclic tag system is large: 2 (1 + 84 s) appendants of up to thousands of bits. Their sizes for a three-state machine:
-
-```wl
-EmulationSizes[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 1]
+CyclicTagSystemToTagSystem[#["Data"], 3] & /@
+    Values[CyclicTagSystemEvolution[TagSystemToCyclicTagSystem[tag], 30, #["Phase"] == 0 &]]
 ```

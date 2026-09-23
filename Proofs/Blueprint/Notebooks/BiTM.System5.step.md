@@ -13,14 +13,14 @@ Links: ["[BiTM.System5.step in the blueprint](https://wolframinstitute.github.io
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The run of Smith's program of p. 33:
+Smith's System 5 program of p. 33:
 
 ```wl
-run = System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
+program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
 ```
 
-The bag elements over time:
+The run of Smith's program of p. 33: the bag drifts down by one per step, and each pop merges a rule into it:
 
 ```wl
-ListPlot[Catenate[MapIndexed[Thread[{First[#2] - 1, #1}] &, run[[All, "Bag"]]]], ImageSize -> 360, AxesLabel -> {"step", "element"}]
+System5EvolutionPlot[program, 20, ImageSize -> 420]
 ```

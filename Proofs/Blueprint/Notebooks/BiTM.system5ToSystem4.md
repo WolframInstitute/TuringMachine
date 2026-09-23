@@ -13,20 +13,20 @@ Links: ["[BiTM.system5ToSystem4 in the blueprint](https://wolframinstitute.githu
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-A one-rule program with f = 1:
+A small System 5 program:
 
 ```wl
-System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+small = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>
 ```
 
-Smith's program of p. 33 with f = 2:
+A one-rule program as a System 4 tape with f = 1: the bag set, a star and empty set, then the rule blocks:
 
 ```wl
-s4 = System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 2]
+System5ToSystem4[small, 1]["Elements"]
 ```
 
-The tape has `1 + 2 f + 8 f r` elements:
+The run of the tape; stars are black, sets gray (empty ones light), and the active element is colored by the state (A red, B blue, C orange):
 
 ```wl
-Length[s4["Elements"]]
+System4EvolutionPlot[System5ToSystem4[small, 1], 200, ImageSize -> 420]
 ```

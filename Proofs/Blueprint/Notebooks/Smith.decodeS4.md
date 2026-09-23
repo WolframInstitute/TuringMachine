@@ -16,35 +16,31 @@ The functions come from the paclet [WolframInstitute/TuringMachine](https://reso
 A System 5 program with two rules:
 
 ```wl
-s5 = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
+program2 = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
 ```
 
-The parameters of its emulation:
+The parameters of the emulation of a program with two rules:
 
 ```wl
-p = EmulationParameters[s5]
+EmulationParameters[program2]
 ```
 
-The System 4 tape:
+The run of its System 4 tape with those parameters:
 
 ```wl
-s4 = System5ToSystem4[s5, p["f"]]
+System4EvolutionPlot[System5ToSystem4[program2, EmulationParameters[program2]["f"]], 20000, ImageSize -> 420]
 ```
 
-The configurations of its run at which the head is back at the left end in state B:
+Each time the head is back at the left end in state B, the leading sets decode to a bag; consecutive repeats removed:
 
 ```wl
-events = System4Evolution[s4, 10^6, #["Active"] == 0 && #["State"] === "B" &]
+With[{p = EmulationParameters[program2]},
+    First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, p["Band"]] & /@
+        Values[System4Evolution[System5ToSystem4[program2, p["f"]], 10^6, #["Active"] == 0 && #["State"] === "B" &]]]]]
 ```
 
-Their decodes, consecutive repeats removed:
+The bags of the System 5 run:
 
 ```wl
-First /@ Split[Sort /@ DeleteMissing[System4ToSystem5[#, p["Band"]] & /@ Values[events]]]
-```
-
-The System 5 run:
-
-```wl
-System5Evolution[s5, 100]
+Sort /@ System5Evolution[program2, 100][[All, "Bag"]]
 ```

@@ -13,14 +13,20 @@ Links: ["[BiTM.ctsToSystem5 in the blueprint](https://wolframinstitute.github.io
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-Smith's example of p. 29, the cyclic tag system `1 10` on the working string `01`, for one cycle:
+Smith's cyclic tag system `1 10` on the working string `01` (p. 29):
 
 ```wl
-CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]
+cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
 ```
 
-For two cycles:
+Smith's example of p. 29, the cyclic tag system `1 10` on the working string `01`, as a System 5 program for one cycle:
 
 ```wl
-CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2]
+CyclicTagSystemToSystem5[cts, 1]
+```
+
+The run of the program for two cycles; each row is the bag at a step, red after a rule is popped:
+
+```wl
+System5EvolutionPlot[CyclicTagSystemToSystem5[cts, 2], 1000, ImageSize -> 420]
 ```

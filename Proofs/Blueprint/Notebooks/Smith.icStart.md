@@ -13,14 +13,28 @@ Links: ["[Smith.icStart in the blueprint](https://wolframinstitute.github.io/Tur
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The parameters of Smith's p. 33 program from the runs:
+Smith's System 5 program of p. 33:
 
 ```wl
-EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]
+program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
+```
+
+The parameters of Smith's p. 33 program from its runs:
+
+```wl
+EmulationParameters[program]
 ```
 
 The same in closed form:
 
 ```wl
-EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, "ClosedForm"]
+EmulationParameters[program, "ClosedForm"]
+```
+
+Side by side, on a log scale:
+
+```wl
+With[{exact = EmulationParameters[program], closed = EmulationParameters[program, "ClosedForm"]},
+    BarChart[Transpose[{Values[exact], Values[closed]}], ScalingFunctions -> "Log", ChartLabels -> {Placed[Keys[exact], Axis, Rotate[#, Pi/2] &], None},
+        ChartLegends -> {"from the runs", "closed form"}, ImageSize -> 420]]
 ```

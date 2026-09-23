@@ -13,20 +13,16 @@ Links: ["[Smith.System5.run_bound in the blueprint](https://wolframinstitute.git
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The programs of a cyclic tag system for one to three cycles:
+Smith's cyclic tag system `1 10` on the working string `01` (p. 29):
 
 ```wl
-programs = Table[CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, n], {n, 3}]
+cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
 ```
 
-Their run lengths:
+The run lengths of the programs of Smith's p. 29 example for one to six cycles, against the bound `B 2^r`:
 
 ```wl
-System5Evolution[#, Infinity, "Length"] & /@ programs
-```
-
-The bounds `B 2^r`:
-
-```wl
-Max[Flatten[{#["Bag"], #["Rules"]}]] 2^Length[#["Rules"]] & /@ programs
+With[{ps = Table[CyclicTagSystemToSystem5[cts, n], {n, 6}]},
+    ListLogPlot[{System5Evolution[#, Infinity, "Length"] & /@ ps, Max[Flatten[{#["Bag"], #["Rules"]}]] 2^Length[#["Rules"]] & /@ ps},
+        Joined -> True, PlotMarkers -> Automatic, PlotLegends -> {"run length", "bound"}, AxesLabel -> {"cycles", None}, ImageSize -> 420]]
 ```

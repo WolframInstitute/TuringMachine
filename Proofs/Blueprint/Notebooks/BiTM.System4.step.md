@@ -13,20 +13,14 @@ Links: ["[BiTM.System4.step in the blueprint](https://wolframinstitute.github.io
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The run of a small tape:
+Smith's System 5 program of p. 33:
 
 ```wl
-run = System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4]
+program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
 ```
 
-The position of the head along it:
+The run of Smith's program of p. 33 as a System 4 tape with f = 2; the head sweeps left in state A and right in B and C, and each sweep deletes stars:
 
 ```wl
-ListLinePlot[run[[All, "Active"]], ImageSize -> 360]
-```
-
-The steps at which the head is back at the left end in state B, with their configurations:
-
-```wl
-System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4, #["Active"] == 0 && #["State"] === "B" &]
+System4EvolutionPlot[System5ToSystem4[program, 2], 3000, ImageSize -> 420]
 ```

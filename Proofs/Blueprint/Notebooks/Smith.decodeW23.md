@@ -13,38 +13,27 @@ Links: ["[Smith.decodeW23 in the blueprint](https://wolframinstitute.github.io/T
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-A small System 4 tape:
+A small System 5 program:
 
 ```wl
-s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+small = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>
 ```
 
-Its configurations with the head back at the left end in state B:
+A small System 4 tape run by wolfram23 on blocks of width 128, the run sampled:
 
 ```wl
-events4 = System4Evolution[s4, 1000, #["Active"] == 0 && #["State"] === "B" &]
+Wolfram23EvolutionPlot[System3ToWolfram23[System4ToSystem3[System5ToSystem4[small, 1], 7, 120]], 60000, ImageSize -> 420]
 ```
 
-Their decodes:
+The System 4 decodes each time its head is back at the left end in state B:
 
 ```wl
-System4ToSystem5[#, 20] & /@ Values[events4]
+System4ToSystem5[#, 20] & /@ Values[System4Evolution[System5ToSystem4[small, 1], 1000, #["Active"] == 0 && #["State"] === "B" &]]
 ```
 
-The wolfram23 configuration of the tape with blocks of width 128:
+The wolfram23 decodes at its first six returns to the left end in state B:
 
 ```wl
-w23 = System3ToWolfram23[System4ToSystem3[s4, 7, 120]]
-```
-
-Its first six returns to the left end in state B:
-
-```wl
-events23 = Take[Wolfram23Evolution[w23, 50000, #1 == 2 && #2 == 123 &], 6]
-```
-
-Their decodes:
-
-```wl
-Wolfram23ToSystem5[#, 7, 20] & /@ Values[events23]
+Wolfram23ToSystem5[#, 7, 20] & /@ Values[Take[Wolfram23Evolution[
+    System3ToWolfram23[System4ToSystem3[System5ToSystem4[small, 1], 7, 120]], 50000, #1 == 2 && #2 == 123 &], 6]]
 ```

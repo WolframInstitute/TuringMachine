@@ -13,26 +13,26 @@ Links: ["[TagSystem.tagK in the blueprint](https://wolframinstitute.github.io/Tu
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-A three-state machine that moves both ways, started on the tape `0 1 1`, as a tag system, with the tag times of its first four steps:
+A three-state binary machine that moves both ways:
 
 ```wl
-tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]
+machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}
+```
+
+Started on the tape `0 1 1`:
+
+```wl
+config = {1, {}, 0, {1, 1}}
+```
+
+The tag system of a three-state machine started on the tape `0 1 1`, run for its first four machine steps; each row is a tag word at its place in the queue, each color a kind of symbol:
+
+```wl
+TagSystemEvolutionPlot[TuringMachineToTagSystem[machine, config], 85, ImageSize -> 420]
 ```
 
 The alphabet has `1 + 84 s` symbols for states below `s`:
 
 ```wl
-Length[tag["Productions"]]
-```
-
-The run of the tag system during those steps, one row per tag step:
-
-```wl
-TagSystemEvolution[tag, 85]
-```
-
-The same run drawn:
-
-```wl
-ArrayPlot[PadRight[TagSystemEvolution[tag, 85]], ColorFunction -> "Rainbow", ImageSize -> 360]
+Length[TuringMachineToTagSystem[machine]["Productions"]]
 ```

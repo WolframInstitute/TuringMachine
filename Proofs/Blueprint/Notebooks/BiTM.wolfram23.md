@@ -13,26 +13,20 @@ Links: ["[BiTM.wolfram23 in the blueprint](https://wolframinstitute.github.io/Tu
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The machine from a blank tape, drawn by the built-in [`RulePlot`]() (rule 596440 in Wolfram's numbering):
+The System 4 tape `{0, 2} * {}`:
 
 ```wl
-RulePlot[TuringMachine[{596440, 2, 3}], {1, {{}, 0}}, 200, ImageSize -> 300]
+tape4 = <|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>
 ```
 
-The configuration that emulates the System 4 tape `{0, 2} * {}`:
+The machine from a blank tape, the head red in state A and blue in state B:
 
 ```wl
-w23 = System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
+Wolfram23EvolutionPlot[{1, {}, 0, {}}, 300, ImageSize -> 360]
 ```
 
-The machine's run from it:
+The machine on the tape that emulates the System 4 tape `{0, 2} * {}`:
 
 ```wl
-run = Wolfram23Evolution[w23, 300]
-```
-
-The run drawn:
-
-```wl
-ArrayPlot[PadRight[Join[Reverse[#[[2]]], {#[[3]]}, #[[4]]] & /@ run], ColorRules -> {0 -> White, 1 -> LightGray, 2 -> Gray}, ImageSize -> 300]
+Wolfram23EvolutionPlot[System3ToWolfram23[System4ToSystem3[tape4, 3, 3]], 300, ImageSize -> 420]
 ```

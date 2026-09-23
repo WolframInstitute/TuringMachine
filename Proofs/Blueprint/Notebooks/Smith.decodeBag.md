@@ -13,26 +13,32 @@ Links: ["[Smith.decodeBag in the blueprint](https://wolframinstitute.github.io/T
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The System 5 program of Smith's p. 29 example for two cycles:
+Smith's cyclic tag system `1 10` on the working string `01` (p. 29):
 
 ```wl
-s5 = CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2]
+cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>
 ```
 
-Its run:
+The run of the doubled cyclic tag system of Smith's p. 29 example, which has every bit twice:
 
 ```wl
-run = System5Evolution[s5, 1000]
+CyclicTagSystemEvolutionPlot[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 12, ImageSize -> 420]
 ```
 
-The decoded bags, repeats removed:
+The System 5 run that emulates it:
 
 ```wl
-First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ run[[All, "Bag"]]]]
+System5EvolutionPlot[CyclicTagSystemToSystem5[cts, 2], 1000, ImageSize -> 420]
 ```
 
-The run of the doubled cyclic tag system, which has every bit twice:
+The bags decoded, consecutive repeats removed:
 
 ```wl
-CyclicTagSystemEvolution[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 8]
+First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ System5Evolution[CyclicTagSystemToSystem5[cts, 2], 1000][[All, "Bag"]]]]
+```
+
+The working strings of the doubled cyclic tag system:
+
+```wl
+First /@ Split[CyclicTagSystemEvolution[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 8][[All, "Data"]]]
 ```

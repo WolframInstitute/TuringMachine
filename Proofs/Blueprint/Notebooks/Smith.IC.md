@@ -18,3 +18,10 @@ The sizes for one step of a two-state machine that writes 1, moves right and hal
 ```wl
 EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
 ```
+
+The same on a log scale:
+
+```wl
+With[{sizes = EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]},
+    BarChart[Values[sizes], ScalingFunctions -> "Log", ChartLabels -> Placed[Keys[sizes], Axis, Rotate[#, Pi/2] &], ImageSize -> 420]]
+```

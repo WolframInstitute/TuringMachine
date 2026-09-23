@@ -13,20 +13,16 @@ Links: ["[Smith.System4.run_bound in the blueprint](https://wolframinstitute.git
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The System 4 tapes of Smith's p. 33 program for f from 1 to 3:
+Smith's System 5 program of p. 33:
 
 ```wl
-tapes = Table[System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, f], {f, 3}]
+program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>
 ```
 
-Their run lengths:
+The run lengths of the System 4 tapes of Smith's p. 33 program for f from 1 to 4, against the bound `(2 L + 2) (L + 1)`:
 
 ```wl
-Length[System4Evolution[#, 10^6]] - 1 & /@ tapes
-```
-
-The bounds `(2 L + 2) (L + 1)`:
-
-```wl
-With[{l = Length[#["Elements"]]}, (2 l + 2) (l + 1)] & /@ tapes
+With[{ts = Table[System5ToSystem4[program, f], {f, 4}]},
+    ListLogPlot[{Length[System4Evolution[#, 10^6]] - 1 & /@ ts, With[{l = Length[#["Elements"]]}, (2 l + 2) (l + 1)] & /@ ts},
+        Joined -> True, PlotMarkers -> Automatic, PlotLegends -> {"run length", "bound"}, AxesLabel -> {"f", None}, ImageSize -> 420]]
 ```

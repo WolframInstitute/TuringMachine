@@ -13,26 +13,28 @@ Links: ["[TagSystem.tm_step_tag in the blueprint](https://wolframinstitute.githu
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 
-The tag system of a three-state machine, with the tag times of its first four steps:
+A three-state binary machine that moves both ways:
 
 ```wl
-tag = TuringMachineToTagSystem[{{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}, {1, {}, 0, {1, 1}}, 4]
+machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}
 ```
 
-The words at the tag times:
+Started on the tape `0 1 1`:
 
 ```wl
-words = TagSystemEvolution[tag, 85][[tag["TagTimes"] + 1]]
+config = {1, {}, 0, {1, 1}}
 ```
 
-Each decodes to the configuration of the machine after that many steps:
+The length of the tag word along the run, the ends of the machine steps marked:
 
 ```wl
-TagSystemToTuringMachine[#, 3] & /@ words
+With[{tag = TuringMachineToTagSystem[machine, config, 4]},
+    ListLinePlot[Length /@ TagSystemEvolution[tag, 85], GridLines -> {tag["TagTimes"], None}, ImageSize -> 420]]
 ```
 
-The word length along the run, the tag times marked:
+At those tag times the words decode to the configurations of the machine:
 
 ```wl
-ListLinePlot[Length /@ TagSystemEvolution[tag, 85], GridLines -> {tag["TagTimes"], None}, ImageSize -> 360]
+With[{tag = TuringMachineToTagSystem[machine, config, 4]},
+    TagSystemToTuringMachine[#, 3] & /@ TagSystemEvolution[tag, 85][[tag["TagTimes"] + 1]]]
 ```
