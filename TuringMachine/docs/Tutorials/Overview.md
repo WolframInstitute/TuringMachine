@@ -55,6 +55,11 @@ Keywords: [Turing machine, one-sided Turing machine, multiway, nondeterministic,
 
 ### Smith's universality proof
 
+- [TagSystem](paclet:WolframInstitute/TuringMachine/ref/TagSystem)
+- [CyclicTagSystem](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystem)
+- [System5](paclet:WolframInstitute/TuringMachine/ref/System5)
+- [System4](paclet:WolframInstitute/TuringMachine/ref/System4)
+- [System3](paclet:WolframInstitute/TuringMachine/ref/System3)
 - [TuringMachineToTagSystem](paclet:WolframInstitute/TuringMachine/ref/TuringMachineToTagSystem)
 - [TagSystemToCyclicTagSystem](paclet:WolframInstitute/TuringMachine/ref/TagSystemToCyclicTagSystem)
 - [CyclicTagSystemToSystem5](paclet:WolframInstitute/TuringMachine/ref/CyclicTagSystemToSystem5)

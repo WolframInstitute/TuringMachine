@@ -28,7 +28,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The parameters of Smith's example from the exact runs:
 
 ```wl
-EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]
+EmulationParameters[System5[{2}, {{1, 4}, {1, 6}, {}, {}}]]
 ```
 
 ---
@@ -36,6 +36,6 @@ EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>]
 The same from the closed-form bounds:
 
 ```wl
-EmulationParameters[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, "ClosedForm"]
+EmulationParameters[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], "ClosedForm"]
 ```
 

@@ -17,7 +17,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 ## Details & Options
 
 - *s4* must be an initial configuration: active element 0, state `"A"`, a set first.
-- A System 3 configuration is an association with keys `"Left"` (cells left of the head, nearest first), `"Head"`, `"Right"` and `"State"`; cells are 0, 1 and 2.
+- The result is a <code>[System3]()</code> tape, with the keys `"Left"` (cells left of the head, nearest first), `"Head"`, `"Right"` and `"State"`; cells are 0, 1 and 2.
 - Each set becomes a block of <code>2^*w*</code> cells of 1s and 2s whose parity scans give the set's members; a star becomes a 0. The left end is *h* zeros followed by `221` and a final 1 closes the tape.
 - The emulation is faithful while the System 4 run, plus the band read by the decoder, fits in <code>2^*w*</code> − 3 scans and every set element is below <code>2^*w*</code>; the left end turns the head round *h* times.
 - It transcribes the Lean definition `Smith.initAC, Smith.AC.toL` of the formal proof in the paclet repository (`Proofs/`), and the paclet tests compare the two on shared vectors.
@@ -27,7 +27,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The System 3 tape of the System 4 tape `{0, 2} * {}` with blocks of width 8:
 
 ```wl
-s3 = System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]
+s3 = System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]
 ```
 
 Its run:

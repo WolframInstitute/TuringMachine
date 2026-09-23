@@ -16,7 +16,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Details & Options
 
-- A System 5 program is an association with keys `"Bag"` (a list of integers) and `"Rules"` (a list of lists of integers). A step decrements every bag element and increments every rule entry; when an element reaches 0 it is removed and the first rule is merged into the bag with parity (an integer already present is removed).
+- The result is a <code>[System5]()</code> program, with the keys `"Bag"` (a list of integers) and `"Rules"` (a list of lists of integers). A step decrements every bag element and increments every rule entry; when an element reaches 0 it is removed and the first rule is merged into the bag with parity (an integer already present is removed).
 - System 5 emulates the doubled cyclic tag system, whose working string has every bit twice and whose appendants are the doubled appendants each followed by an empty one. A bit becomes two pairs of bag integers, with gaps 1 for a 0 and 2 for a 1.
 - Each appendant gives four rules; *n* cycles give `4 n` times the number of appendants.
 - It transcribes the Lean definition `BiTM.ctsToSystem5` of the formal proof in the paclet repository (`Proofs/`), and the paclet tests compare the two on shared vectors.
@@ -26,7 +26,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 Smith's example of p. 29, the cyclic tag system with the appendants `1` and `10` on the working string `01`, for one cycle:
 
 ```wl
-CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 1]
+CyclicTagSystemToSystem5[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 1]
 ```
 
 ## Scope
@@ -34,7 +34,7 @@ CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Pha
 The program for two cycles:
 
 ```wl
-s5 = CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2]
+s5 = CyclicTagSystemToSystem5[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 2]
 ```
 
 Its run:

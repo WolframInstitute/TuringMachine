@@ -35,6 +35,6 @@ run = Wolfram23Evolution[{1, {}, 0, {}}, 20]
 The configurations at which wolfram23 is in state B at the left end of an emulated System 4 tape:
 
 ```wl
-Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]], 2000, #1 == 2 && #2 == 6 &]
+Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]], 2000, #1 == 2 && #2 == 6 &]
 ```
 

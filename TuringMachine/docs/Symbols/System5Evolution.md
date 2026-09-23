@@ -30,7 +30,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of Smith's program of p. 33:
 
 ```wl
-System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
+System5Evolution[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], 20]
 ```
 
 ---
@@ -38,7 +38,7 @@ System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
 The length of the run:
 
 ```wl
-System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, Infinity, "Length"]
+System5Evolution[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], Infinity, "Length"]
 ```
 
 ## Scope
@@ -46,6 +46,6 @@ System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, Infinity
 The configurations after the first rule has been used:
 
 ```wl
-System5Evolution[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20, Length[#["Rules"]] < 4 &]
+System5Evolution[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], 20, Length[#["Rules"]] < 4 &]
 ```
 

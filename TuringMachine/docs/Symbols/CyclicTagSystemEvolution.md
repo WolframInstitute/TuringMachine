@@ -27,7 +27,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of Smith's example with the appendants `1` and `10` on `01`:
 
 ```wl
-run = CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 12]
+run = CyclicTagSystemEvolution[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 12]
 ```
 
 The working strings drawn:
@@ -41,6 +41,6 @@ ArrayPlot[PadRight[run[[All, "Data"]]]]
 The configurations at which a cycle begins:
 
 ```wl
-CyclicTagSystemEvolution[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 40, #["Phase"] == 0 &]
+CyclicTagSystemEvolution[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 40, #["Phase"] == 0 &]
 ```
 

@@ -30,7 +30,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 Smith's program of p. 33:
 
 ```wl
-System5EvolutionPlot[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
+System5EvolutionPlot[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], 20]
 ```
 
 ## Scope
@@ -38,5 +38,5 @@ System5EvolutionPlot[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 20]
 The program of Smith's p. 29 example for two cycles:
 
 ```wl
-System5EvolutionPlot[CyclicTagSystemToSystem5[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 2], 1000]
+System5EvolutionPlot[CyclicTagSystemToSystem5[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 2], 1000]
 ```

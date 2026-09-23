@@ -30,7 +30,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The System 3 tape of `{0, 2} * {}`:
 
 ```wl
-System3EvolutionPlot[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 150]
+System3EvolutionPlot[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3], 150]
 ```
 
 ## Scope
@@ -38,5 +38,5 @@ System3EvolutionPlot[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active
 A tape with blocks of width 128, sampled:
 
 ```wl
-System3EvolutionPlot[System4ToSystem3[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 7, 120], 20000]
+System3EvolutionPlot[System4ToSystem3[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 7, 120], 20000]
 ```

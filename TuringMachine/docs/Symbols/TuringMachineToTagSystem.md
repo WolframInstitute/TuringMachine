@@ -20,9 +20,9 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Details & Options
 
-- A machine is a list of rules `{q, a} -> {q', w, d}`: in state `q` reading the bit `a`, write `w`, move right (`d = 1`) or left (`d = -1`), and go to state `q'`. State 0 halts; a missing rule sends the machine to state 0 writing 0 and moving right.
+- A machine is a list of rules `{q, a} -> {q', w, d}`, bare or as a <code>[TuringMachine]()</code>[*rules*]: in state `q` reading the bit `a`, write `w`, move right (`d = 1`) or left (`d = -1`), and go to state `q'`. State 0 halts; a missing rule sends the machine to state 0 writing 0 and moving right.
 - A configuration is `{q, left, head, right}`, with *left* and *right* listed from the cell next to the head outward; cells beyond them are blank (0).
-- The result is an association with keys `"Productions"` (the production of each tag symbol), `"Word"`, `"States"` and, with *n*, `"TagTimes"`.
+- The result is a <code>[TagSystem]()</code> with the keys `"Productions"` (the production of each tag symbol), `"Word"`, `"States"`, `"SymbolNames"` and, with *n*, `"TagTimes"`; <code>*tag*["*key*"]</code> gives each part. It displays as the productions of the symbols its word reaches, and its word.
 - For a machine with states below *s* the alphabet has `1 + 84 s` symbols: a pad and one symbol for each of 21 kinds, state and two bits. A configuration becomes the word of the two numbers its tape halves spell, written in unary as symbol pairs.
 - One step of the machine takes three rounds of tag steps for a move to the right and five for a move to the left. The tag times are the cumulative round lengths; at tag time *t_i* the tag word is the word of the *i*-th configuration.
 - The tag system carries out the halting row too, so its run never stops; the tag times of a halted machine continue past its halt.

@@ -25,7 +25,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The initial wolfram23 tape of `{0, 2} * {}`:
 
 ```wl
-w23 = System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
+w23 = System3ToWolfram23[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]]
 ```
 
 It decodes to the bag of the first set:
@@ -39,7 +39,7 @@ Wolfram23ToSystem5[w23, 3, 4]
 A small System 4 tape:
 
 ```wl
-s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+s4 = System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1]
 ```
 
 Its decodes each time the head is back at the left end in state B:

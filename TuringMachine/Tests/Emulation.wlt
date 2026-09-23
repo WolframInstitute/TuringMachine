@@ -32,7 +32,7 @@ Do[
             VerificationTest[NestList[private["rawStep"][m], cfg, 4], ToExpression["rawRun" <> nm],
                 TestID -> "RawRun" <> nm];
             With[{cts = TagSystemToCyclicTagSystem[tag]},
-                VerificationTest[cts, ToExpression["cts" <> nm], TestID -> "CyclicTag" <> nm];
+                VerificationTest[Normal[cts], ToExpression["cts" <> nm], TestID -> "CyclicTag" <> nm];
                 With[{ev = CyclicTagSystemEvolution[cts, 2028]},
                     VerificationTest[
                         Map[{#["Data"], #["Phase"]} &, ev[[{0, 1, 2, 3, 50, 169, 338, 1000, 2028} + 1]]],
@@ -51,10 +51,10 @@ Do[
 (* ::Section:: *)
 (* Cyclic tag system -> System 5 *)
 
-VerificationTest[CyclicTagSystemToSystem5[ctsD1, 1], s5D1n1, TestID -> "System5D1"]
-VerificationTest[CyclicTagSystemToSystem5[ctsD1, 2], s5D1n2, TestID -> "System5D1Two"]
-VerificationTest[CyclicTagSystemToSystem5[ctsD1p1, 1], s5D1p1, TestID -> "System5Phase"]
-VerificationTest[CyclicTagSystemToSystem5[ctsD2, 3], s5D2n3, TestID -> "System5D2"]
+VerificationTest[Normal @ CyclicTagSystemToSystem5[ctsD1, 1], s5D1n1, TestID -> "System5D1"]
+VerificationTest[Normal @ CyclicTagSystemToSystem5[ctsD1, 2], s5D1n2, TestID -> "System5D1Two"]
+VerificationTest[Normal @ CyclicTagSystemToSystem5[ctsD1p1, 1], s5D1p1, TestID -> "System5Phase"]
+VerificationTest[Normal @ CyclicTagSystemToSystem5[ctsD2, 3], s5D2n3, TestID -> "System5D2"]
 VerificationTest[System5Evolution[s5D1n1, 11], DeleteMissing[s5Run], TestID -> "System5Run"]
 VerificationTest[System5Evolution[s5D2n3, Infinity, "Length"], s5D2n3Length, TestID -> "System5Length"]
 VerificationTest[Length[System5Evolution[s5D2n3, 10^5]] - 1, s5D2n3Length, TestID -> "System5LengthSteps"]
@@ -66,8 +66,8 @@ VerificationTest[
 (* ::Section:: *)
 (* System 5 -> System 4 *)
 
-VerificationTest[System5ToSystem4[s5D4, 16], s4D4, TestID -> "System4D4"]
-VerificationTest[System5ToSystem4[s5D4, 3], s4Small, TestID -> "System4Small"]
+VerificationTest[Normal @ System5ToSystem4[s5D4, 16], s4D4, TestID -> "System4D4"]
+VerificationTest[Normal @ System5ToSystem4[s5D4, 3], s4Small, TestID -> "System4Small"]
 VerificationTest[System4Evolution[s4Small, 59], DeleteMissing[s4SmallRun], TestID -> "System4Run"]
 VerificationTest[Length[System4Evolution[s4D4, 20000]] - 1, s4D4Length, TestID -> "System4Length"]
 With[{ev = System4Evolution[s4Small, 59]},
@@ -79,11 +79,11 @@ VerificationTest[Values[EmulationParameters[s5D4, "ClosedForm"]][[;; 6]], icD4,
 (* ::Section:: *)
 (* System 4 -> System 3 -> wolfram23 *)
 
-VerificationTest[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3],
+VerificationTest[Normal @ System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3],
     s3D9, TestID -> "System3D9"]
-VerificationTest[System4ToSystem3[<|"Elements" -> {{0, 2, 4, 6}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3],
+VerificationTest[Normal @ System4ToSystem3[<|"Elements" -> {{0, 2, 4, 6}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3],
     s3D10, TestID -> "System3D10"]
-VerificationTest[System4ToSystem3[<|"Elements" -> {{2}, "*", {0, 3}}, "Active" -> 0, "State" -> "A"|>, 4, 5],
+VerificationTest[Normal @ System4ToSystem3[<|"Elements" -> {{2}, "*", {0, 3}}, "Active" -> 0, "State" -> "A"|>, 4, 5],
     s3Small, TestID -> "System3Small"]
 VerificationTest[System3Evolution[s3D9, 119], DeleteMissing[s3D9Run], TestID -> "System3Run"]
 VerificationTest[System3ToWolfram23 /@ System3Evolution[s3D9, 119], DeleteMissing[w23D9Run],
@@ -165,3 +165,24 @@ VerificationTest[
         Flatten[Position[Mod[Total /@ NestList[Mod[Accumulate[#], 2] &, ParityBlock[s, 4] - 1, 2^4 - 3], 2], 1]] - 1 == s]],
     True, TestID -> "ParityBlockScans"]
 VerificationTest[First /@ (ParityBlock[#, 3] & /@ {{}, {0}, {1}, {0, 2}}), {2, 2, 2, 2}, TestID -> "ParityBlockStartsWith2"]
+
+(* ::Section:: *)
+(* Objects *)
+
+VerificationTest[Head /@ {TuringMachineToTagSystem[tmEx, cfgEx], TagSystemToCyclicTagSystem[TuringMachineToTagSystem[tmEx, cfgEx]],
+        CyclicTagSystemToSystem5[ctsD1, 1], System5ToSystem4[s5D4, 3], System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]},
+    {TagSystem, CyclicTagSystem, System5, System4, System3}, TestID -> "ObjectHeads"]
+VerificationTest[{TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]["Word"], Normal[System5[{1, 3}, {{1}, {}}]],
+        System4[{{0, 2}, "*", {}}]["State"], CyclicTagSystem[{{1}, {1, 0}}, {0, 1}]["Properties"]},
+    {{1, 0, 0}, <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, "A", {"Appendants", "Data", "Phase"}}, TestID -> "ObjectParts"]
+(* an object and its association give the same results *)
+VerificationTest[TagSystemEvolution[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}], 5],
+    TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 5], TestID -> "ObjectEvolution"]
+VerificationTest[EmulationParameters[CyclicTagSystemToSystem5[ctsD1, 1]], EmulationParameters[Normal[CyclicTagSystemToSystem5[ctsD1, 1]]],
+    TestID -> "ObjectParameters"]
+VerificationTest[TuringMachineToTagSystem[TuringMachine[tmEx], cfgEx], TuringMachineToTagSystem[tmEx, cfgEx], TestID -> "BuiltinMachine"]
+VerificationTest[Head /@ RulePlot /@ {TuringMachineToTagSystem[tmEx, cfgEx], CyclicTagSystem[{{1}, {1, 0}}, {0, 1}],
+        CyclicTagSystemToSystem5[ctsD1, 1], System4[{{0, 2}, "*", {}}], System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]},
+    {Graphics, Graphics, Graphics, Graphics, Graphics}, TestID -> "RulePlots"]
+VerificationTest[MatchQ[ToBoxes[System4[{{0, 2}, "*", {}}]], InterpretationBox[RowBox[{"System4", "[", _GraphicsBox, "]"}], _]],
+    True, TestID -> "ObjectDisplay"]

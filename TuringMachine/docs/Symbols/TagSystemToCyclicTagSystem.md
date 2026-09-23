@@ -16,7 +16,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Details & Options
 
-- A cyclic tag system is an association with keys `"Appendants"` (lists of bits, used cyclically), `"Data"` (the working string) and `"Phase"` (the index of the next appendant). A step deletes the first bit and, if it was 1, appends the current appendant; the phase then advances.
+- The result is a <code>[CyclicTagSystem]()</code>, with the keys `"Appendants"` (lists of bits, used cyclically), `"Data"` (the working string) and `"Phase"` (the index of the next appendant). A step deletes the first bit and, if it was 1, appends the current appendant; the phase then advances.
 - A tag system over *k* symbols gives *k* appendants encoding its productions followed by *k* empty ones. A symbol is written as a block of *k* bits with a single 1.
 - One cycle of the 2 *k* appendants carries out one tag step.
 - It transcribes the Lean definition `TagSystem.tagToCTS, TagSystem.tagConfigToCTS` of the formal proof in the paclet repository (`Proofs/`), and the paclet tests compare the two on shared vectors.
@@ -26,7 +26,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The cyclic tag system of the tag system `a -> bc`, `b -> a`, `c -> aaa` on the word `baa`:
 
 ```wl
-cts = TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>]
+cts = TagSystemToCyclicTagSystem[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]]
 ```
 
 There are twice as many appendants as symbols:
@@ -40,7 +40,7 @@ Length[cts["Appendants"]]
 The cyclic tag system:
 
 ```wl
-cts = TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>]
+cts = TagSystemToCyclicTagSystem[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]]
 ```
 
 Its configurations at the start of every cycle:
@@ -58,6 +58,6 @@ CyclicTagSystemToTagSystem[#["Data"], 3] & /@ Values[starts]
 The run of the tag system:
 
 ```wl
-TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 4]
+TagSystemEvolution[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}], 4]
 ```
 

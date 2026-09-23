@@ -25,16 +25,48 @@ This paclet has one function for each arrow of the chain, one for each way back,
 
 ## Definition
 
-The examples: a three-state binary machine that moves both ways, started on the tape `011`; a small 2-tag system; Smith's cyclic tag system with the appendants `1` and `10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and two small System 5 programs.
+The examples: a three-state binary machine that moves both ways, started on the tape `011`; a small 2-tag system; Smith's cyclic tag system with the appendants `1` and `10` on the working string `01` (p. 29 of his paper); Smith's System 5 program of p. 33; and two small System 5 programs. Every system is an object that displays as the drawing of its rules and its starting state, which <code>[RulePlot]()</code> gives as well.
+
+The machine, as rules `{q, a} -> {q', w, d}`, and its rule icons as a <code>[TuringMachine]()</code>:
 
 ```wl
-machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}};
-config = {1, {}, 0, {1, 1}};
-tag3 = <|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>;
-cts = <|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>;
-program = <|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>;
-twoRules = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>;
-small = <|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>;
+machine = {{1, 0} -> {2, 1, 1}, {1, 1} -> {1, 0, -1}, {2, 0} -> {1, 1, -1}, {2, 1} -> {2, 1, 1}}
+```
+
+```wl
+RulePlot[TuringMachine[machine]]
+```
+
+Its starting configuration: state 1, nothing on the left, the head on a 0, `11` on the right:
+
+```wl
+config = {1, {}, 0, {1, 1}}
+```
+
+A 2-tag system over three symbols; each production is drawn below the symbol it belongs to, the word underneath:
+
+```wl
+tag3 = TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]
+```
+
+Smith's cyclic tag system; each appendant is appended when a 1 is read at its phase, the current phase framed red:
+
+```wl
+cts = CyclicTagSystem[{{1}, {1, 0}}, {0, 1}]
+```
+
+Smith's System 5 program and two small ones, the bag and every rule on the number line:
+
+```wl
+program = System5[{2}, {{1, 4}, {1, 6}, {}, {}}]
+```
+
+```wl
+twoRules = System5[{2}, {{1, 2}, {}}]
+```
+
+```wl
+small = System5[{1, 3}, {{1}, {}}]
 ```
 
 ## A Turing machine as a 2-tag system
@@ -124,7 +156,7 @@ First /@ Split[DeleteMissing[System5ToCyclicTagSystem /@ System5Evolution[s5, 10
 The run of the doubled cyclic tag system, for comparison:
 
 ```wl
-CyclicTagSystemEvolution[<|"Appendants" -> {{1, 1}, {}, {1, 1, 0, 0}, {}}, "Data" -> {0, 0, 1, 1}, "Phase" -> 0|>, 8]
+CyclicTagSystemEvolution[CyclicTagSystem[{{1, 1}, {}, {1, 1, 0, 0}, {}}, {0, 0, 1, 1}], 8]
 ```
 
 ## System 5 as System 4

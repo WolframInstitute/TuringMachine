@@ -39,5 +39,5 @@ Wolfram23EvolutionPlot[{1, {}, 0, {}}, 300]
 The machine on a tape that emulates a small System 4 tape, sampled:
 
 ```wl
-Wolfram23EvolutionPlot[System3ToWolfram23[System4ToSystem3[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 7, 120]], 60000]
+Wolfram23EvolutionPlot[System3ToWolfram23[System4ToSystem3[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 7, 120]], 60000]
 ```

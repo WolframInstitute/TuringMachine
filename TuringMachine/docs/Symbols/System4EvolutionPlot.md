@@ -30,7 +30,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 A small System 4 tape:
 
 ```wl
-System4EvolutionPlot[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 200]
+System4EvolutionPlot[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 200]
 ```
 
 ## Scope
@@ -38,5 +38,5 @@ System4EvolutionPlot[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>,
 Smith's program of p. 33 with *f* = 2, sampled:
 
 ```wl
-System4EvolutionPlot[System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 2], 3000]
+System4EvolutionPlot[System5ToSystem4[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], 2], 3000]
 ```

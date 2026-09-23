@@ -57,7 +57,15 @@ This paclet provides tools for exploring and analyzing Turing machines, with an 
 
 ## Smith's universality proof
 
-Alex Smith's proof that Wolfram's 2,3 Turing machine is universal, formalized in Lean in the paclet repository, is a chain of emulations. There is one function for each arrow of the chain, one for each way back, and an evolution function for each system.
+Alex Smith's proof that Wolfram's 2,3 Turing machine is universal, formalized in Lean in the paclet repository, is a chain of emulations. Each system has its own head, displayed as the drawing of its rules and starting state; there is one function for each arrow of the chain, one for each way back, and an evolution function for each system.
+
+### Systems
+
+- `TagSystem` a 2-tag system, displayed as its productions and word
+- `CyclicTagSystem` a cyclic tag system, displayed as its appendants and working string
+- `System5` a program of Smith's System 5, displayed as its bag and rules on the number line
+- `System4` a tape of Smith's System 4, displayed as its sets and stars
+- `System3` a tape of Smith's System 3, displayed as its cells
 
 ### Encoders
 

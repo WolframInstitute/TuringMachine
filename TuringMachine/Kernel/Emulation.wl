@@ -13,32 +13,45 @@
    emulation. Every function transcribes the Lean definition named in its
    usage message; the regression tests compare the two on shared vectors.
 
-   Data, following the Lean structures:
-     machine        {{q, a} -> {q', w, d}, ...}, d = 1 (right) or -1 (left);
-                    state 0 halts, missing entries go to {0, 0, 1}
+   Data, following the Lean structures. Each system is an object with its own
+   head wrapping an association (TagSystem[<|...|>], ...), displayed by its
+   RulePlot; the functions take the object or the bare association.
+     machine        {{q, a} -> {q', w, d}, ...}, or TuringMachine[{...}],
+                    d = 1 (right) or -1 (left); state 0 halts, missing
+                    entries go to {0, 0, 1}
      configuration  {q, left, head, right}, left and right nearest cell first
-     tag system     <|"Productions" -> {p0, p1, ...}, "Word" -> w|>, symbols
+     TagSystem      <|"Productions" -> {p0, p1, ...}, "Word" -> w|>, symbols
                     0 .. k - 1
-     cyclic tag     <|"Appendants" -> {...}, "Data" -> {...}, "Phase" -> p|>,
+     CyclicTagSystem <|"Appendants" -> {...}, "Data" -> {...}, "Phase" -> p|>,
                     bits 0 and 1
-     System 5       <|"Bag" -> {...}, "Rules" -> {{...}, ...}|>
-     System 4       <|"Elements" -> {...}, "Active" -> i, "State" -> "A"|>, a
+     System5        <|"Bag" -> {...}, "Rules" -> {{...}, ...}|>
+     System4        <|"Elements" -> {...}, "Active" -> i, "State" -> "A"|>, a
                     set is a list of integers, a star is "*", i counts from 0
-     System 3       <|"Left" -> {...}, "Head" -> c, "Right" -> {...},
+     System3        <|"Left" -> {...}, "Head" -> c, "Right" -> {...},
                     "State" -> "A"|>, cells 0, 1, 2
      wolfram23      {q, left, head, right}, q = 1 (A) or 2 (B) *)
 
 BeginPackage["WolframInstitute`TuringMachine`"]
 
-TuringMachineToTagSystem::usage = "TuringMachineToTagSystem[machine, config] gives the Cocke-Minsky 2-tag system of machine and the tag word of config (Lean TagSystem.tagK, TagSystem.word).\nTuringMachineToTagSystem[machine, config, n] also gives the tag times of the first n steps, at which the tag word is the word of the configuration (Lean TagSystem.tagTime).\nTuringMachineToTagSystem[machine] gives the tag system alone."
+TagSystem::usage = "TagSystem[<|\"Productions\" -> {p0, p1, ...}, \"Word\" -> w|>] is a 2-tag system over the symbols 0, 1, ...: a step reads the first symbol i, deletes two symbols and appends pi.\nTagSystem[prods, word] is TagSystem[<|\"Productions\" -> prods, \"Word\" -> word|>].\nTagSystem[...][\"key\"] gives a part; RulePlot[TagSystem[...]] draws its productions and word."
 
-TagSystemToCyclicTagSystem::usage = "TagSystemToCyclicTagSystem[tag] gives Cook's cyclic tag system of the 2-tag system tag and the encoding of its word (Lean TagSystem.tagToCTS, TagSystem.tagConfigToCTS)."
+CyclicTagSystem::usage = "CyclicTagSystem[<|\"Appendants\" -> {a0, a1, ...}, \"Data\" -> bits, \"Phase\" -> p|>] is a cyclic tag system: a step deletes the first bit and, if it was 1, appends the appendant of the phase; the phase then moves on cyclically.\nCyclicTagSystem[apps, data] starts at phase 0.\nCyclicTagSystem[...][\"key\"] gives a part; RulePlot[CyclicTagSystem[...]] draws its appendants and data."
 
-CyclicTagSystemToSystem5::usage = "CyclicTagSystemToSystem5[cts, n] gives Smith's System 5 program for n cycles of the cyclic tag system cts (Lean BiTM.ctsToSystem5)."
+System5::usage = "System5[<|\"Bag\" -> {...}, \"Rules\" -> {r1, r2, ...}|>] is a program of Smith's System 5: every step decrements the bag and increments the rules, and a bag element reaching 0 is removed and the first rule merged into the bag with parity.\nSystem5[bag, rules] is System5[<|\"Bag\" -> bag, \"Rules\" -> rules|>].\nRulePlot[System5[...]] draws the bag and the rules on the number line."
 
-System5ToSystem4::usage = "System5ToSystem4[s5, f] gives the System 4 tape of the System 5 program s5 with the parameter f (Lean BiTM.system5ToSystem4)."
+System4::usage = "System4[<|\"Elements\" -> {...}, \"Active\" -> i, \"State\" -> s|>] is a tape of Smith's System 4: sets of integers and stars \"*\", the element i (from 0) active in state \"A\", \"B\" or \"C\".\nSystem4[elements] starts at element 0 in state A.\nRulePlot[System4[...]] draws the tape."
 
-System4ToSystem3::usage = "System4ToSystem3[s4, w, h] gives the System 3 tape of the System 4 tape s4 with blocks of width 2^w and a left end of h zeros (Lean Smith.initAC, Smith.AC.toL)."
+System3::usage = "System3[<|\"Left\" -> {...}, \"Head\" -> c, \"Right\" -> {...}, \"State\" -> s|>] is a tape of Smith's System 3, cells 0, 1, 2, the left half nearest cell first.\nRulePlot[System3[...]] draws the tape, the head colored by the state."
+
+TuringMachineToTagSystem::usage = "TuringMachineToTagSystem[machine, config] gives the Cocke-Minsky TagSystem of machine and the tag word of config (Lean TagSystem.tagK, TagSystem.word).\nTuringMachineToTagSystem[machine, config, n] also gives the tag times of the first n steps, at which the tag word is the word of the configuration (Lean TagSystem.tagTime).\nTuringMachineToTagSystem[machine] gives the tag system alone."
+
+TagSystemToCyclicTagSystem::usage = "TagSystemToCyclicTagSystem[tag] gives Cook's CyclicTagSystem of the 2-tag system tag and the encoding of its word (Lean TagSystem.tagToCTS, TagSystem.tagConfigToCTS)."
+
+CyclicTagSystemToSystem5::usage = "CyclicTagSystemToSystem5[cts, n] gives Smith's System5 program for n cycles of the cyclic tag system cts (Lean BiTM.ctsToSystem5)."
+
+System5ToSystem4::usage = "System5ToSystem4[s5, f] gives the System4 tape of the System 5 program s5 with the parameter f (Lean BiTM.system5ToSystem4)."
+
+System4ToSystem3::usage = "System4ToSystem3[s4, w, h] gives the System3 tape of the System 4 tape s4 with blocks of width 2^w and a left end of h zeros (Lean Smith.initAC, Smith.AC.toL)."
 
 System3ToWolfram23::usage = "System3ToWolfram23[s3] gives the wolfram23 configuration of the System 3 configuration s3 (Lean Smith.phi3, Smith.phi2, Smith.toBi)."
 
@@ -188,9 +201,9 @@ tagWord[{q_, l_, h_, r_}] := cword[q, tapeValue[l], h + 2 tapeValue[r]]
 
 TuringMachineToTagSystem[rules_List] := Module[{m = machineAssoc[rules], s},
     s = numStates[m];
-    <|"Productions" -> Table[encSym[s, #] & /@ cmProduction[m, decSym[s, i]], {i, 0, 84 s}],
+    TagSystem[<|"Productions" -> Table[encSym[s, #] & /@ cmProduction[m, decSym[s, i]], {i, 0, 84 s}],
       "States" -> s,
-      "SymbolNames" -> Table[symbolName[decSym[s, i]], {i, 0, 84 s}]|>
+      "SymbolNames" -> Table[symbolName[decSym[s, i]], {i, 0, 84 s}]|>]
 ]
 
 (* the name of a Cocke-Minsky symbol: its kind, its state as a subscript and, for the
@@ -205,12 +218,12 @@ symbolName[sym[kd_, q_, h_, b_]] := kd <> subscript[q] <> Which[
     True, ""]
 
 TuringMachineToTagSystem[rules_List, cfg : {_Integer, _List, _Integer, _List}] := With[
-    {tag = TuringMachineToTagSystem[rules]},
-    Append[tag, "Word" -> (encSym[tag["States"], #] & /@ tagWord[cfg])]
+    {tag = Normal[TuringMachineToTagSystem[rules]]},
+    TagSystem[Append[tag, "Word" -> (encSym[tag["States"], #] & /@ tagWord[cfg])]]
 ]
 
 TuringMachineToTagSystem[rules_List, cfg : {_Integer, _List, _Integer, _List}, n_Integer?NonNegative] :=
-    Append[TuringMachineToTagSystem[rules, cfg], "TagTimes" -> tagTimes[machineAssoc[rules], cfg, n]]
+    TagSystem[Append[Normal[TuringMachineToTagSystem[rules, cfg]], "TagTimes" -> tagTimes[machineAssoc[rules], cfg, n]]]
 
 (* decoder: TagSystem.parseWord, cfgOfNums *)
 countPairs[a_, l_List] := Module[{n = 0, r = l},
@@ -239,9 +252,9 @@ tagWordEncode[k_, w_List] := Flatten[symbolEncode[k, #] & /@ w]
 
 TagSystemToCyclicTagSystem[tag_Association] := Module[{prods = tag["Productions"], k},
     k = Length[prods];
-    <|"Appendants" -> Join[tagWordEncode[k, #] & /@ prods, ConstantArray[{}, k]],
+    CyclicTagSystem[<|"Appendants" -> Join[tagWordEncode[k, #] & /@ prods, ConstantArray[{}, k]],
       "Data" -> tagWordEncode[k, Lookup[tag, "Word", {}]],
-      "Phase" -> 0|>
+      "Phase" -> 0|>]
 ]
 
 CyclicTagSystemToTagSystem[data_List, k_Integer] := Module[{blocks},
@@ -281,7 +294,7 @@ CyclicTagSystemToSystem5[cts_Association, n_Integer?NonNegative] := Module[
     apps = RotateLeft[apps, Mod[Lookup[cts, "Phase", 0], Length[apps]]];
     i = 1 + Total[If[# == 1, 6, 4] & /@ data] + 2;
     Do[{cyc, i} = processCycle[apps, i]; rules = Join[rules, cyc], {n}];
-    <|"Bag" -> bagAux[data], "Rules" -> rules|>
+    System5[<|"Bag" -> bagAux[data], "Rules" -> rules|>]
 ]
 
 (* decodeBag: sort, then read pairs with gaps 1 (0) and 2 (1) above 0 *)
@@ -362,10 +375,10 @@ encodeRuleElements[rule_List, f_] := Join[
     {"*", encodeRuleSet[rule, f]}, starredEmptyPairs[2 f],
     {"*", Range[0, 3 f]}, starredEmptyPairs[Max[2 f - 2, 0]]]
 
-System5ToSystem4[s_Association, f_Integer?Positive] := <|
+System5ToSystem4[s_Association, f_Integer?Positive] := System4[<|
     "Elements" -> Join[{encodeBag[s["Bag"]]}, starredEmptyPairs[f],
         Flatten[encodeRuleElements[#, f] & /@ s["Rules"], 1]],
-    "Active" -> 0, "State" -> "A"|>
+    "Active" -> 0, "State" -> "A"|>]
 
 (* ::Section:: *)
 (* System 4 (BiTM/System4.lean) *)
@@ -429,11 +442,11 @@ renderRight[items_List] := Module[{afterStar = False},
 System4ToSystem3[c_Association, w_Integer?NonNegative, h_Integer?NonNegative] := Module[
     {el = c["Elements"], n = 2^w, x0},
     x0 = encSet[n, First[el]];
-    <|"Left" -> Join[{1, 2, 2}, ConstantArray[0, h]],
+    System3[<|"Left" -> Join[{1, 2, 2}, ConstantArray[0, h]],
       "Head" -> First[x0] + 1,
       "Right" -> Join[toCell[Rest[x0]],
           renderRight[If[# === "*", "*", encSet[n, #]] & /@ Rest[el]], {1}],
-      "State" -> "A"|>
+      "State" -> "A"|>]
 ] /; c["Active"] == 0 && c["State"] === "A" && ListQ[First[c["Elements"]]]
 
 (* ::Section:: *)
@@ -557,7 +570,7 @@ emulationParameters[b0_, r_, t5_, t4f_] := Module[{m, h, f, band, l4, t4, fuel},
 
 EmulationParameters[s_Association, "Exact"] := emulationParameters[maxInt5[s], Length[s["Rules"]],
     System5Evolution[s, Infinity, "Length"],
-    system4RunLength[System5ToSystem4[s, #1]] &]
+    system4RunLength[Normal[System5ToSystem4[s, #1]]] &]
 
 EmulationParameters[s_Association, "ClosedForm"] := emulationParameters[maxInt5[s], Length[s["Rules"]],
     maxInt5[s] 2^Length[s["Rules"]], (2 #2 + 2) (#2 + 1) &]
@@ -566,10 +579,10 @@ EmulationParameters[s_Association] := EmulationParameters[s, "Exact"]
 
 EmulationSizes[rules_List, cfg : {_Integer, _List, _Integer, _List}, n_Integer?NonNegative] := Module[
     {m = machineAssoc[rules], tag, cts, cycles, s5, p},
-    tag = TuringMachineToTagSystem[rules, cfg];
-    cts = TagSystemToCyclicTagSystem[tag];
+    tag = Normal[TuringMachineToTagSystem[rules, cfg]];
+    cts = Normal[TagSystemToCyclicTagSystem[tag]];
     cycles = Last[tagTimes[m, cfg, n]];
-    s5 = CyclicTagSystemToSystem5[cts, cycles];
+    s5 = Normal[CyclicTagSystemToSystem5[cts, cycles]];
     (* the System 4 run is at least one sweep of its tape; the exact length
        would need the tape itself *)
     p = emulationParameters[maxInt5[s5], Length[s5["Rules"]],
@@ -774,6 +787,195 @@ TuringMachineEvolutionPlot[rules_List, {q0_Integer, l0_List, h0_Integer, r0_List
                 Circle[{#1[[1]] - 0.5, Length[grid] - First[#2] + 0.5}, 0.35]} &, heads],
             FrameTicks -> rowTicks[1, Length[grid]], Frame -> True,
             ImageSize -> OptionValue[ImageSize], AspectRatio -> OptionValue[AspectRatio]]]
+]
+
+(* ::Section:: *)
+(* Objects: a head per system, its parts, its RulePlot and its display *)
+
+$systemHeads = {TagSystem, CyclicTagSystem, System5, System4, System3};
+
+validQ[TagSystem, a_] := AssociationQ[a] && ListQ[a["Productions"]] && AllTrue[a["Productions"], ListQ]
+validQ[CyclicTagSystem, a_] := AssociationQ[a] && ListQ[a["Appendants"]] && ListQ[a["Data"]]
+validQ[System5, a_] := AssociationQ[a] && ListQ[a["Bag"]] && ListQ[a["Rules"]]
+validQ[System4, a_] := AssociationQ[a] && ListQ[a["Elements"]] && IntegerQ[a["Active"]] && StringQ[a["State"]]
+validQ[System3, a_] := AssociationQ[a] && ListQ[a["Left"]] && ListQ[a["Right"]] && IntegerQ[a["Head"]] && StringQ[a["State"]]
+validQ[_, _] := False
+
+TagSystem[prods_List, word_List] := TagSystem[<|"Productions" -> prods, "Word" -> word|>]
+CyclicTagSystem[apps_List, data_List, phase_Integer : 0] :=
+    CyclicTagSystem[<|"Appendants" -> apps, "Data" -> data, "Phase" -> phase|>]
+System5[bag_List, rules_List] := System5[<|"Bag" -> bag, "Rules" -> rules|>]
+System4[elements_List] := System4[<|"Elements" -> elements, "Active" -> 0, "State" -> "A"|>]
+
+Scan[Function[h,
+    h[a_Association]["Properties"] := Keys[a];
+    h[a_Association][key_String] := Lookup[a, key, Missing["KeyAbsent", key]];
+    h /: Normal[h[a_Association]] := a;
+    h /: RulePlot[h[a_Association], opts : OptionsPattern[]] /; validQ[h, a] := specPlot[h, a, opts];
+    h /: MakeBoxes[obj : h[a_Association], fmt : StandardForm | TraditionalForm] /; validQ[h, a] :=
+        With[{boxes = ToBoxes[specPlot[h, a], fmt], name = SymbolName[h]},
+            InterpretationBox[RowBox[{name, "[", boxes, "]"}], obj]]],
+    $systemHeads]
+
+(* the functions of a system take its object or its association *)
+Scan[Function[fh, With[{f = fh[[1]], h = fh[[2]]},
+        f[h[a_Association], rest___] := f[a, rest]]], {
+    {TagSystemToCyclicTagSystem, TagSystem}, {TagSystemEvolution, TagSystem}, {TagSystemEvolutionPlot, TagSystem},
+    {CyclicTagSystemToSystem5, CyclicTagSystem}, {CyclicTagSystemEvolution, CyclicTagSystem},
+    {CyclicTagSystemEvolutionPlot, CyclicTagSystem},
+    {System5ToSystem4, System5}, {System5Evolution, System5}, {System5EvolutionPlot, System5},
+    {EmulationParameters, System5},
+    {System4ToSystem3, System4}, {System4ToSystem5, System4}, {System4Evolution, System4}, {System4EvolutionPlot, System4},
+    {System3ToWolfram23, System3}, {System3Evolution, System3}, {System3EvolutionPlot, System3}}]
+
+(* a machine may come as the built-in TuringMachine object *)
+TuringMachineToTagSystem[TuringMachine[rules_List], rest___] := TuringMachineToTagSystem[rules, rest]
+EmulationSizes[TuringMachine[rules_List], rest___] := EmulationSizes[rules, rest]
+TuringMachineEvolutionPlot[TuringMachine[rules_List], rest___] := TuringMachineEvolutionPlot[rules, rest]
+
+(* ::Subsection:: *)
+(* Drawing *)
+
+textColor[c_] := If[First[ColorConvert[c, "Grayscale"]] < 0.5, White, Black]
+
+(* a cell of width w at {x, y} with a label *)
+cellPrim[{x_, y_}, color_, label_, w_ : 1] := {color, EdgeForm[GrayLevel[0.6]], Rectangle[{x, y}, {x + w, y + 1}],
+    If[label === "", {}, Text[Style[label, 8, FontFamily -> "Source Code Pro", textColor[color]], {x + w/2, y + 0.5}]]}
+
+caption[text_, {x_, y_}, align_ : {-1, 0}] := Text[Style[text, 9, GrayLevel[0.45], FontFamily -> "Source Sans Pro"], {x, y}, align]
+
+(* a row of cells {color, label, width} from {x, y}, the first max of them *)
+stripPrims[cells_List, {x0_, y_}, max_] := Module[{x = x0},
+    {Function[c, With[{p = cellPrim[{x, y}, c[[1]], c[[2]], c[[3]]]}, x += c[[3]]; p]] /@ Take[cells, UpTo[max]],
+     If[Length[cells] > max, caption["\[Ellipsis] " <> ToString[Length[cells] - max] <> " more", {x + 0.3, y + 0.5}], {}]}]
+
+(* panels {width, height, primitives, framed style}, laid out in rows no wider than maxW,
+   each in a frame, as with the rule icons of RulePlot; gives the primitives and the lowest y *)
+panelLayout[panels_List, maxW_] := Module[{x = 0, y = 0, rowH = 0, out = {}},
+    Do[With[{w = p[[1]], ht = p[[2]]},
+        If[x > 0 && x + w > maxW, x = 0; y -= rowH + 1.2; rowH = 0];
+        AppendTo[out, {{FaceForm[None], EdgeForm[p[[4]]], Rectangle[{x - 0.35, y - ht - 0.35}, {x + w + 0.35, y + 0.35}]},
+            Translate[p[[3]], {x, y - ht}]}];
+        x += w + 1; rowH = Max[rowH, ht]], {p, panels}];
+    {out, y - rowH}]
+
+specGraphics[prims_, opts___] := Graphics[prims, opts, PlotRangePadding -> 0.5, Background -> White,
+    ImageSize -> {UpTo[720], Automatic}, ImagePadding -> 4, BaseStyle -> {FontFamily -> "Source Code Pro"}]
+
+(* scale a graphics of u units across to about 22 pixels a unit *)
+unitSize[g_Graphics] := Module[{pr = PlotRange[g]}, Show[g, ImageSize -> Min[720, 22 (pr[[1, 2]] - pr[[1, 1]])]]]
+
+$panelFrame = GrayLevel[0.82];
+$maxPanels = 24;
+
+(* the symbols to draw: all of a small system; else those the word reaches, in order *)
+shownSymbols[prods_, word_] := If[Length[prods] <= $maxPanels, Range[0, Length[prods] - 1],
+    Module[{seen = {}, queue = DeleteDuplicates[word], s},
+        While[queue =!= {} && Length[seen] < $maxPanels,
+            s = First[queue]; queue = Rest[queue];
+            If[!MemberQ[seen, s], AppendTo[seen, s]; queue = Join[queue, Complement[prods[[s + 1]], seen, queue]]]];
+        If[seen === {}, Range[0, $maxPanels - 1], seen]]]
+
+tagColor[a_][i_] := Which[i == 0 && IntegerQ[a["States"]], GrayLevel[0.85],
+    IntegerQ[a["States"]], ColorData[54][Quotient[i - 1, 4 a["States"]] + 1],
+    True, ColorData[54][i + 1]]
+
+tagName[a_][i_] := With[{nm = a["SymbolNames"]}, If[ListQ[nm], nm[[i + 1]], ToString[i]]]
+
+nameWidth[s_String] := Max[1, 0.5 StringLength[s] + 0.3]
+
+specPlot[TagSystem, a_, opts___] := Module[{prods = a["Productions"], word = Lookup[a, "Word", {}], syms, panels, prims, y0, cell},
+    cell[i_] := {tagColor[a][i], tagName[a][i], nameWidth[tagName[a][i]]};
+    syms = shownSymbols[prods, word];
+    (* each production as a rule icon: the symbol read above, what is appended below *)
+    panels = Function[i, With[{out = cell /@ prods[[i + 1]], top = cell[i]},
+        {Max[top[[3]], Total[out[[All, 3]]], 1], 2.2,
+         {stripPrims[{top}, {0, 1.2}, 1],
+          If[out === {}, caption["\[EmptySet]", {0.5, 0.5}, {0, 0}], stripPrims[out, {0, 0}, Infinity]]},
+         $panelFrame}]] /@ syms;
+    {prims, y0} = panelLayout[panels, 30];
+    unitSize @ specGraphics[{prims,
+        If[Length[syms] < Length[prods],
+            caption[ToString[Length[prods] - Length[syms]] <> " more productions", {0, y0 - 0.9}], {}],
+        If[KeyExistsQ[a, "Word"],
+            {caption["word", {0, y0 - 1.9}], stripPrims[cell /@ word, {0, y0 - 3.3}, 60]}, {}]}, opts]
+]
+
+bitCell[b_] := {If[b == 1, GrayLevel[0.25], GrayLevel[0.95]], ToString[b], 1}
+
+specPlot[CyclicTagSystem, a_, opts___] := Module[{apps = a["Appendants"], data = a["Data"], p = Mod[Lookup[a, "Phase", 0], Max[1, Length[a["Appendants"]]]],
+        panels, prims, y0, w},
+    If[Length[apps] <= 2 $maxPanels && Max[0, Length /@ apps] <= 40,
+        (* each appendant as a rule icon: a 1 read at its phase appends it; the current phase framed red *)
+        panels = MapIndexed[Function[{ap, ix}, {Max[2, Length[ap]], 2.2,
+            {stripPrims[{{GrayLevel[0.25], "1", 1}}, {0, 1.2}, 1], caption[ToString[ix[[1]] - 1], {1.3, 1.7}],
+             If[ap === {}, caption["\[EmptySet]", {0.5, 0.5}, {0, 0}], stripPrims[bitCell /@ ap, {0, 0}, Infinity]]},
+            If[ix[[1]] - 1 == p, Directive[RGBColor[0.8, 0.15, 0.15], Thick], $panelFrame]}], apps];
+        {prims, y0} = panelLayout[panels, 30];
+        unitSize @ specGraphics[{prims, caption["data", {0, y0 - 0.9}], stripPrims[bitCell /@ data, {0, y0 - 2.3}, 60]}, opts],
+        (* a large system: the appendants as rows of bits, the current one marked *)
+        w = Max[1, Length /@ apps];
+        Column[{
+            ArrayPlot[PadRight[apps, {Automatic, w}, -1], ColorRules -> {1 -> GrayLevel[0.2], 0 -> GrayLevel[0.93], -1 -> White},
+                Frame -> True, FrameTicks -> None,
+                Epilog -> {RGBColor[0.8, 0.15, 0.15], Thick, Line[{{0, Length[apps] - p - 0.5}, {w, Length[apps] - p - 0.5}}]},
+                PlotLabel -> Style[ToString[Length[apps]] <> " appendants, the one of phase " <> ToString[p] <> " marked", 10, GrayLevel[0.4]], ImageSize -> 360, Background -> White, AspectRatio -> Min[1.5, Length[apps]/w]],
+            ArrayPlot[Partition[PadRight[data, w Ceiling[Length[data]/w], -1], w],
+                ColorRules -> {1 -> GrayLevel[0.2], 0 -> GrayLevel[0.93], -1 -> White}, Frame -> True, FrameTicks -> None,
+                PlotLabel -> Style["data: " <> ToString[Length[data]] <> " bits", 10, GrayLevel[0.4]], ImageSize -> 360, Background -> White]}]]
+]
+
+specPlot[System5, a_, opts___] := Module[{bag = a["Bag"], rules = a["Rules"], shown, top, rows, labelsQ},
+    shown = Take[rules, UpTo[16]];
+    top = Max[1, Flatten[{bag, shown}]];
+    rows = Prepend[shown, bag];
+    labelsQ = top <= 48;
+    (* the bag and each rule on a number line: the bag counts down, the rules count up *)
+    Show[specGraphics[{Text["", {-5, 0}],
+        MapIndexed[Function[{r, ix}, With[{y = -1.4 (ix[[1]] - 1)},
+            {caption[If[ix[[1]] == 1, "bag", "rule " <> ToString[ix[[1]] - 1]], {-0.6, y + 0.5}, {1, 0}],
+             GrayLevel[0.85], Line[{{0, y + 0.5}, {top + 1, y + 0.5}}],
+             If[labelsQ,
+                cellPrim[{# - 0.5, y}, If[ix[[1]] == 1, GrayLevel[0.25], ColorData[97][ix[[1]] - 1]], ToString[#]] & /@ r,
+                {If[ix[[1]] == 1, GrayLevel[0.25], ColorData[97][ix[[1]] - 1]], PointSize[0.012], Point[{#, y + 0.5} & /@ r]}]}]],
+            rows],
+        If[Length[rules] > Length[shown],
+            caption[ToString[Length[rules] - Length[shown]] <> " more rules", {0, -1.4 Length[rows] + 0.3}], {}]}, opts],
+        ImageSize -> Min[720, If[labelsQ, 22 (top + 9), 600]], AspectRatio -> Automatic]
+]
+
+$system4Colors = <|"A" -> RGBColor[0.85, 0.2, 0.2], "B" -> RGBColor[0.2, 0.45, 0.85], "C" -> RGBColor[0.95, 0.65, 0.1]|>;
+
+setLabel[set_List] := "{" <> StringRiffle[ToString /@ set, ","] <> "}"
+
+specPlot[System4, a_, opts___] := Module[{el = a["Elements"], act = a["Active"], st = a["State"], cells, x = 0, codes},
+    If[Length[el] <= 60 && Total[StringLength[setLabel[#]] & /@ Select[el, ListQ]] <= 400,
+        (* each element as a cell: a set with its members, a star dark; the active one in the color of the state *)
+        cells = MapIndexed[Function[{e, ix}, With[{lab = If[e === "*", "\[FivePointedStar]", setLabel[e]]},
+            {If[ix[[1]] - 1 == act, Lighter[$system4Colors[st], 0.3], If[e === "*", GrayLevel[0.3], GrayLevel[0.9]]],
+             lab, nameWidth[lab]}]], el];
+        unitSize @ specGraphics[{stripPrims[cells, {0, 0}, Infinity],
+            If[act < Length[el],
+                {caption[st, {Total[cells[[;; act, 3]]] + cells[[act + 1, 3]]/2, 1.5}, {0, 0}]}, {}]}, opts],
+        (* a long tape, wrapped: stars dark, sets gray, empty sets light, the active element colored *)
+        codes = ReplacePart[Replace[el, {"*" -> 1, {} -> 3, _List -> 2}, {1}],
+            If[act < Length[el], {act + 1 -> 4}, {}]];
+        ArrayPlot[Partition[PadRight[codes, 64 Ceiling[Length[codes]/64], 0], UpTo[64]],
+            ColorRules -> {0 -> White, 1 -> GrayLevel[0.2], 2 -> GrayLevel[0.6], 3 -> GrayLevel[0.9], 4 -> $system4Colors[st]},
+            Frame -> True, FrameTicks -> None, Mesh -> Length[codes] <= 2000, MeshStyle -> GrayLevel[1, 0.6],
+            PlotLabel -> Style[ToString[Length[el]] <> " elements, state " <> st, 10, GrayLevel[0.4]], ImageSize -> 420, Background -> White]]
+]
+
+specPlot[System3, a_, opts___] := Module[{l = a["Left"], h = a["Head"], r = a["Right"], st = a["State"], tape, pos, cells},
+    tape = Join[Reverse[l], {h}, r]; pos = Length[l] + 1;
+    If[Length[tape] <= 64,
+        cells = MapIndexed[{If[#2[[1]] == pos, Lighter[$system4Colors[st], 0.3], {GrayLevel[1], GrayLevel[0.7], GrayLevel[0.25]}[[#1 + 1]]],
+            ToString[#1], 1} &, tape];
+        unitSize @ specGraphics[{stripPrims[cells, {0, 0}, Infinity], caption[st, {pos - 0.5, 1.5}, {0, 0}]}, opts],
+        ArrayPlot[Partition[PadRight[ReplacePart[tape + 1, pos -> 4], 64 Ceiling[Length[tape]/64], 0], UpTo[64]],
+            ColorRules -> {0 -> White, 1 -> GrayLevel[0.97], 2 -> GrayLevel[0.65], 3 -> GrayLevel[0.15], 4 -> $system4Colors[st]},
+            Frame -> True, FrameTicks -> None,
+            PlotLabel -> Style[ToString[Length[tape]] <> " cells, state " <> st, 10, GrayLevel[0.4]], ImageSize -> 420, Background -> White]]
 ]
 
 ParityBlock[set_List, w_Integer?NonNegative] := encSet[2^w, set] + 1

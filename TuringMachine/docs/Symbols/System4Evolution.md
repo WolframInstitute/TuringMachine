@@ -27,7 +27,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of a small System 4 tape:
 
 ```wl
-run = System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4]
+run = System4Evolution[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 10^4]
 ```
 
 The position of the head along it:
@@ -41,6 +41,6 @@ ListLinePlot[run[[All, "Active"]]]
 The configurations at which the head is back at the left end in state B:
 
 ```wl
-System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 10^4, #["Active"] == 0 && #["State"] === "B" &]
+System4Evolution[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 10^4, #["Active"] == 0 && #["State"] === "B" &]
 ```
 

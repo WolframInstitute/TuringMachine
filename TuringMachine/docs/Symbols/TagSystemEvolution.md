@@ -18,7 +18,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Details & Options
 
-- A 2-tag system is an association with keys `"Productions"` and `"Word"`: a step deletes the first two symbols and appends the production of the first. It halts when the word has fewer than two symbols.
+- A 2-tag system is a <code>[TagSystem]()</code> or its association, with the keys `"Productions"` and `"Word"`: a step deletes the first two symbols and appends the production of the first. It halts when the word has fewer than two symbols.
 - The form with *crit* stores only the selected configurations and suits long runs.
 - It follows the Lean definition `TagSystem.Tag.step` of the formal proof.
 
@@ -27,7 +27,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of the tag system `a -> bc`, `b -> a`, `c -> aaa` on `baa`:
 
 ```wl
-TagSystemEvolution[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 10]
+TagSystemEvolution[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}], 10]
 ```
 
 ---

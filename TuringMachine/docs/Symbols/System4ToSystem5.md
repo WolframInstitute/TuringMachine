@@ -25,7 +25,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 A freshly encoded System 4 tape:
 
 ```wl
-s4 = System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+s4 = System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1]
 ```
 
 Its leading set decodes to the bag:
@@ -39,7 +39,7 @@ System4ToSystem5[s4, 20]
 The configurations of a run at which the head is back at the left end in state B:
 
 ```wl
-events = System4Evolution[System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1], 1000, #["Active"] == 0 && #["State"] === "B" &]
+events = System4Evolution[System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1], 1000, #["Active"] == 0 && #["State"] === "B" &]
 ```
 
 Their decodes:

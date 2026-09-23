@@ -27,7 +27,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of the System 3 tape of `{0, 2} * {}`:
 
 ```wl
-run = System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 120]
+run = System3Evolution[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3], 120]
 ```
 
 The run drawn:
@@ -41,6 +41,6 @@ ArrayPlot[PadRight[Join[Reverse[#["Left"]], {#["Head"]}, #["Right"]] & /@ run], 
 The configurations in state C:
 
 ```wl
-System3Evolution[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3], 1000, #["State"] === "C" &]
+System3Evolution[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3], 1000, #["State"] === "C" &]
 ```
 

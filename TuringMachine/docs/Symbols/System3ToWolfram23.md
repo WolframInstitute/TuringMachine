@@ -26,7 +26,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The wolfram23 configuration of a System 3 tape:
 
 ```wl
-w23 = System3ToWolfram23[System4ToSystem3[<|"Elements" -> {{0, 2}, "*", {}}, "Active" -> 0, "State" -> "A"|>, 3, 3]]
+w23 = System3ToWolfram23[System4ToSystem3[System4[{{0, 2}, "*", {}}], 3, 3]]
 ```
 
 The run of wolfram23 from it:

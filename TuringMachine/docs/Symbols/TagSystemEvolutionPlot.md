@@ -31,7 +31,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The run of the tag system `a -> bc`, `b -> a`, `c -> aaa` on `baa`:
 
 ```wl
-TagSystemEvolutionPlot[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>, 10]
+TagSystemEvolutionPlot[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}], 10]
 ```
 
 ## Scope

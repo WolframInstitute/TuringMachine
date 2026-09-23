@@ -16,7 +16,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 
 ## Details & Options
 
-- A System 4 configuration is an association with keys `"Elements"` (sets, given as lists of integers, and stars `"*"`), `"Active"` (the index of the active element, counting from 0) and `"State"` (`"A"`, `"B"` or `"C"`).
+- The result is a <code>[System4]()</code> tape, with the keys `"Elements"` (sets, given as lists of integers, and stars `"*"`), `"Active"` (the index of the active element, counting from 0) and `"State"` (`"A"`, `"B"` or `"C"`).
 - The tape is the bag as one set, *f* star–empty-set pairs, and a block of `8 f` elements for each rule. It has `1 + 2 f + 8 f r` elements for *r* rules.
 - The emulation is faithful when *f* is large enough; <code>[EmulationParameters]()</code> gives the value the proof uses, which exceeds twice the length of the System 5 run.
 - It transcribes the Lean definition `BiTM.system5ToSystem4` of the formal proof in the paclet repository (`Proofs/`), and the paclet tests compare the two on shared vectors.
@@ -26,7 +26,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 The System 4 tape of a one-rule program with *f* = 1:
 
 ```wl
-System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
+System5ToSystem4[System5[{1, 3}, {{1}, {}}], 1]
 ```
 
 ---
@@ -34,7 +34,7 @@ System5ToSystem4[<|"Bag" -> {1, 3}, "Rules" -> {{1}, {}}|>, 1]
 Smith's program of p. 33 with *f* = 2:
 
 ```wl
-s4 = System5ToSystem4[<|"Bag" -> {2}, "Rules" -> {{1, 4}, {1, 6}, {}, {}}|>, 2]
+s4 = System5ToSystem4[System5[{2}, {{1, 4}, {1, 6}, {}, {}}], 2]
 ```
 
 The tape has `1 + 2 f + 8 f r` elements:
@@ -48,7 +48,7 @@ Length[s4["Elements"]]
 A program with two rules:
 
 ```wl
-s5 = <|"Bag" -> {2}, "Rules" -> {{1, 2}, {}}|>
+s5 = System5[{2}, {{1, 2}, {}}]
 ```
 
 The parameters of its emulation:

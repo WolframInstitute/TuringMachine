@@ -31,7 +31,7 @@ RelatedTutorials: [SmithsUniversalityProof]
 Smith's example with the appendants `1` and `10` on `01`:
 
 ```wl
-CyclicTagSystemEvolutionPlot[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, "Phase" -> 0|>, 60]
+CyclicTagSystemEvolutionPlot[CyclicTagSystem[{{1}, {1, 0}}, {0, 1}], 60]
 ```
 
 ## Scope
@@ -39,5 +39,5 @@ CyclicTagSystemEvolutionPlot[<|"Appendants" -> {{1}, {1, 0}}, "Data" -> {0, 1}, 
 The cyclic tag system of a small tag system; every sixth row, where a cycle starts, is a tag word:
 
 ```wl
-CyclicTagSystemEvolutionPlot[TagSystemToCyclicTagSystem[<|"Productions" -> {{1, 2}, {0}, {0, 0, 0}}, "Word" -> {1, 0, 0}|>], 30]
+CyclicTagSystemEvolutionPlot[TagSystemToCyclicTagSystem[TagSystem[{{1, 2}, {0}, {0, 0, 0}}, {1, 0, 0}]], 30]
 ```

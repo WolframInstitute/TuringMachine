@@ -48,7 +48,9 @@ buildDoc[srcFile_String] := Block[{info, tmpl, baseName, dir, out},
     dir      = FileNameJoin[Prepend[subdir[tmpl], pacletDir]];
     Quiet @ CreateDirectory[dir, CreateIntermediateDirectories -> True];
     out = FileNameJoin[{dir, baseName <> ".nb"}];
-    mtn[srcFile, out];
+    (* the cache is keyed by the page, not by the paclet code, so it would serve
+       outputs of an older paclet *)
+    mtn[srcFile, out, "UseCache" -> False];
     print["  ", FileNameTake[srcFile], " -> ", FileNameJoin[Append[subdir[tmpl], baseName <> ".nb"]]]
 ]
 
@@ -60,7 +62,7 @@ If[docs === {}, print["  (no docs/*.md pages yet)"], Scan[buildDoc, docs]]
 rd  = FileNameJoin[{pacletDir, "ResourceDefinition.md"}]
 rdo = FileNameJoin[{pacletDir, "ResourceDefinition.nb"}]
 If[FileExistsQ[rd],
-    mtn[rd, rdo];
+    mtn[rd, rdo, "UseCache" -> False];
     print["  ResourceDefinition.md -> ResourceDefinition.nb"]
 ]
 
