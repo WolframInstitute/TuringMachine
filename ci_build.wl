@@ -1,12 +1,20 @@
 (* ci_build.wl - Package the paclet for CI (no cloud upload).
-   Binaries are built and installed into TuringMachine/LibraryResources/<SystemID>/
-   by build_all_targets.sh beforehand; no ExtensionCargo / PacletExtensions. *)
+   The Rust library packages are already in place: build_all_targets.sh runs
+   `cargo wl build` for the host and each cross target, which compiles the
+   cdylibs and writes them - together with their generated Functions.wl
+   loaders - into TuringMachine/Binaries/ndtm_search-<SystemID>/, where the
+   paclet's "Asset" extension picks them up. *)
 
 publisher = "WolframInstitute"
 name = "TuringMachine"
 
 PacletDirectoryLoad[FileNameJoin[{Directory[], name}]]
 paclet = PacletObject[publisher <> "/" <> name]
+
+If[ ! FileExistsQ[FileNameJoin[{paclet["Location"], "Binaries", "ndtm_search-" <> $SystemID, "Functions.wl"}]],
+    Print["FATAL: no ndtm_search library package for ", $SystemID, "; run build_all_targets.sh first."];
+    Exit[1]
+]
 
 (* Create Paclet Archive *)
 Print["Creating Paclet Archive..."]

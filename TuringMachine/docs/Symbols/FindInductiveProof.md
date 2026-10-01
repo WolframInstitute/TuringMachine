@@ -31,7 +31,12 @@ proof = FindInductiveProof[
    ones[succ[n], y] == seq[ones[n, y], s1],
    {ForAll[y, ones[zero, y] == y], ForAll[{m, y}, ones[succ[m], y] == seq[ones[m, y], s1]]},
    20
-];
+]
+```
+
+Both cases were proved:
+
+```wl
 proof["Valid"]
 ```
 
@@ -39,7 +44,17 @@ proof["Valid"]
 
 ## Scope
 
-The keys carried by the returned proof:
+The same proof:
+
+```wl
+proof = FindInductiveProof[
+   ones[succ[n], y] == seq[ones[n, y], s1],
+   {ForAll[y, ones[zero, y] == y], ForAll[{m, y}, ones[succ[m], y] == seq[ones[m, y], s1]]},
+   20
+]
+```
+
+The keys it carries:
 
 ```wl
 Keys[proof]

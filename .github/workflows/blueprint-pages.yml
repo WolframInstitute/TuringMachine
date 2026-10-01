@@ -1,0 +1,108 @@
+# Builds the Lean development under Proofs/ and its Verso blueprint, and
+# publishes the blueprint site to GitHub Pages. The Lake root is Proofs/
+# (the paclet lives at the repository root), so every step runs there.
+#
+# Requires the repository's Pages source to be "GitHub Actions" (set once
+# through the settings page or `gh api repos/<owner>/<repo>/pages -f
+# build_type=workflow`).
+
+name: blueprint-pages
+
+on:
+  push:
+    branches: [main, lean-proofs]
+    paths: ['Proofs/**', '.github/workflows/blueprint-pages.yml']
+  pull_request:
+    paths: ['Proofs/**', '.github/workflows/blueprint-pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: blueprint-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build proofs and blueprint
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: Proofs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Lake packages
+        uses: actions/cache@v4
+        with:
+          path: Proofs/.lake/packages
+          key: ${{ runner.os }}-lake-packages-${{ hashFiles('Proofs/lean-toolchain', 'Proofs/lake-manifest.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lake-packages-
+
+      - name: Restore the project build
+        uses: actions/cache@v4
+        with:
+          path: |
+            Proofs/.lake/build
+          key: ${{ runner.os }}-lake-build-${{ hashFiles('Proofs/lean-toolchain', 'Proofs/lake-manifest.json', 'Proofs/lakefile.lean', 'Proofs/**/*.lean') }}
+          restore-keys: |
+            ${{ runner.os }}-lake-build-${{ hashFiles('Proofs/lean-toolchain', 'Proofs/lake-manifest.json', 'Proofs/lakefile.lean') }}-
+            ${{ runner.os }}-lake-build-
+
+      - name: Fetch the Mathlib cache
+        run: lake exe cache get
+
+      - name: Build the proofs and the tests
+        run: lake build
+
+      - name: No sorry in the proof modules, no native_decide outside Vectors/
+        run: |
+          set -e
+          if grep -rn --include='*.lean' -E '\bsorry\b' Smith TagSystem BiTM TM | grep -v ':\s*--' ; then
+            echo "sorry found in the proof modules"; exit 1
+          fi
+          if grep -rn --include='*.lean' 'native_decide' Smith TagSystem BiTM TM ; then
+            echo "native_decide found outside Vectors/"; exit 1
+          fi
+
+      - name: Axiom check of the headline theorems
+        run: |
+          cat > /tmp/ax.lean <<'EOF'
+          import Smith.Infinite
+          #print axioms Smith.wolfram23_universal
+          #print axioms Smith.wolfram23_infinite
+          EOF
+          lake env lean /tmp/ax.lean | tee /tmp/ax.out
+          test "$(grep -c 'depends on axioms: \[propext, Classical.choice, Quot.sound\]' /tmp/ax.out)" = 2
+
+      - name: Build the blueprint site
+        run: |
+          lake exe vbp build
+          test -f _out/site/html-multi/index.html
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Proofs/_out/site/html-multi
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

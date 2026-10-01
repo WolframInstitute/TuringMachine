@@ -30,7 +30,7 @@ RelatedGuides: [TuringMachine]
 
 ## Basic Examples
 
-Show the tape `1 0 1` with the head in state `qA` over the second cell:
+Show the tape `101` with the head in state `qA` over the second cell:
 
 ```wl
 ShowTapeConfiguration[{s1, s0, s1}, 2, qA]
