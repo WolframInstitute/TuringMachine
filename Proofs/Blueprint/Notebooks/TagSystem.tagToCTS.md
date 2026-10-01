@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration TagSystem.tagToCTS
 Abstract: A cyclic tag system has only two symbols and no choice of production: it cycles through a fixed list of appendants. Cook writes each tag symbol as a block of bits with a single 1 and lets one cycle of the appendants read the first two blocks of the word.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, TagSystem.tagToCTS]
-Links: ["[TagSystem.tagToCTS in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[TagSystem.tagToCTS in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

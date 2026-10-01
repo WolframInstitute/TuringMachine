@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration BiTM.ctsToSystem5
 Abstract: System 5 keeps a bag of integers and a list of rules. Every step all bag elements count down and all rule entries count up; when an element reaches 0 the next rule is merged into the bag. Smith writes each bit of the working string as a pair of bag integers whose gap is the bit, and each appendant as rules that, merged at the right moments, append its bits.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, BiTM.ctsToSystem5]
-Links: ["[BiTM.ctsToSystem5 in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[BiTM.ctsToSystem5 in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

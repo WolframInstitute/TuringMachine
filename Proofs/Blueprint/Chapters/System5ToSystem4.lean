@@ -43,8 +43,8 @@ removed and the state toggled if it was there, and the head moves right (rule 3)
 state B on a star the star is deleted and the head moves left into state A (rule 4);
 in state C on a star the head moves onto the set to its right and toggles 1 in it
 (rule 5). Smith's Conjecture 4 says a System 4 tape emulates a System 5 program. The
-formal T2 is {bpref "Smith.conjecture4_finite"}[`Smith.conjecture4_finite`] in [`Smith/Conjecture4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture4.lean), on top of the run
-lemmas of [`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System4Runs.lean).
+formal T2 is {bpref "Smith.conjecture4_finite"}[`Smith.conjecture4_finite`] in [`Smith/Conjecture4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture4.lean), on top of the run
+lemmas of [`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/System4Runs.lean).
 
 :::group "t2_system5_to_system4"
 T2, link C of the chain: the System 4 encoder `s52s4.pl`, the relation `RepS4` between
@@ -70,7 +70,7 @@ never reaches (the notes below). `BiTM.System4.nSteps` iterates it.
 `2e - 2` ({bpref "BiTM.encodeBag"}[`BiTM.encodeBag`]), then `f` pairs (star, empty set), then one block per
 rule: star, the rule set `0..3f` toggled at `2k + f + 3` for each entry `k`, `2f`
 pairs, star, the all-integers set `0..3f`, `2f - 2` pairs ({bpref "Smith.encBlock"}[`Smith.encBlock`],
-{bpref "Smith.encRuleSet"}[`Smith.encRuleSet`], {bpref "Smith.rulePos"}[`Smith.rulePos`]). [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/REVIEW.md) section 4.3 records two stars
+{bpref "Smith.encRuleSet"}[`Smith.encRuleSet`], {bpref "Smith.rulePos"}[`Smith.rulePos`]). [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/docs/REVIEW.md) section 4.3 records two stars
 the old transcription had dropped; {bpref "Smith.system5ToSystem4_eq"}[`Smith.system5ToSystem4_eq`] is the encoder as the
 case `t = 0` of the parametrized blocks.
 
@@ -108,9 +108,9 @@ The encoder `s52s4.pl`, token for token with the Perl: state A, active index 0, 
 the tape {uses "BiTM.encodeBag"}[] of the bag as one set, then `f` star/empty pairs,
 then one block per rule (star, the rule set `0..3f` toggled at `2k + f + 3` for each
 entry `k`, `2f` pairs, star, the all-integers set `0..3f`, `2f - 2` pairs). The two
-stars that open the rule set and the all-integers set are the ones [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/REVIEW.md)
+stars that open the rule set and the all-integers set are the ones [`docs/REVIEW.md`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/docs/REVIEW.md)
 section 4.3 found missing from the old transcription; without them the System 4 run
-is observably different (the module header of [`BiTM/System5ToSystem4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/System5ToSystem4.lean)).
+is observably different (the module header of [`BiTM/System5ToSystem4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/BiTM/System5ToSystem4.lean)).
 :::
 
 :::notebook "BiTM.system5ToSystem4"
@@ -161,7 +161,7 @@ budget `h` the bounds afford (`Smith.system5ToSystem4_repS4`).
 
 # The two step cases
 
-[`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System4Runs.lean) proves the runs. The focus lemmas state each rule on a tape
+[`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/System4Runs.lean) proves the runs. The focus lemmas state each rule on a tape
 `L ++ e :: R` with the head on `e`, at index `L.length`.
 
 :::lemma_ "Smith.step_setA" (parent := "t2_system5_to_system4") (lean := "Smith.step_setA")
@@ -441,7 +441,7 @@ the tape, where the step is `none`.
 :::
 
 :::theorem "Smith.repS4_terminal" (parent := "t2_system5_to_system4") (lean := "Smith.repS4_terminal") (tags := "T2")
-The exit without 1 in the bag yet (in [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean)). If
+The exit without 1 in the bag yet (in [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean)). If
 {uses "Smith.RepS4"}[] `c s f j (h + M)` holds with an empty rule list and some bag
 entry at most `M + 1`, then after some `k` steps the configuration is in state C past
 the right end of its tape with the step `none`, as in {uses "Smith.repS4_exit"}[].
@@ -587,15 +587,15 @@ which holds of the encoder tape ({bpref "Smith.system5ToSystem4_last_set"}[`Smit
 {bpref "Smith.system5ToSystem4_wellFormed"}[`Smith.system5ToSystem4_wellFormed`], in {ref "conjecture0"}[the chapter on Conjecture 0])
 and which no rule disturbs, since no rule deletes a set.
 
-The D4/D5/D7 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) run the p. 33 tape for 1904 System 4
+The D4/D5/D7 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean) run the p. 33 tape for 1904 System 4
 steps and read the System 5 bag off it with {bpref "Smith.decodeS4"}[`Smith.decodeS4`] at the scheduled times,
 with negative instances at unscheduled times.
 
 # Depends on
 
-The modules of this chapter are [`BiTM/System4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/System4.lean), [`BiTM/System5ToSystem4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/System5ToSystem4.lean),
-[`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System4Runs.lean) and [`Smith/Conjecture4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture4.lean), with {bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`] in
-[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean). The chapter builds on
+The modules of this chapter are [`BiTM/System4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/BiTM/System4.lean), [`BiTM/System5ToSystem4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/BiTM/System5ToSystem4.lean),
+[`Smith/System4Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/System4Runs.lean) and [`Smith/Conjecture4.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture4.lean), with {bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`] in
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean). The chapter builds on
 {ref "cts-to-system5"}[the chapter on cyclic tag to System 5] for the simulation
 calculus ({bpref "Smith.ForwardSim"}[`Smith.ForwardSim`], {bpref "Smith.fueled"}[`Smith.fueled`]), the System 5 step, {bpref "BiTM.xorMerge"}[`BiTM.xorMerge`] and,
 for the composed statements, {bpref "Smith.conjecture5_finite"}[`Smith.conjecture5_finite`], {bpref "BiTM.ctsToSystem5"}[`BiTM.ctsToSystem5`] and

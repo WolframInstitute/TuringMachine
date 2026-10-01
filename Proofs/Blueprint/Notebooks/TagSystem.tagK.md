@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration TagSystem.tagK
 Abstract: A 2-tag system reads the first symbol of its word, deletes two symbols and appends a production. Cocke and Minsky write a Turing machine configuration as such a word, with the two halves of the tape spelled in unary, and turn every machine step into three or five rounds of tag steps.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, TagSystem.tagK]
-Links: ["[TagSystem.tagK in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[TagSystem.tagK in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

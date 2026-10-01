@@ -3,7 +3,7 @@
 (* Emulation.wl
 
    The chain of Smith's proof that Wolfram's 2,3 Turing machine is universal,
-   as formalized in Lean under Proofs/ (branch lean-proofs):
+   as formalized in Lean under Proofs/:
 
        Turing machine -> 2-tag system -> cyclic tag system -> System 5
          -> System 4 -> System 3 -> wolfram23 (System 0)

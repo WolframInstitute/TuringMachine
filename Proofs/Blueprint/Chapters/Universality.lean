@@ -31,7 +31,7 @@ htmlSplit := .never
 
 # Orientation
 
-[`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean) composes T7
+[`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Universality.lean) composes T7
 ({ref "tm-to-cts"}[the chapter on the machine reduction]) with T4
 ({ref "conjecture0"}[the chapter on Conjecture 0]) into
 {bpref "Smith.wolfram23_universal_ic"}[`Smith.wolfram23_universal_ic`], stated in full in {ref "overview"}[the overview].
@@ -84,7 +84,7 @@ the run.
 :::group "tag_bounds"
 The tag side of the closed-form initial condition: the Cocke-Minsky tag system
 runs for ever, and its time for `n` machine steps has a closed-form bound
-([`TagSystem/TagBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagBounds.lean)).
+([`TagSystem/TagBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TagBounds.lean)).
 :::
 
 :::definition "TagSystem.rawRun" (parent := "tag_bounds") (lean := "TagSystem.rawStep, TagSystem.rawRun, TagSystem.roundLen, TagSystem.tagTime")
@@ -235,13 +235,13 @@ Left open by the statement ({ref "open-items"}[the chapter on open items]):
   encoding of a configuration word, at least `2 * 4 * (1 + 84 S)` bits, hence a
   block of width at least `2^13` for `S = 2`, whose rendering builds its parity
   rows by iteration. `undbl` is covered by `undbl_dbl` and by the vectors of
-  [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean) (it inverts `dbl`, rejects an odd word and a word
+  [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/TMToCTSVectors.lean) (it inverts `dbl`, rejects an odd word and a word
   that is not doubled); `decodeW23` by the D9 vectors of
-  [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean); `decodeCTS`, and the last two stages of `decodeTM`
-  on the doubled encoding of a configuration, by [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean). On
+  [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean); `decodeCTS`, and the last two stages of `decodeTM`
+  on the doubled encoding of a configuration, by [`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/TMToCTSVectors.lean). On
   the D9 positive tape `decodeTM` returns `none` because the word there has odd
   length (one symbol); on the D10 tape it passes `undbl` with the word `0`, which
-  `decodeCTS 2` rejects ([`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) D10). A hand-picked positive
+  `decodeCTS 2` rejects ([`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean) D10). A hand-picked positive
   instance for `decodeTM` is still wanted ({ref "open-items"}[the chapter on open
   items]).
 

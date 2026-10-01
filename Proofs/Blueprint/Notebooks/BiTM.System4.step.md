@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration BiTM.System4.step
 Abstract: System 4 is a tape of sets of integers and stars with a head in state A, B or C. In A the head walks left; at the left end it turns and sweeps right in B and C, decrementing every set it passes; stars are deleted as it goes, and a 0 in a set switches between B and C.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, BiTM.System4.step]
-Links: ["[BiTM.System4.step in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[BiTM.System4.step in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

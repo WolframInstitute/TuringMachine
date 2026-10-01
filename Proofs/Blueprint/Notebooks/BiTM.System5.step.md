@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration BiTM.System5.step
 Abstract: Every step decrements the bag and increments the rules. When an element reaches 0 it is removed and the first rule is merged into the bag with parity: an integer already present is removed rather than added.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, BiTM.System5.step]
-Links: ["[BiTM.System5.step in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[BiTM.System5.step in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

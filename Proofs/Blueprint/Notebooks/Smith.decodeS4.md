@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.decodeS4
 Abstract: Each time the head is back at the left end in state B, the sets before the first star together hold the System 5 bag: an integer x in an odd number of them, below the band, stands for the bag element x/2 + 1. With the proof's parameters these readings are the System 5 run, in order, followed by a few steps of a terminal phase.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.decodeS4]
-Links: ["[Smith.decodeS4 in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.decodeS4 in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

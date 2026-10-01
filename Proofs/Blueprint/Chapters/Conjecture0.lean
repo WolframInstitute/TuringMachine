@@ -33,14 +33,14 @@ htmlSplit := .never
 
 # Orientation
 
-[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ClosedForm.lean) compose the four chapters from
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/ClosedForm.lean) compose the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through
 {ref "system5-to-system4"}[System 5 to System 4],
 {ref "system4-to-system3"}[System 4 to System 3] and
 {ref "systems-3-2-1-0"}[Systems 3, 2, 1 and 0] into {bpref "Smith.conjecture0_closed"}[`Smith.conjecture0_closed`]:
 for a two-colour cyclic tag system, an initial word and a budget, the finite
 wolfram23 tape `icStart`, a definition computed from the System 5 program by
-closed-form bounds ([`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/RunBounds.lean)), is one from which the run reproduces the working strings of the
+closed-form bounds ([`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/RunBounds.lean)), is one from which the run reproduces the working strings of the
 cyclic tag run at strictly increasing times, read by the decoder
 {bpref "Smith.decodeW23"}[`Smith.decodeW23`], stays on the tape until then, and afterwards steps onto the
 cell right of the tape, a 0, in state A. This is Smith's Conjecture 0 (p. 4)
@@ -138,7 +138,7 @@ the membership of every other integer unchanged (`xorInsert_mem_other_iff`).
 {bpref "Smith.conjecture5_finite_exact"}[`Smith.conjecture5_finite_exact`] (the chapter on cyclic tag to System 5) gives an
 empty rule list at the end of the budget, which the exit of the terminal phase of
 T2 needs. {bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`] (the chapter on System 5 to System 4, proved in
-[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean)): with the rules exhausted, System 4 decrements
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean)): with the rules exhausted, System 4 decrements
 ({bpref "Smith.repS4_dStep"}[`Smith.repS4_dStep`]) until 1 is in the bag, then exits in state C
 ({bpref "Smith.repS4_exit"}[`Smith.repS4_exit`]), by induction on a bound of a bag element: if some bag
 element is at most `M + 1`, at most `M` decrements happen before the exit.
@@ -521,19 +521,19 @@ System 4) but play the same role; no theorem yet bounds the size of the tape
   with no event in the wolfram23 run that marks them. Nothing is stated about `decodeW23` at other
   times; on the D9 test tape it returns `some` at several unscheduled times as
   well.
-- The D9 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) exercise `decodeW23` on System 3
+- The D9 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean) exercise `decodeW23` on System 3
   tapes built by `initAC`, with negative instances (a state-A head, an odd parity
   position, a tape without whole blocks). No vector runs `conjecture0_closed` end
   to end; with `w = icW s` the block width of the smallest instance is far beyond
-  `decide`. [`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/ClosedFormVectors.lean) checks the run bounds against the exact run
+  `decide`. [`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/ClosedFormVectors.lean) checks the run bounds against the exact run
   lengths on the programs of D1 and D4 and evaluates the closed-form parameters
   of D4.
 
 # Depends on
 
-The modules are [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean) (`Smith.Conjecture0`), which imports
+The modules are [`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean) (`Smith.Conjecture0`), which imports
 `Smith.Conjecture3`, `Smith.ConjectureFive` and `Smith.Wolfram23Bridge`,
-[`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/RunBounds.lean) (the run bounds) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ClosedForm.lean) (the
+[`Smith/RunBounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/RunBounds.lean) (the run bounds) and [`Smith/ClosedForm.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/ClosedForm.lean) (the
 closed-form initial condition, `system4_emulation` and the two statements). The
 chapter depends on the four chapters from
 {ref "cts-to-system5"}[cyclic tag to System 5] through

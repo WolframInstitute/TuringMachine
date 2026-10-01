@@ -60,7 +60,7 @@ per-step lemmas and the finite form of Conjecture 5.
 
 # The simulation calculus
 
-[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean). A step system is a partial step function, and `nSteps`
+[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Simulation.lean). A step system is a partial step function, and `nSteps`
 iterates it.
 
 :::definition "Smith.StepSys" (parent := "simulation_calculus") (lean := "Smith.StepSys")
@@ -134,8 +134,8 @@ The clause `1 <= k` forbids a target that stands still. It does not by itself ma
 a simulation meaningful: a relation that ignores the source is a `ForwardSim` for
 any target that never gets stuck. The content of each link is in its relation,
 which is a decoder graph or an encoding invariant, and the headline conclusions
-are stated as decoder equalities. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 6 and the docstring of `ForwardSim` in
-[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean) say this.
+are stated as decoder equalities. [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/docs/PLAN.md) section 6 and the docstring of `ForwardSim` in
+[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Simulation.lean) say this.
 
 # Doubling
 
@@ -278,7 +278,7 @@ integer, with the empty tail.
 
 # The step lemmas
 
-[`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture5.lean) proves the per-step lemma in the two cases of the head
+[`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture5.lean) proves the per-step lemma in the two cases of the head
 bit: one step of a doubled cyclic tag system is emulated by `x + gap b` steps of
 System 5, where `x` is the smallest bag integer and `b` the leading bit of the
 working string (p. 19-20). In both cases the first `x - 1` steps are pure
@@ -517,7 +517,7 @@ string, whatever the cyclic tag system, the phase and the budget
   terminal step is routed around on the System 4 side ({bpref "Smith.repS4_terminal"}[`Smith.repS4_terminal`],
   the {ref "system5-to-system4"}[chapter on System 5 to System 4]).
 - The p. 29 program (`cy2s5.pl 3 01 1 10`) is run through both step cases by
-  `decide` in [`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture5.lean) and [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) (D1 to D3).
+  `decide` in [`Smith/Conjecture5.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture5.lean) and [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean) (D1 to D3).
 
 # Depends on
 
@@ -526,7 +526,7 @@ The modules of this chapter are `Smith.Simulation`, `Smith.Doubling`,
 `Smith.ConjectureFive`, `BiTM.System5`, `BiTM.CTSToSystem5`, `BiTM.XorMerge` and
 `TagSystem.Basic`. The cyclic tag systems themselves (`TagSystem.CTS`,
 `TagSystem.CTSConfig`, `TagSystem.CTS.step`, `TagSystem.CTS.nSteps`) are those of
-[`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean), the target of the {ref "tm-to-cts"}[chapter on the machine reduction].
+[`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/Basic.lean), the target of the {ref "tm-to-cts"}[chapter on the machine reduction].
 Nothing in this chapter depends on a node of another chapter. Downstream,
 {bpref "Smith.conjecture4_cts"}[`Smith.conjecture4_cts`] of the chapter on System 5 to System 4 consumes
 {bpref "Smith.conjecture5_finite"}[`Smith.conjecture5_finite`], {bpref "Smith.system4_emulation"}[`Smith.system4_emulation`] and

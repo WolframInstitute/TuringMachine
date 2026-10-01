@@ -33,24 +33,24 @@ htmlSplit := .never
 
 # Orientation
 
-Two machine types appear in the development. `BiTM` ([`BiTM/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/Basic.lean)) is the
+Two machine types appear in the development. `BiTM` ([`BiTM/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/BiTM/Basic.lean)) is the
 ordinary Turing machine on a two-way tape with implicit blanks; Wolfram's machine
 and the simulated machines of
 {ref "tm-to-cts"}[the chapter on the machine reduction] are both `BiTM`
 machines. The lookahead machine type `LMachine`
-([`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean)) reads the active cell and its right neighbour and may
+([`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Lookahead.lean)) reads the active cell and its right neighbour and may
 rewrite both; Smith's Systems 1 to 3 need it (p. 4-5), and System 0 is Wolfram's
-machine written in it. The bridge {bpref "Smith.toBi"}[`Smith.toBi`] ([`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean))
+machine written in it. The bridge {bpref "Smith.toBi"}[`Smith.toBi`] ([`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Wolfram23Bridge.lean))
 carries System 0 runs to {bpref "BiTM.wolfram23"}[`BiTM.wolfram23`] runs.
 
 # Shared definitions
 
 :::group "machine-model-shared"
-The Turing machine vocabulary of [`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/Defs.lean) shared by every machine of the
+The Turing machine vocabulary of [`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TM/Defs.lean) shared by every machine of the
 development: directions, rules and machines.
 :::
 
-[`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/Defs.lean) holds three definitions. States and symbols are natural numbers;
+[`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TM/Defs.lean) holds three definitions. States and symbols are natural numbers;
 state 0 is the halt state; `numStates` and `numSymbols` are documentation, never
 read by the step function.
 
@@ -105,7 +105,7 @@ into the head and pushes the written symbol onto `left`.
 
 :::definition "Smith.biSize" (parent := "machine-model-bitm") (lean := "Smith.biSize")
 The number of explicit cells of a configuration ({uses "BiTM.Config"}[]),
-`left.length + 1 + right.length`. Defined in [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean).
+`left.length + 1 + right.length`. Defined in [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Wolfram23Bridge.lean).
 :::
 
 :::lemma_ "Smith.biSize_step" (parent := "machine-model-bitm") (lean := "Smith.biSize_step")
@@ -263,7 +263,7 @@ Runs concatenate: `lnSteps M c (n + m)` ({uses "Smith.lnSteps"}[]) is the run of
 :::
 
 :::proof "Smith.lnSteps_add"
-This is `StepSys.nSteps_add` of [`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean) for the step system
+This is `StepSys.nSteps_add` of [`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Simulation.lean) for the step system
 `lsys M`.
 :::
 
@@ -482,7 +482,7 @@ blanks, and it is where the exit condition of
 {ref "conjecture0"}[the chapter on Conjecture 0] and
 {ref "universality"}[the chapter on the composition] comes from. The exit step
 itself, as a `BiTM` step, is the following computation; it lives in
-[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture0.lean).
+[`Smith/Conjecture0.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture0.lean).
 
 :::lemma_ "Smith.wolfram23_exit_step" (parent := "machine-model-bridge") (lean := "Smith.wolfram23_exit_step")
 The exit step of {uses "BiTM.wolfram23"}[] ({uses "BiTM.step"}[]): from state 2
@@ -518,9 +518,9 @@ By computation (`rfl`): the rule `B2 -> 0RA` and `BiTM.readHead []`.
 The modules of this chapter are `TM.Defs`, `BiTM.Basic`, `BiTM.Wolfram23Valid`,
 `Smith.Lookahead` and `Smith.Wolfram23Bridge`; {bpref "Smith.wolfram23_exit_step"}[`Smith.wolfram23_exit_step`] is
 in `Smith.Conjecture0`. {bpref "Smith.lnSteps"}[`Smith.lnSteps`] is built on the step-system calculus of
-[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Simulation.lean)
+[`Smith/Simulation.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Simulation.lean)
 ({ref "cts-to-system5"}[the chapter on cyclic tag to System 5]). The results
-at the end of [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Wolfram23Bridge.lean) on the head
+at the end of [`Smith/Wolfram23Bridge.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Wolfram23Bridge.lean) on the head
 leaving every finite tape ({bpref "Smith.wolfram23_leaves"}[`Smith.wolfram23_leaves`],
 {bpref "Smith.wolfram23_not_periodic"}[`Smith.wolfram23_not_periodic`]) and the length bookkeeping {bpref "Smith.lnSteps_length"}[`Smith.lnSteps_length`]
 are described in {ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0] and

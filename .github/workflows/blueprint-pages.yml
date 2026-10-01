@@ -10,7 +10,7 @@ name: blueprint-pages
 
 on:
   push:
-    branches: [main, lean-proofs]
+    branches: [main]
     paths: ['Proofs/**', '.github/workflows/blueprint-pages.yml']
   pull_request:
     paths: ['Proofs/**', '.github/workflows/blueprint-pages.yml']

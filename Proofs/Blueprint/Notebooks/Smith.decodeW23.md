@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.decodeW23
 Abstract: When wolfram23 is back at the left end of its tape in state B, the cells from the head to the first 0 are the blocks of the leading sets of System 4. Their XOR, read by parity scans, is the parity set, and its even elements x are the System 5 bag elements x/2 + 1.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.decodeW23]
-Links: ["[Smith.decodeW23 in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.decodeW23 in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

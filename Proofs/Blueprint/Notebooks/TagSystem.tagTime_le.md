@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration TagSystem.tagTime_le
 Abstract: A machine step takes three rounds of the tag system (five for a move to the left), and a round takes as many tag steps as the word has symbol pairs, which is about the two tape halves written in unary: at most 15 2^(sz c) for a configuration with sz c explicit cells. The tape grows by at most a cell per step, so n steps take at most n 15 2^(sz c + n) tag steps.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, TagSystem.tagTime_le]
-Links: ["[TagSystem.tagTime_le in the blueprint](https://wolframinstitute.github.io/TuringMachine/universality/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[TagSystem.tagTime_le in the blueprint](https://wolframinstitute.github.io/TuringMachine/universality/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

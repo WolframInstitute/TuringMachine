@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.row
 Abstract: System 3 stores a set of integers as a block of 2^w cells, 1s and 2s. A scan of the block from left to right replaces each cell by the running parity of the 2s so far; the parity of the whole block after k scans says whether k is in the set. The block of a set is built from the rows of the rule 60 cellular automaton: a scan takes row i to row i - 1, so the XOR of the rows of the elements counts down to each of them.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.row]
-Links: ["[Smith.row in the blueprint](https://wolframinstitute.github.io/TuringMachine/system4-to-system3/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.row in the blueprint](https://wolframinstitute.github.io/TuringMachine/system4-to-system3/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

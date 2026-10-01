@@ -36,9 +36,9 @@ This is the deepest link of Smith's proof ([TM23Proof.pdf](https://www.wolframsc
 and "why the initial condition works"). System 3 ({bpref "Smith.sys3"}[`Smith.sys3`], a lookahead machine
 of {ref "machine-model"}[the chapter on the machine model]) emulates System 4 with
 each set represented by a block of `2^w` cells of 1s and 2s and each star by a 0
-that stands in for a neighbouring cell. Three modules: [`Smith/ParityBlocks.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/ParityBlocks.lean)
-(the parity theory of a block), [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System3Runs.lean) (the runs of System 3 over
-a block), [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) (the relation, the per-rule lemmas, the initial
+that stands in for a neighbouring cell. Three modules: [`Smith/ParityBlocks.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/ParityBlocks.lean)
+(the parity theory of a block), [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/System3Runs.lean) (the runs of System 3 over
+a block), [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture3.lean) (the relation, the per-rule lemmas, the initial
 tape, T3). The result is {bpref "Smith.sys4_sys3_forwardSim"}[`Smith.sys4_sys3_forwardSim`], and with
 {ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0] {bpref "Smith.sys4_sys0_forwardSim"}[`Smith.sys4_sys0_forwardSim`]
 and {bpref "Smith.conjecture3_finite"}[`Smith.conjecture3_finite`].
@@ -153,7 +153,7 @@ scans. This is the whole of "Lemma 1" and of the choice of `w`.
 
 # The runs of System 3
 
-The run lemmas of [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/System3Runs.lean) are stated as equations on
+The run lemmas of [`Smith/System3Runs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/System3Runs.lean) are stated as equations on
 `Smith.lnSteps sys3`, the `n`-step run of System 3 of
 {ref "machine-model"}[the chapter on the machine model].
 
@@ -652,10 +652,10 @@ is `h - i`.
 - `Rep3` is stated on the System 3 tape and leaves the swap of the cells left of the
   head to `phi3` ({ref "systems-3-2-1-0"}[the chapter on Systems 3 to 0]), so
   Smith's `s42s0-3.pl 3` output is `phi3` of `initAC`'s tape.
-- T3 does not use loop-freeness: [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Conjecture3.lean) does not import
-  [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/LoopFree.lean); the generic run lemma {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`] is in
-  [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Lookahead.lean).
-- The D8 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/SmithVectors.lean) run a six-step System 4 program
+- T3 does not use loop-freeness: [`Smith/Conjecture3.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Conjecture3.lean) does not import
+  [`Smith/LoopFree.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/LoopFree.lean); the generic run lemma {bpref "Smith.lnSteps_add"}[`Smith.lnSteps_add`] is in
+  [`Smith/Lookahead.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Lookahead.lean).
+- The D8 vectors of [`Vectors/SmithVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/SmithVectors.lean) run a six-step System 4 program
   through System 3 by `decide`.
 
 # Depends on

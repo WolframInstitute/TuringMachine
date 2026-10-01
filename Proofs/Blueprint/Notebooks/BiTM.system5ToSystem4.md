@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration BiTM.system5ToSystem4
 Abstract: The bag becomes the first set of the tape, each bag element e as the integer 2e - 2, followed by f star and empty-set pairs. Each System 5 rule becomes a block of 8f elements further right. The head sweeps back and forth; each sweep decrements the sets it passes, which is how the bag counts down, and a 0 reached in the leading sets brings the next rule block into play.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, BiTM.system5ToSystem4]
-Links: ["[BiTM.system5ToSystem4 in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[BiTM.system5ToSystem4 in the blueprint](https://wolframinstitute.github.io/TuringMachine/system5-to-system4/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

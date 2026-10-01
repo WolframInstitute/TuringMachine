@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.IC
 Abstract: The initial condition for n steps of a machine goes through every stage of the chain: tag system, cyclic tag system, System 5, System 4, System 3. Up to System 5 the stages can be built and run; the System 4 and wolfram23 tapes are far too large and are only counted.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.IC]
-Links: ["[Smith.IC in the blueprint](https://wolframinstitute.github.io/TuringMachine/universality/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.IC in the blueprint](https://wolframinstitute.github.io/TuringMachine/universality/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

@@ -28,7 +28,7 @@ htmlSplit := .never
 
 # Orientation
 
-The headline theorem is {bpref "Smith.wolfram23_universal_ic"}[`Smith.wolfram23_universal_ic`] in [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Universality.lean).
+The headline theorem is {bpref "Smith.wolfram23_universal_ic"}[`Smith.wolfram23_universal_ic`] in [`Smith/Universality.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Universality.lean).
 In one sentence: for every well-formed binary Turing machine `tm`, every valid
 configuration `c` and every finite run of `n` steps, Wolfram's 2-state 3-colour
 machine ({bpref "BiTM.wolfram23"}[`BiTM.wolfram23`]) started on the finite tape `IC tm c n` reproduces the `n + 1`
@@ -42,7 +42,7 @@ This is Smith's Conjecture 0 in its finite form (p. 4, "for an arbitrary number 
 steps"), composed with a Cocke-Minsky reduction from Turing machines to cyclic tag
 systems. The tape depends on the number of steps `n`. The infinite form (one
 initial condition that emulates forever, p. 21-22) is {bpref "Smith.wolfram23_infinite_ic"}[`Smith.wolfram23_infinite_ic`] in
-[`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean): one right-infinite tape `ITape tm c` per machine and input, again a
+[`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Infinite.lean): one right-infinite tape `ITape tm c` per machine and input, again a
 definition, from which wolfram23 runs for ever and reproduces every prefix of the
 run of the machine; the chapter on the infinite form describes its construction.
 Both have corollaries with the tape existential,
@@ -84,7 +84,7 @@ clauses.
 
 Read clause by clause:
 
-- `tm : Machine` is a Turing machine in the shared model of [`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/Defs.lean)
+- `tm : Machine` is a Turing machine in the shared model of [`TM/Defs.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TM/Defs.lean)
   ({bpref "TM.Machine"}[]): states and symbols are natural numbers, state 0 halts.
   {bpref "TagSystem.WF"}[`TagSystem.WF`] says that from a state below `numStates`, reading a bit, the machine
   writes a bit and moves to a state below `numStates`. {bpref "TagSystem.ValidCfg"}[`TagSystem.ValidCfg`] says the
@@ -200,14 +200,14 @@ The same three axioms for the corollaries {bpref "Smith.wolfram23_universal"}[] 
 {bpref "Smith.wolfram23_infinite"}[], for {bpref "Smith.conjecture0_closed"}[], {bpref "TagSystem.t7_finite"}[],
 {bpref "Smith.sys4_sys3_forwardSim"}[], {bpref "Smith.conjecture4_finite"}[],
 {bpref "Smith.conjecture5_finite_exact"}[] and {bpref "Smith.sys3_sys0_forwardSim"}[]. No `sorry`
-anywhere in [`Smith/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/), [`TagSystem/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/), [`BiTM/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/BiTM/), [`TM/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TM/); `native_decide` only in [`Vectors/`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/),
+anywhere in [`Smith/`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/), [`TagSystem/`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/), [`BiTM/`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/BiTM/), [`TM/`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TM/); `native_decide` only in [`Vectors/`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/),
 which nothing imports.
 
 # How to read this blueprint
 
 The chapters from the machine model to the composition follow the chain from the
 Turing machine to wolfram23, which is the order of the composition, not the order in
-which the links were proved (that order is in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/docs/PLAN.md) section 5). Each chapter
+which the links were proved (that order is in [`docs/PLAN.md`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/docs/PLAN.md) section 5). Each chapter
 has: an orientation paragraph; the mathematics in prose with the formal statements
 linked to their declarations; notes and caveats. A reader checking a single link
 needs only that chapter, its module, and the chapter on the machine model. The

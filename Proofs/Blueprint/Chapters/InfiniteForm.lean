@@ -37,7 +37,7 @@ solution of the problem posed in the introduction, and it is the form that answe
 the objection of {ref "universality"}[the chapter on the composition] that a
 budget-indexed family of tapes is not one encoding.
 
-This chapter states what is proved ([`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Infinite.lean), [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean)),
+This chapter states what is proved ([`Smith/Infinite.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Infinite.lean), [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Guards.lean)),
 describes the construction, and says what remains existential.
 
 # The statement
@@ -179,7 +179,7 @@ only has to tolerate arbitrary cells beyond the guards.
 ## The block on the System 4 side
 
 :::group "guards"
-The guarded System 4 tapes of [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Smith/Guards.lean): the block, its entry through the
+The guarded System 4 tapes of [`Smith/Guards.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Smith/Guards.lean): the block, its entry through the
 guards, the padded tracking of the program's run, one guard consumed per turn.
 :::
 
@@ -472,7 +472,7 @@ clause holds at every time because the schedule of block `k` ends after time `k`
 
 # Tests
 
-[`Vectors/InfiniteVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/InfiniteVectors.lean) (E1-E8, all by kernel `decide`). E1-E5: D9's program
+[`Vectors/InfiniteVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/InfiniteVectors.lean) (E1-E8, all by kernel `decide`). E1-E5: D9's program
 `{0, 2} * {}` in a block with `n = 7`, `r = 5`, width `2^5`, band 4. E1: the System 4
 entry in 10 steps to `padCfg 7 5 0`, the exit at 13 as the padded exit configuration,
 stuck alone at 14, `SafeC`. E2: the System 3 run from `entry3`, the decode at 160
@@ -495,11 +495,11 @@ leftmost cell. E7: two blocks of different widths (`2^5` then `2^6`): `segCells`
 at 1365 and the entry into block 2. E8: the machine-independent side conditions of
 `BlockSpec` on the E1 block, the System 4 decode at `dt 0`, the raw run that the
 blocks emulate on the one-step machine `tmH` of
-[`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/TMToCTSVectors.lean) (it agrees with the run at step 1 and goes on
+[`Vectors/TMToCTSVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/TMToCTSVectors.lean) (it agrees with the run at step 1 and goes on
 at step 2, where the run is `none`) and both theorems instantiated on `tmH`. The
 E-blocks are hand-sized (`n = T4 + 3` from the exact run length); the closed-form
 blocks are far too large to evaluate (block 0 of `tmH` has `icT4 + 1` guards), and
-[`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/Vectors/ClosedFormVectors.lean) checks the bounds behind them on small
+[`Vectors/ClosedFormVectors.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/Vectors/ClosedFormVectors.lean) checks the bounds behind them on small
 instances instead.
 
 # What remains existential

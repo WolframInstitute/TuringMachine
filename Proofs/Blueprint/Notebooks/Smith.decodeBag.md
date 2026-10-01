@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.decodeBag
 Abstract: The sorted bag is read in pairs from the bottom: a gap of 1 is a 0, a gap of 2 a 1. Along the System 5 run the bags read back, in order, as the working strings of the doubled cyclic tag system.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.decodeBag]
-Links: ["[Smith.decodeBag in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.decodeBag in the blueprint](https://wolframinstitute.github.io/TuringMachine/cts-to-system5/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

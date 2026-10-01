@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.icStart
 Abstract: Every parameter of the emulation (f, the band, the fuel, the block width) depends on how long the System 5 and System 4 runs last. The proof replaces each run length by a bound computed from the program itself, so the initial tape is a definition that runs no system. The bounds are much larger than the runs.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.icStart]
-Links: ["[Smith.icStart in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.icStart in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

@@ -40,7 +40,7 @@ consumes: a two-colour cyclic tag system that simulates a given Turing machine,
 with a decoder. It is a genuine construction, not an appeal to the literature: a
 2-tag system after Cocke and Minsky (1964; Minsky 1967, section 14.6) in a phase
 design of our own, carried onto a finite alphabet, then onto a cyclic tag system
-by Cook's encoding ([`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean), which predates the rebuild and is
+by Cook's encoding ([`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TagToCTS.lean), which predates the rebuild and is
 used unchanged).
 
 The class of machines is the binary machines: {bpref "TagSystem.WF"}[`TagSystem.WF`] restricts the
@@ -52,10 +52,10 @@ not formalized ({ref "open-items"}[the chapter on open items]).
 
 :::group "t7_rounds"
 A 2-tag system over any alphabet and its runs described by rounds
-([`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagRounds.lean), [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean)).
+([`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TagRounds.lean), [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/Basic.lean)).
 :::
 
-[`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagRounds.lean) treats a 2-tag system over any alphabet.
+[`TagSystem/TagRounds.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TagRounds.lean) treats a 2-tag system over any alphabet.
 
 :::definition "TagSystem.stepP" (parent := "t7_rounds") (lean := "TagSystem.stepP")
 The 2-tag step with productions `P`, on a word over any alphabet: read the first
@@ -69,7 +69,7 @@ than two symbols has no step.
 :::
 
 :::definition "TagSystem.Tag.step" (parent := "t7_rounds") (lean := "TagSystem.Tag.step")
-The step of a tag system `ts : Tag k` of [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/Basic.lean) on a word over
+The step of a tag system `ts : Tag k` of [`TagSystem/Basic.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/Basic.lean) on a word over
 `Fin k`: read the first symbol, delete the first two, append `ts.productions` of
 the symbol read.
 :::
@@ -133,10 +133,10 @@ then the rest read from its first or second symbol by the run's parity).
 
 :::group "t7_cocke_minsky"
 The 2-tag system that simulates a binary Turing machine, in three or five rounds
-per machine step ([`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/CockeMinsky.lean)).
+per machine step ([`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/CockeMinsky.lean)).
 :::
 
-[`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/CockeMinsky.lean). The configuration `(q, left, head, right)` of the
+[`TagSystem/CockeMinsky.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/CockeMinsky.lean). The configuration `(q, left, head, right)` of the
 machine is the word
 
 ```
@@ -335,10 +335,10 @@ a Python simulation of random machines before it was proved.
 :::group "t7_cts"
 The tag system on the finite alphabet `Fin (1 + 84 * S)`, Cook's encoding into
 a cyclic tag system, and the two forward simulations
-([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean), [`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TagToCTS.lean)).
+([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TMToCTS.lean), [`TagSystem/TagToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TagToCTS.lean)).
 :::
 
-[`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean).
+[`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TMToCTS.lean).
 
 :::definition "TagSystem.enc" (parent := "t7_cts") (lean := "TagSystem.enc")
 `enc S` sends the symbols ({uses "TagSystem.Sym"}[]) whose state is below `S`
@@ -523,7 +523,7 @@ cyclic tag cycles must be the number of tag steps.
 
 :::group "t7_decoder"
 The decoder of the cyclic tag word, its completeness and the soundness of its
-block stage; T7 in the finite form ([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/TagSystem/TMToCTS.lean)).
+block stage; T7 in the finite form ([`TagSystem/TMToCTS.lean`](https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/TagSystem/TMToCTS.lean)).
 :::
 
 `TagSystem.decodeCTS S d` reads the one-hot blocks of the cyclic tag word back

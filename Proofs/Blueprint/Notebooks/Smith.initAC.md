@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.initAC
 Abstract: System 3 writes each set of the System 4 tape as a block of 2^w cells and each star as a 0, with a left end 0^h 2 2 1 and a closing 1. Its head scans a block in state B or C, which decrements the set, and leaves the block in the state given by the parity, which says whether the set held 0: exactly System 4's rule for a set.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.initAC]
-Links: ["[Smith.initAC in the blueprint](https://wolframinstitute.github.io/TuringMachine/system4-to-system3/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.initAC in the blueprint](https://wolframinstitute.github.io/TuringMachine/system4-to-system3/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

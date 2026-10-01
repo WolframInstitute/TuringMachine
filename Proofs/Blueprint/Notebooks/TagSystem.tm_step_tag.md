@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration TagSystem.tm_step_tag
 Abstract: A move to the right takes three rounds of the tag system, a move to the left five: the left number has to be halved and its low bit carried over to the right number. Every round reads the whole word once, so a round takes as many tag steps as the word has pairs.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, TagSystem.tm_step_tag]
-Links: ["[TagSystem.tm_step_tag in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[TagSystem.tm_step_tag in the blueprint](https://wolframinstitute.github.io/TuringMachine/tm-to-cts/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

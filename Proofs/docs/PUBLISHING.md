@@ -34,8 +34,7 @@ Chapters import the proof modules and link each statement to its declaration wit
 `(lean := "Full.Name")`, so the site renders the real signatures and their Lean
 status; blueprint labels are the full Lean names. Mentions of declarations in prose
 are `{bpref}` links to their nodes; mentions of source files are links to the file on
-GitHub (`https://github.com/WolframInstitute/TuringMachine/blob/lean-proofs/Proofs/...`;
-change `lean-proofs` to `main` in the chapters when the branch is merged), and mentions
+GitHub (`https://github.com/WolframInstitute/TuringMachine/blob/main/Proofs/...`), and mentions
 of Smith's paper link to its public copy at
 <https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf>. Chapter cross references use
 `{ref "tag"}[text]` with the tags `overview`, `machine-model`, `tm-to-cts`,
@@ -56,7 +55,7 @@ lake exe vbp build          # the site, to _out/site/html-multi
 lake exe vbp build --serve  # local preview
 ```
 
-GitHub Pages: every push to `main` or `lean-proofs` that touches `Proofs/` runs the
+GitHub Pages: every push to `main` that touches `Proofs/` runs the
 workflow (build, `sorry`/`native_decide` scan, axiom check of both headline theorems,
 `vbp build`, upload, deploy); `workflow_dispatch` runs it by hand. The first run
 compiles Verso from source (the Lake packages are cached between runs).

@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.System5.run_bound
 Abstract: Every bag element counts down, so within B steps some element reaches 0 and a rule is used up; each pop can at most double the largest integer. With r rules and integers at most B the run is over within B 2^r steps. The bound is what lets the proof size its tape without running System 5.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.System5.run_bound]
-Links: ["[Smith.System5.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.System5.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

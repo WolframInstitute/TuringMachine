@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration BiTM.wolfram23
 Abstract: Two states and three colors: A0 -> 1RB, A1 -> 2LA, A2 -> 1LA, B0 -> 2LA, B1 -> 2RB, B2 -> 0RA. It never halts. Systems 3, 2 and 1 are Smith's relabelings of it: System 3 names the cells left of the head and the state differently, and each System 3 step is one or three steps of the machine.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, BiTM.wolfram23]
-Links: ["[BiTM.wolfram23 in the blueprint](https://wolframinstitute.github.io/TuringMachine/machine-model/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[BiTM.wolfram23 in the blueprint](https://wolframinstitute.github.io/TuringMachine/machine-model/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).

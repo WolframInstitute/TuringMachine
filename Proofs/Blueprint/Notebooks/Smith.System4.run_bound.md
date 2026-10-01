@@ -8,7 +8,7 @@ Date: 2026
 Description: A computational footnote to the Lean declaration Smith.System4.run_bound
 Abstract: Every step of System 4 either deletes a star, turns the head round at a star or at the left end, or moves the head one element in its current direction. A measure built from the number of stars and the head position drops at every step, so a tape of length L halts within (2L + 2)(L + 1) steps.
 Keywords: ["Wolfram 2,3 Turing machine", universality, Lean, Smith.System4.run_bound]
-Links: ["[Smith.System4.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/lean-proofs/Proofs)"]
+Links: ["[Smith.System4.run_bound in the blueprint](https://wolframinstitute.github.io/TuringMachine/conjecture0/)", "[The Lean proof](https://github.com/WolframInstitute/TuringMachine/tree/main/Proofs)"]
 ---
 
 The functions come from the paclet [WolframInstitute/TuringMachine](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
