@@ -291,11 +291,11 @@ RunMachine[rules_, inputBits_, maxSteps_ : 200] := Module[{step, configOf, state
 
 (* === Shared vocabulary (defined once, referenced everywhere) === *)
 
-$proofVariables = {x, y, m, n, , , , , , , , , , }
+$proofVariables = {x, y, m, n, \[FormalA], \[FormalB], \[FormalC], \[FormalD], \[FormalE], \[FormalF], \[FormalG], \[FormalH], \[FormalI], \[FormalJ]}
 
-$formalVariables = {, , , }
+$formalVariables = {\[FormalA], \[FormalB], \[FormalC], \[FormalD]}
 
-$ruleCanonicalVariables = {, , , , , }
+$ruleCanonicalVariables = {\[FormalA], \[FormalB], \[FormalC], \[FormalD], \[FormalE], \[FormalF]}
 
 canonicalizeVariables[e_] := Module[{vs = DeleteDuplicates[Cases[e, s_Symbol /; MemberQ[$proofVariables, s], {0, Infinity}]]},
     e /. Thread[vs -> Table[Symbol["cv" <> ToString[j]], {j, Length[vs]}]]
@@ -594,9 +594,9 @@ runVarQ[_] := False
 
 renderPeanoNumeral[s_Symbol /; runVarQ[s]] := m
 
-renderPeanoNumeral[] := m
+renderPeanoNumeral[\[FormalA]] := m
 
-renderPeanoNumeral[] := m
+renderPeanoNumeral[\[FormalB]] := m
 
 renderPeanoNumeral[k_] := k
 
@@ -618,9 +618,9 @@ renderCell[qC] := stateIndicatorBox[3]
 
 renderCell[qD] := stateIndicatorBox[4]
 
-renderCell[end] := "⊲"
+renderCell[end] := "\[LeftTriangle]"
 
-renderCell[bnd] := "⊳"
+renderCell[bnd] := "\[RightTriangle]"
 
 (* the exponent, lifted by $scriptRaise above the native superscript position. The shift is on the
    exponent only, so the square base stays on the baseline and lines up with the plain cells and
@@ -634,17 +634,17 @@ renderCell[onesRun[k_]] := runCell[cellBox[1], k]
 
 renderCell[zerosRun[k_]] := runCell[cellBox[0], k]
 
-renderCell[] := mathLetter["x"]
+renderCell[\[FormalA]] := mathLetter["x"]
 
-renderCell[] := mathLetter["y"]
+renderCell[\[FormalB]] := mathLetter["y"]
 
-renderCell[] := renderCell[]; renderCell[] := renderCell[]
+renderCell[\[FormalC]] := renderCell[\[FormalA]]; renderCell[\[FormalD]] := renderCell[\[FormalB]]
 
-renderCell[] := renderCell[]; renderCell[] := renderCell[]
+renderCell[\[FormalE]] := renderCell[\[FormalA]]; renderCell[\[FormalF]] := renderCell[\[FormalB]]
 
-renderCell[] := renderCell[]
+renderCell[\[FormalG]] := renderCell[\[FormalA]]
 
-renderCell[x] := renderCell[]; renderCell[y] := renderCell[]
+renderCell[x] := renderCell[\[FormalA]]; renderCell[y] := renderCell[\[FormalB]]
 
 renderCell[s_Symbol /; runVarQ[s]] := renderPeanoNumeral[s]
 
@@ -670,11 +670,11 @@ tapeCells[unbnd[t_]] := Replace[tapeCells[t], bnd -> unbndMark, {1}]
 
 tapeCells[c_] := {c}
 
-renderCell[unbndMark] := "⊳"
+renderCell[unbndMark] := "\[RightTriangle]"
 
 (* the centre-dot between cells is a Graphics disc, a peer of the square cells, with the same
    vertical PlotRange and the same ImageSize height, so it sits at the cell centre
-   GEOMETRICALLY. A text "·" rides the font math axis, which the front end places differently
+   GEOMETRICALLY. A text "\[CenterDot]" rides the font math axis, which the front end places differently
    from the graphic cells (so it reads too high there); a disc shares the cells' exact baseline.
    The graphic's width sets the horizontal spacing, in cell-size units, independent of the font. *)
 
@@ -693,7 +693,7 @@ cellSeparator[] := With[{hw = $cellSeparatorGap 1.1 / 2},
 
 $headStateSymbols = {qA, qB, qC, qD}
 
-$tapeVariables = {x, y, \[FormalX], \[FormalY], , , , , , , }
+$tapeVariables = {x, y, \[FormalX], \[FormalY], \[FormalA], \[FormalB], \[FormalC], \[FormalD], \[FormalE], \[FormalF], \[FormalG]}
 
 renderCell[segVar] := mathLetter["s"]
 
@@ -801,7 +801,7 @@ $quantifierSize = Automatic
 
 universalGoalGrid[var_, eqn_] := Module[{q, glyph},
     q = Replace[$quantifierSize, Automatic :> Round[1.5 $cellSize]];
-    glyph = Style[Subscript["∀", RawBoxes[formBoxes[var, $quantifierTraditional]]], FontSize -> q];
+    glyph = Style[Subscript["\[ForAll]", RawBoxes[formBoxes[var, $quantifierTraditional]]], FontSize -> q];
     glyph = RawBoxes[AdjustmentBox[ToBoxes[glyph], BoxBaselineShift -> -$quantifierNudge]];
     Grid[
         {{glyph, tapeForm[eqn]}},
@@ -1264,7 +1264,7 @@ $inductionRuleBackground = $InductiveProofColors["InductionRuleBackground"]
 
 $identityGlyph = Row[{mathLetter["t"], " = ", mathLetter["t"]}]
 
-$qedSymbol = "■"
+$qedSymbol = "\[FilledSquare]"
 
 frameColorFor[c_] := switchedColor[
     Function[cc,
@@ -1295,12 +1295,12 @@ $inductionRuleCaption = With[{mIt = $runLengthVariable},
         Row[
             {
                 predicateAtIndex[0],
-                " ∧ (",
+                " \[And] (",
                 predicateAtIndex[mIt],
-                "  ",
+                " \[Implies] ",
                 predicateAtIndex[Row[{mIt, "+1"}]],
                 ")",
-                "   ⟶   ",
+                "   \[LongRightArrow]   ",
                 TraditionalForm[ForAll[mIt, predicateAtIndex[mIt]]]
             }
         ]
@@ -1374,7 +1374,7 @@ eventVertexQ[v_] := ListQ[v] && Length[v] == 2 &&
 
 (* Axiom vertices = the proof's given equations: direct axiom copies {pfx,{"AxCopy",rank}} and the
    axiom applications inside a grafted lemma {pfx,{"Graft",ctr,"Ax",name}}. These are the
-   logical sources of the proof – distinct from in-degree-0 statement/reflexivity vertices that
+   logical sources of the proof \[Dash] distinct from in-degree-0 statement/reflexivity vertices that
    are not axioms. *)
 
 axiomVertexQ[v_] := ListQ[v] && Length[v] == 2 && ListQ[v[[2]]] &&
@@ -2910,7 +2910,7 @@ geodesicBetween[allExprs_, allEdges_, initExprs_] := Module[{path},
     <|
         "path" -> path,
         "pathPairs" -> If[path =!= {}, Map[Sort, Partition[path, 2, 1]], {}],
-        "length" -> If[path === {}, ∞, Length[path] - 1]
+        "length" -> If[path === {}, \[Infinity], Length[path] - 1]
     |>
 ]
 
@@ -3894,7 +3894,7 @@ MultiwayBothPanel[ru_, OptionsPattern[]] := Module[{s = rawSystemFor[ru], baseAx
                 {
                     Labeled[gB, Subscript["P", 0], Top],
                     Spacer[40],
-                    Labeled[gS, Row[{Subscript["P", "m"], "  ", Subscript["P", "m+1"]}], Top]
+                    Labeled[gS, Row[{Subscript["P", "m"], " \[Implies] ", Subscript["P", "m+1"]}], Top]
                 }
             ]
             ,
@@ -3915,7 +3915,7 @@ canonicalEquation[e_] := If[ MatchQ[e, _Equal],
     canonicalizeVariables[e]
 ]
 
-inductionProofGraph::usage = "inductionProofGraph[p] builds the token-event proof graph (fused base and step cases) for an inductive proof object p.\nOptions:\n\"GraftDerived\" (True): graft each derived-axiom proof onto its use-site – equational ProofObject chains and inductive sub-proofs; False shows derived axioms as given (green) axioms.\n\"MergeAsAxiom\" (False): colour grafted use-sites as axioms rather than derived theorems.\n\"LemmaComponents\" (All): which lemma case components to include."
+inductionProofGraph::usage = "inductionProofGraph[p] builds the token-event proof graph (fused base and step cases) for an inductive proof object p.\nOptions:\n\"GraftDerived\" (True): graft each derived-axiom proof onto its use-site \[Dash] equational ProofObject chains and inductive sub-proofs; False shows derived axioms as given (green) axioms.\n\"MergeAsAxiom\" (False): colour grafted use-sites as axioms rather than derived theorems.\n\"LemmaComponents\" (All): which lemma case components to include."
 
 Options[inductionProofGraph] = {"GraftDerived" -> True, "MergeAsAxiom" -> False, "LemmaComponents" -> All}
 
@@ -4262,8 +4262,8 @@ pinExtremes[coords_, conclusionV_, pinC_] := If[ ! TrueQ[pinC],
 
 (* The k-core of the cloud within the combined cloud+proof graph (proof vertices always present).
    Iteratively drops every cloud state whose combined undirected degree is below k, which strips
-   the tendrils – degree-1 chains from the outer rewrite shells that carry no confluence
-   structure and splay outward under any force layout – leaving the dense, branch-and-reconverge
+   the tendrils \[Dash] degree-1 chains from the outer rewrite shells that carry no confluence
+   structure and splay outward under any force layout \[Dash] leaving the dense, branch-and-reconverge
    mesh. Each removed vertex has degree < k <= the rest, so removal never disconnects the
    surviving graph. *)
 
@@ -4298,7 +4298,7 @@ cloudKCore[cloudVerts_, cloudEdges_, proofVerts_, k_] := If[ ! IntegerQ[k] || k 
     ]
 ]
 
-MultiwayInductiveProofPanel::usage = "MultiwayInductiveProofPanel[ru] draws the grafted inductive proof graph for Turing machine ru at full opacity, embedded inside the fused multiway term-space cloud of all its sub-proofs.\nOptions:\n\"GraftDerived\" (True): graft each derived-axiom proof (equational + inductive) into the proof graph; False shows derived axioms as given.\n\"ProofVertexScale\" (1): size of the embedded proof vertices.\n\"ProofEdgeThickness\" (1): absolute thickness (points) of ordinary proof edges; 0 hides them.\n\"InductionEdgeThickness\" (2.4): absolute thickness (points) of the induction edges; 0 hides them (a true off switch – not a hairline).\n\"CloudVertexScale\" (1): size multiplier for the cloud state/event discs.\n\"CloudEdgeThickness\" (0.4): absolute thickness (points) of the cloud edges; 0 hides them.\n\"ProofEdgeColor\" (Automatic): colour of the non-induction proof edges (Automatic = the default equational colour); the induction edges always stay purple.\n\"BackgroundOpacity\" (0.25): opacity of the faded cloud.\n\"DirectOverlap\" (False): grow \"MaxStates\" until the sub-proof clouds directly share terms (one component); \"DirectOverlapStep\" (500)/\"DirectOverlapCap\" (4000) bound the growth.\n\"MaxStates\" (500), \"SuperposeGenerations\" (2): total cloud-state cap and superposition generation depth.\n\"SizeBound\" (Automatic), \"SizeMargin\" (6): confine the cloud to the proof's term-size regime – the rewrite system is non-terminating, so unbounded growth fills the cloud with ever-larger runaway configurations; a term is kept only if its LeafCount is within the bound. Automatic = the largest seed term of each case plus SizeMargin rewrite-shells, so the cloud is a bounded neighbourhood that envelops the proof rather than sprawling. Raise SizeMargin (or set SizeBound to a number / Infinity) to admit larger terms.\n\"CloudCore\" (2): keep only the k-core of the cloud – iteratively drop states whose degree (counting edges to the proof) is below k, which removes the splaying degree-1/2 tendrils of the outer rewrite shells and leaves the dense confluent mesh that actually envelops the proof. Set to 0 or 1 to show the full cloud including tendrils; raise to 3 for only the densest core.\n\"Beam\" (60): beam-search width – how many lightest terms each frontier keeps expanding (raise to grow the cloud wider).\n\"MaxNew\" (40): max new vertices per superposition generation.\n\"Layout\" (\"SpringElectricalEmbedding\"): cloud layout (e.g. \"LayeredDigraphEmbedding\"). \"PinProof\" (True): pin the proof at its own z3 layout (via \"PinnedVertices\") while the chosen layout arranges the cloud around it; works under any layout that honours pinned vertices. The axioms are kept on the top row not by a coordinate override but because the cloud edges feeding into them are dropped, leaving them in-degree-0 sources the layered layout ranks together (and is free to order within).\n\"PinConclusion\" (False): nudge the proof's conclusion (goal) vertex to the bottom centre after layout.\n\"ArrowSize\" (0.011): arrowhead size, shared by proof and cloud edges (a plot fraction, independent of edge thickness).\n\"Labeled\" (False): draw the embedded proof vertices as labelled equation boxes; default is unlabelled coloured discs (sized by \"ProofVertexScale\").\n\"Width\" (1000): image width."
+MultiwayInductiveProofPanel::usage = "MultiwayInductiveProofPanel[ru] draws the grafted inductive proof graph for Turing machine ru at full opacity, embedded inside the fused multiway term-space cloud of all its sub-proofs.\nOptions:\n\"GraftDerived\" (True): graft each derived-axiom proof (equational + inductive) into the proof graph; False shows derived axioms as given.\n\"ProofVertexScale\" (1): size of the embedded proof vertices.\n\"ProofEdgeThickness\" (1): absolute thickness (points) of ordinary proof edges; 0 hides them.\n\"InductionEdgeThickness\" (2.4): absolute thickness (points) of the induction edges; 0 hides them (a true off switch \[Dash] not a hairline).\n\"CloudVertexScale\" (1): size multiplier for the cloud state/event discs.\n\"CloudEdgeThickness\" (0.4): absolute thickness (points) of the cloud edges; 0 hides them.\n\"ProofEdgeColor\" (Automatic): colour of the non-induction proof edges (Automatic = the default equational colour); the induction edges always stay purple.\n\"BackgroundOpacity\" (0.25): opacity of the faded cloud.\n\"DirectOverlap\" (False): grow \"MaxStates\" until the sub-proof clouds directly share terms (one component); \"DirectOverlapStep\" (500)/\"DirectOverlapCap\" (4000) bound the growth.\n\"MaxStates\" (500), \"SuperposeGenerations\" (2): total cloud-state cap and superposition generation depth.\n\"SizeBound\" (Automatic), \"SizeMargin\" (6): confine the cloud to the proof's term-size regime \[Dash] the rewrite system is non-terminating, so unbounded growth fills the cloud with ever-larger runaway configurations; a term is kept only if its LeafCount is within the bound. Automatic = the largest seed term of each case plus SizeMargin rewrite-shells, so the cloud is a bounded neighbourhood that envelops the proof rather than sprawling. Raise SizeMargin (or set SizeBound to a number / Infinity) to admit larger terms.\n\"CloudCore\" (2): keep only the k-core of the cloud \[Dash] iteratively drop states whose degree (counting edges to the proof) is below k, which removes the splaying degree-1/2 tendrils of the outer rewrite shells and leaves the dense confluent mesh that actually envelops the proof. Set to 0 or 1 to show the full cloud including tendrils; raise to 3 for only the densest core.\n\"Beam\" (60): beam-search width \[Dash] how many lightest terms each frontier keeps expanding (raise to grow the cloud wider).\n\"MaxNew\" (40): max new vertices per superposition generation.\n\"Layout\" (\"SpringElectricalEmbedding\"): cloud layout (e.g. \"LayeredDigraphEmbedding\"). \"PinProof\" (True): pin the proof at its own z3 layout (via \"PinnedVertices\") while the chosen layout arranges the cloud around it; works under any layout that honours pinned vertices. The axioms are kept on the top row not by a coordinate override but because the cloud edges feeding into them are dropped, leaving them in-degree-0 sources the layered layout ranks together (and is free to order within).\n\"PinConclusion\" (False): nudge the proof's conclusion (goal) vertex to the bottom centre after layout.\n\"ArrowSize\" (0.011): arrowhead size, shared by proof and cloud edges (a plot fraction, independent of edge thickness).\n\"Labeled\" (False): draw the embedded proof vertices as labelled equation boxes; default is unlabelled coloured discs (sized by \"ProofVertexScale\").\n\"Width\" (1000): image width."
 
 Options[MultiwayInductiveProofPanel] = {
     "Axioms" -> "Raw",
@@ -4405,7 +4405,7 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
     multiwayEdges = DeleteCases[DeleteDuplicates[Flatten[caseResults[[All, 2]], 1]], DirectedEdge[xe_, xe_]];
 (* Keep the axioms TRUE sources: drop every directed cloud edge that feeds INTO an axiom seed (a
    cloud state rewriting to an axiom). The axioms then have in-degree 0, so a layered layout
-   ranks them on the top row and is free to optimise their order within that row – a real rank
+   ranks them on the top row and is free to optimise their order within that row \[Dash] a real rank
    constraint, not a post-hoc Y override. (These are directed edges; filter on the target.) *)
     With[{seedSet = Association[(# -> True)& /@ seedVs]},
         multiwayEdges = Select[multiwayEdges, ! KeyExistsQ[seedSet, Last[#]]&]
@@ -4440,9 +4440,9 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
         ]
     ];
 (* Proof-edge thickness is ABSOLUTE points: ProofEdgeThickness for ordinary edges,
-   InductionEdgeThickness for induction edges (which stay purple). Either at 0 draws NOTHING –
+   InductionEdgeThickness for induction edges (which stay purple). Either at 0 draws NOTHING \[Dash]
    a true off switch, where AbsoluteThickness[ 0] would still leave a hairline. *)
-(* Proof edges via per-edge EdgeStyle (NOT a shape function) so WL's own edge rendering applies –
+(* Proof edges via per-edge EdgeStyle (NOT a shape function) so WL's own edge rendering applies \[Dash]
    under a layered layout that draws smooth curved/routed edges, not the straight polyline a
    custom Arrow[#1] would force. Thickness is absolute points (0 -> Opacity[0], fully hidden);
    induction edges stay purple. *)
@@ -4491,7 +4491,7 @@ MultiwayInductiveProofPanel[ru_, opts : OptionsPattern[]] := Module[{
         ImageSize -> OptionValue["Width"]
     };
     If[ ! TrueQ[OptionValue["PinProof"]],
-(* Native path: the chosen GraphLayout lays everything out, with WL's real edge routing – so
+(* Native path: the chosen GraphLayout lays everything out, with WL's real edge routing \[Dash] so
    "Layout" -> "LayeredDigraphEmbedding" behaves exactly like wrapping the result in
    Graph[..., GraphLayout -> "LayeredDigraphEmbedding"], no baked coordinates, no manual
    wrap. *)
@@ -4852,7 +4852,7 @@ ruleSpaceGraph[state_, labeled_, arrowSize_, scalingMethod_ : "Density", vertexS
     ]
 ]
 
-MultiwayRuleGraph::usage = "MultiwayRuleGraph[axioms] builds the superposition (critical-pair) rule-space graph of an equational axiom set.\nOptions:\n\"Generations\" (1), \"MaxNew\" (25): superposition depth and max new rules per generation.\n\"VertexScaling\" (\"Density\"): how unlabelled vertex size adapts to the node count – \"Density\" (gentle 1/Sqrt shrink), \"Linear\" (faster 1/n shrink), or \"Fixed\" (constant).\n\"VertexScale\" (1): multiplier on the unlabelled vertex sizes (lower to shrink large graphs).\n\"Oriented\" (True), \"Ordering\" (\"RunUnfold\"), \"Labeled\" (False), \"WellFormedOnly\" (False), \"ArrowSize\" (0.011)."
+MultiwayRuleGraph::usage = "MultiwayRuleGraph[axioms] builds the superposition (critical-pair) rule-space graph of an equational axiom set.\nOptions:\n\"Generations\" (1), \"MaxNew\" (25): superposition depth and max new rules per generation.\n\"VertexScaling\" (\"Density\"): how unlabelled vertex size adapts to the node count \[Dash] \"Density\" (gentle 1/Sqrt shrink), \"Linear\" (faster 1/n shrink), or \"Fixed\" (constant).\n\"VertexScale\" (1): multiplier on the unlabelled vertex sizes (lower to shrink large graphs).\n\"Oriented\" (True), \"Ordering\" (\"RunUnfold\"), \"Labeled\" (False), \"WellFormedOnly\" (False), \"ArrowSize\" (0.011)."
 
 Options[MultiwayRuleGraph] = {
     "Generations" -> 1,
@@ -4979,7 +4979,7 @@ $layerGapLabelled = 22; $layerGapUnlabelled = 10
 (* opt-in proofGraph layout knobs (default = no change). $conclusionGap adds vertical length (pts)
    below the induction circle so its edge to the conclusion vertex is longer; affects
    coordinates so it is in the layout-cache key. $roundRouting renders any routed
-   (multi-waypoint) edge – the IH trunk – as a smooth spline instead of straight segments;
+   (multi-waypoint) edge \[Dash] the IH trunk \[Dash] as a smooth spline instead of straight segments;
    render-only, so it is in z3StyleKey. $axiomRows drops each axiom onto its target event's row
    so the axiom->event edge runs horizontally. $ihAboveCircle pulls the routed IH (hyp) column
    hard onto the induction node's x, so the purple edge descends straight into the circle and
@@ -5326,7 +5326,7 @@ z3EventCons[info_, xOf_, e_] := Module[{rs = info["ranksep"], outs, main, sides,
     hard = Map[If[Length[z3In[info, #]] == 1, xOf[e] == xOf[#], Nothing]&, outs];
     soft = Map[If[Length[z3In[info, #]] == 1, Nothing, {$spineForkWeight, xOf[e] - xOf[#]}]&, outs];
 (* the event sits under its main subject. Normally a hard equality, but under IHAboveCircle the
-   main subject of an event IS the IH/hyp box – hard-pinning it to the event would freeze the
+   main subject of an event IS the IH/hyp box \[Dash] hard-pinning it to the event would freeze the
    box to the step spine and stop it moving over the induction circle, so make that tie soft. *)
     If[ main =!= None,
         If[ Length[Select[z3Out[info, main], eventVertexQ]] == 1
@@ -5386,7 +5386,7 @@ z3Constraints[info_, nd_, routes_, posOf_, xv_] := Module[{
     byLayer = GroupBy[nodes, gv[nd["layer"], #]&];
 (* per-layer non-overlap. AxiomGap (when set) widens the edge-to-edge margin between an axiom box
    and the event circle it sits next to (this hard floor, not a soft pull, is what actually
-   sets the distance – the Sugiyama order pins the relative x, so a soft cannot move it). *)
+   sets the distance \[Dash] the Sugiyama order pins the relative x, so a soft cannot move it). *)
     nonov = Flatten[
         Map[
             Function[grp,
@@ -5462,7 +5462,7 @@ z3Constraints[info_, nd_, routes_, posOf_, xv_] := Module[{
 (* IHAboveCircle: align the purple hypothesis vertex above the induction circle. Two soft pulls,
    both onto the induction node's x: the hyp BOX itself (so the framed vertex sits above the
    circle) and every routed waypoint of the hyp COLUMN (so the purple edge descends straight
-   into the circle); nonov then pushes other boxes off that column. Soft, not hard – a hard
+   into the circle); nonov then pushes other boxes off that column. Soft, not hard \[Dash] a hard
    x-equality collides with boxes already pinned to the column and makes the solve infeasible. *)
     ihCol = If[ ! TrueQ[$ihAboveCircle],
         {}
