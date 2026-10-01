@@ -60,7 +60,7 @@ jobs:
             /opt/zig
             /opt/macos-sysroot
             /usr/local/bin/zcc
-          key: toolchains-zig-0.13.0-libiconv-1.17-${{ hashFiles('setup_cross_compile.sh', 'zcc') }}
+          key: toolchains-zig-0.13.0-libiconv-1.17-${{ hashFiles('scripts/setup_cross_compile.sh', 'scripts/zcc') }}
 
       - name: Check Zig Cache
         id: check-zig
@@ -74,15 +74,15 @@ jobs:
       - name: Setup Cross-Compilation Toolchains
         if: steps.cache-toolchains.outputs.cache-hit != 'true' && steps.check-zig.outputs.hit != 'true'
         run: |
-          chmod +x setup_cross_compile.sh
-          ./setup_cross_compile.sh
+          chmod +x scripts/setup_cross_compile.sh
+          ./scripts/setup_cross_compile.sh
 
       - name: Add Zig to PATH
         run: echo "/opt/zig" >> $GITHUB_PATH
 
       - name: Copy zcc wrapper
         run: |
-          cp zcc /usr/local/bin/zcc
+          cp scripts/zcc /usr/local/bin/zcc
           chmod +x /usr/local/bin/zcc
 
       - name: Cache Rust Toolchain
@@ -93,7 +93,7 @@ jobs:
           path: |
             ~/.cargo
             ~/.rustup
-          key: rust-${{ hashFiles('setup_rust.sh') }}
+          key: rust-${{ hashFiles('scripts/setup_rust.sh') }}
 
       - name: Check Rust Cache
         id: check-rust
@@ -107,8 +107,8 @@ jobs:
       - name: Setup Rust
         if: steps.cache-rust.outputs.cache-hit != 'true' && steps.check-rust.outputs.hit != 'true'
         run: |
-          chmod +x setup_rust.sh
-          ./setup_rust.sh
+          chmod +x scripts/setup_rust.sh
+          ./scripts/setup_rust.sh
 
       - name: Add Rust to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -128,10 +128,10 @@ jobs:
       - name: Build All Targets
         run: |
           . $HOME/.cargo/env
-          ./build_all_targets.sh
+          ./scripts/build_all_targets.sh
 
       - name: Build Paclet
-        run: wolframscript -f ci_build.wl
+        run: wolframscript -f scripts/ci_build.wl
 
       - name: Find Paclet File
         id: find_paclet
@@ -166,4 +166,4 @@ jobs:
 
       - name: Submit to Repository
         if: ${{ inputs.submit }}
-        run: wolframscript -f ci_submit.wl
+        run: wolframscript -f scripts/ci_submit.wl

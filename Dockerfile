@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /opt/TuringMachine
 
 # Copy and run cross-compilation setup (Zig, libiconv)
-COPY zcc setup_cross_compile.sh ./
+COPY scripts/zcc scripts/setup_cross_compile.sh ./
 RUN chmod +x setup_cross_compile.sh && ./setup_cross_compile.sh
 RUN cp zcc /usr/local/bin/zcc && chmod +x /usr/local/bin/zcc
 ENV PATH="/opt/zig:${PATH}"
@@ -32,7 +32,7 @@ USER wolframengine
 WORKDIR /home/wolframengine
 
 # Copy and run Rust setup
-COPY --chown=wolframengine:wolframengine setup_rust.sh ./
+COPY --chown=wolframengine:wolframengine scripts/setup_rust.sh ./
 RUN chmod +x setup_rust.sh && ./setup_rust.sh
 ENV PATH="/home/wolframengine/.cargo/bin:${PATH}"
 
@@ -44,4 +44,3 @@ WORKDIR /opt/TuringMachine
 ARG WOLFRAMSCRIPT_ENTITLEMENTID
 ENV WOLFRAMSCRIPT_ENTITLEMENTID=${WOLFRAMSCRIPT_ENTITLEMENTID}
 
-COPY --chown=wolframengine:wolframengine ci_build.wl ./ci_build.wl

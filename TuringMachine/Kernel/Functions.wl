@@ -98,7 +98,7 @@ functions := functions = Replace[
 			loaded
 		],
 	failure_ :> Function @ Function @ Failure["RustLibraryLoad", <|
-		"MessageTemplate" -> "No ndtm_search library package for ``; prebuild it with build_all_targets.sh",
+		"MessageTemplate" -> "No ndtm_search library package for ``; prebuild it with scripts/build_all_targets.sh",
 		"MessageParameters" -> {$SystemID},
 		"Return" -> failure
 	|>]

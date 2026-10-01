@@ -1,6 +1,6 @@
 #!/usr/bin/env wolframscript
 (* Build the WolframInstitute/TuringMachine paclet documentation from the
-   structured markdown in docs/, writing each notebook into the standard paclet
+   structured markdown in TuringMachine/docs/, writing each notebook into the standard paclet
    layout under Documentation/English/. Also builds the Paclet Repository
    submission notebook (ResourceDefinition.nb) from ResourceDefinition.md.
 
@@ -8,8 +8,8 @@
    gitignored. Re-author in the .md and re-run this script - never hand-edit
    the generated notebooks.
 
-       wolframscript -f build.wls           # build all notebooks
-       wolframscript -f build.wls --check   # build, then lint ResourceDefinition.nb
+       wolframscript -f scripts/build_docs.wls           # build all notebooks
+       wolframscript -f scripts/build_docs.wls --check   # build, then lint ResourceDefinition.nb
 
    Author the docs/ pages with the wolfram-symbol-page / wolfram-guide-page /
    wolfram-tech-note skills; the metadata in ResourceDefinition.md must agree
@@ -17,7 +17,7 @@
 
 print[args___] := WriteString["stdout", StringJoin[ToString /@ {args}], "\n"]
 
-pacletDir = DirectoryName[$InputFileName]
+pacletDir = FileNameJoin[{ParentDirectory[DirectoryName[$InputFileName]], "TuringMachine"}]
 check     = MemberQ[Rest[$ScriptCommandLine], "--check"]
 
 (* Load MarkdownToNotebook from its public cloud deployment (it is not on the

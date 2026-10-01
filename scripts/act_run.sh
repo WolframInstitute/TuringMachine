@@ -3,6 +3,9 @@
 
 set -e
 
+# run from the repository root, wherever the script is called from
+cd "$(dirname "$0")/.."
+
 WORKFLOW="${1:-build}"
 
 # Generate entitlement ID dynamically

@@ -23,7 +23,7 @@ TARGETS=(
 )
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-CRATE_DIR="$SCRIPT_DIR/TuringMachine/Libs/ndtm_search"
+CRATE_DIR="$SCRIPT_DIR/../TuringMachine/Libs/ndtm_search"
 
 # wstp-sys (a hard cargo-wl dependency) needs the WSTP SDK at build time, and
 # upstream wolfram-app-discovery cannot find it from an installed engine without

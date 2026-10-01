@@ -28,7 +28,7 @@ tutorial — ships with the paclet and is browsable on the
 [Paclet Repository page](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/).
 The markdown sources live under [`TuringMachine/docs/`](TuringMachine/docs) and are
 built into the paclet's documentation notebooks by
-[`TuringMachine/build.wls`](TuringMachine/build.wls).
+[`scripts/build_docs.wls`](scripts/build_docs.wls).
 
 ## Usage
 
@@ -128,25 +128,48 @@ OneSidedTuringMachineRuntimePlot[{600720, 3, 2}, {1, 50}, 200]
 
 ## Building from source
 
-*Rust is provisioned automatically by the ExtensionCargo paclet. The required
-paclets ship with Wolfram Language 15.0+. For earlier versions, install them first:*
+The Rust backend (`TuringMachine/Libs/ndtm_search`) is built with
+[`cargo wl`](https://crates.io/crates/cargo-wl), which compiles the library and writes it,
+with its generated Wolfram Language loader, into
+`TuringMachine/Binaries/ndtm_search-<SystemID>/`. The build scripts live in
+[`scripts/`](scripts).
+
+Build the library for the host and every cross target (macOS x86-64/ARM64, Linux
+x86-64/ARM64, Windows x86-64). Cross-compiling needs the toolchains that
+`scripts/setup_rust.sh` and `scripts/setup_cross_compile.sh` install; on a Mac it is easiest
+to build inside the Wolfram Engine container with `scripts/docker_build.sh`:
+
+```bash
+./scripts/build_all_targets.sh
+```
+
+Load the paclet from this checkout:
 
 ```wolfram
 #| eval: false
-PacletInstall["https://www.wolframcloud.com/obj/nikm/ExternalEvaluate.paclet"]
-PacletInstall["https://www.wolframcloud.com/obj/nikm/PacletExtensions.paclet"]
+PacletDirectoryLoad["TuringMachine"]
+Needs["WolframInstitute`TuringMachine`"]
 ```
 
-Ensure `wolframscript` is installed and on your `PATH`, then build the paclet —
-this compiles the Rust extension, builds the `.paclet` archive, installs it, and
-(if configured) copies the archive to the cloud:
+Rebuild the documentation notebooks and the Paclet Repository definition notebook
+(`TuringMachine/ResourceDefinition.nb`) from their markdown sources:
 
 ```bash
-./build.wls
+wolframscript -f scripts/build_docs.wls
 ```
 
-Rebuild the documentation notebooks from the markdown sources:
+## Releasing
+
+Bump `"Version"` in [`TuringMachine/PacletInfo.wl`](TuringMachine/PacletInfo.wl), rebuild the
+docs, then submit to the Paclet Repository. The submitting account is read from a gitignored
+`.env.publish` at the repository root (`WOLFRAM_CLOUD_USER=…`, `WOLFRAM_CLOUD_PASSWORD=…`) and
+must own the `WolframInstitute` publisher:
 
 ```bash
-wolframscript -f TuringMachine/build.wls
+wolframscript -f scripts/submit.wls --check   # lint the definition notebook only
+wolframscript -f scripts/submit.wls           # PacletBuild into TuringMachine/build/ and submit
 ```
+
+CI ([`.github/workflows/build_paclet.yml`](.github/workflows/build_paclet.yml)) builds all
+targets and the paclet archive on every push to `main`; `scripts/act_run.sh` runs the same
+workflow locally with [act](https://github.com/nektos/act).
