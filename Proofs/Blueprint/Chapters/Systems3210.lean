@@ -10,11 +10,11 @@
 import Verso
 import VersoManual
 import VersoBlueprint
-import Smith.Lookahead
-import Smith.Systems123
-import Smith.LoopFree
-import Smith.Wolfram23Bridge
-import BiTM.Wolfram23Valid
+import Wolfram23.Machines.Lookahead
+import Wolfram23.System3ToWolfram23.Systems123
+import Extras.LoopFree
+import Wolfram23.System3ToWolfram23.Wolfram23Bridge
+import Wolfram23.Machines.Wolfram23Valid
 
 open Verso.Genre
 open Verso.Genre.Manual

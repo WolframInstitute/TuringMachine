@@ -13,11 +13,11 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import BiTM.System4
-import BiTM.System5ToSystem4
-import Smith.System4Runs
-import Smith.Conjecture4
-import Smith.Conjecture0
+import Wolfram23.System5ToSystem4.System4
+import Wolfram23.System5ToSystem4.Encoder
+import Wolfram23.System5ToSystem4.System4Runs
+import Wolfram23.System5ToSystem4.Conjecture4
+import Wolfram23.Universality.Conjecture0
 
 open Verso.Genre
 open Verso.Genre.Manual

@@ -70,17 +70,17 @@ jobs:
       - name: No sorry in the proof modules, no native_decide outside Vectors/
         run: |
           set -e
-          if grep -rn --include='*.lean' -E '\bsorry\b' Smith TagSystem BiTM TM | grep -v ':\s*--' ; then
+          if grep -rn --include='*.lean' -E '\bsorry\b' Wolfram23 Extras | grep -v ':\s*--' ; then
             echo "sorry found in the proof modules"; exit 1
           fi
-          if grep -rn --include='*.lean' 'native_decide' Smith TagSystem BiTM TM ; then
+          if grep -rn --include='*.lean' 'native_decide' Wolfram23 Extras ; then
             echo "native_decide found outside Vectors/"; exit 1
           fi
 
       - name: Axiom check of the headline theorems
         run: |
           cat > /tmp/ax.lean <<'EOF'
-          import Smith.Infinite
+          import Wolfram23
           #print axioms Smith.wolfram23_universal
           #print axioms Smith.wolfram23_infinite
           EOF

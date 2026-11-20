@@ -27,7 +27,7 @@
 
 import Vectors.SmithVectors
 import Vectors.TMToCTSVectors
-import Smith.InfiniteClosed
+import Extras.InfiniteClosed
 
 namespace Tests
 

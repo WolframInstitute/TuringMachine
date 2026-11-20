@@ -11,12 +11,12 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import TM.Defs
-import BiTM.Basic
-import BiTM.Wolfram23Valid
-import Smith.Lookahead
-import Smith.Wolfram23Bridge
-import Smith.Conjecture0
+import Wolfram23.Machines.Defs
+import Wolfram23.Machines.BiTM
+import Wolfram23.Machines.Wolfram23Valid
+import Wolfram23.Machines.Lookahead
+import Wolfram23.System3ToWolfram23.Wolfram23Bridge
+import Wolfram23.Universality.Conjecture0
 
 open Verso.Genre
 open Verso.Genre.Manual

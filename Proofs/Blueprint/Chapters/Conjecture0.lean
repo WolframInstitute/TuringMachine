@@ -13,10 +13,10 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import Smith.Conjecture0
-import Smith.ClosedForm
-import Smith.Wolfram23Bridge
-import BiTM.XorMerge
+import Wolfram23.Universality.Conjecture0
+import Extras.ClosedForm
+import Wolfram23.System3ToWolfram23.Wolfram23Bridge
+import Wolfram23.FiniteSets.XorMerge
 
 open Verso.Genre
 open Verso.Genre.Manual

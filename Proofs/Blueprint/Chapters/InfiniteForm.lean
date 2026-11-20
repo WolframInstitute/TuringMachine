@@ -12,8 +12,8 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Chapters.Overview
-import Smith.Guards
-import Smith.Infinite
+import Wolfram23.Infinite.Guards
+import Wolfram23.Infinite.T6
 
 open Verso.Genre
 open Verso.Genre.Manual

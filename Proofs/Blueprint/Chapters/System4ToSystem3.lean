@@ -13,9 +13,9 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import Smith.ParityBlocks
-import Smith.System3Runs
-import Smith.Conjecture3
+import Wolfram23.System4ToSystem3.ParityBlocks
+import Wolfram23.System4ToSystem3.System3Runs
+import Wolfram23.System4ToSystem3.Conjecture3
 
 open Verso.Genre
 open Verso.Genre.Manual

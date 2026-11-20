@@ -12,13 +12,13 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import TagSystem.Basic
-import TagSystem.TagRounds
-import TagSystem.CockeMinsky
-import TagSystem.TagToCTS
-import TagSystem.TMToCTS
-import Smith.Simulation
-import BiTM.Basic
+import Wolfram23.Machines.TagCTS
+import Wolfram23.TMToTag.TagRounds
+import Wolfram23.TMToTag.CockeMinsky
+import Wolfram23.TagToCTS.Cook
+import Wolfram23.TagToCTS.TMToCTS
+import Wolfram23.Systems.Simulation
+import Wolfram23.Machines.BiTM
 
 open Verso.Genre
 open Verso.Genre.Manual

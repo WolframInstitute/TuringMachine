@@ -13,7 +13,7 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import Smith.Universality
+import Wolfram23.Universality.T8
 import Blueprint.Chapters.Overview
 
 open Verso.Genre

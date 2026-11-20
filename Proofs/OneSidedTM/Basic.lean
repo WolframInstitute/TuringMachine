@@ -15,7 +15,7 @@
   Shared definitions (Dir, Rule, Machine) are imported from TM.Defs.
 -/
 
-import TM.Defs
+import Wolfram23.Machines.Defs
 
 namespace OneSidedTM
 

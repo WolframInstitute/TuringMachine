@@ -11,8 +11,8 @@
 import Verso
 import VersoManual
 import VersoBlueprint
-import Smith.Universality
-import Smith.Infinite
+import Wolfram23.Universality.T8
+import Wolfram23.Infinite.T6
 
 open Verso.Genre
 open Verso.Genre.Manual
@@ -187,7 +187,7 @@ chapter on the composition.
 
 ```
 $ cat > /tmp/ax.lean <<'EOF'
-import Smith.Infinite
+import Wolfram23.Infinite.T6
 #print axioms Smith.wolfram23_universal_ic
 #print axioms Smith.wolfram23_infinite_ic
 EOF

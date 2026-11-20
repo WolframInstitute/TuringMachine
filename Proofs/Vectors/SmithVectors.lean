@@ -32,14 +32,14 @@
   ```
 -/
 
-import BiTM.CTSToSystem5
-import BiTM.System5ToSystem4
-import BiTM.System4
-import BiTM.Wolfram23Valid
-import Smith.Conjecture4
-import Smith.Conjecture3
-import Smith.Conjecture0
-import Smith.Universality
+import Wolfram23.CTSToSystem5.Encoder
+import Wolfram23.System5ToSystem4.Encoder
+import Wolfram23.System5ToSystem4.System4
+import Wolfram23.Machines.Wolfram23Valid
+import Wolfram23.System5ToSystem4.Conjecture4
+import Wolfram23.System4ToSystem3.Conjecture3
+import Wolfram23.Universality.Conjecture0
+import Wolfram23.Universality.T8
 
 namespace Tests
 

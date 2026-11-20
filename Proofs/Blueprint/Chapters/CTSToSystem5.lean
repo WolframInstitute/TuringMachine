@@ -12,16 +12,16 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Blueprint.Notebook
-import TagSystem.Basic
-import BiTM.XorMerge
-import BiTM.System5
-import BiTM.CTSToSystem5
-import Smith.Simulation
-import Smith.Doubling
-import Smith.Represents
-import Smith.System5Runs
-import Smith.Conjecture5
-import Smith.ConjectureFive
+import Wolfram23.Machines.TagCTS
+import Wolfram23.FiniteSets.XorMerge
+import Wolfram23.CTSToSystem5.System5
+import Wolfram23.CTSToSystem5.Encoder
+import Wolfram23.Systems.Simulation
+import Wolfram23.CTSToSystem5.Doubling
+import Wolfram23.CTSToSystem5.Represents
+import Wolfram23.CTSToSystem5.System5Runs
+import Wolfram23.CTSToSystem5.Conjecture5
+import Wolfram23.CTSToSystem5.ConjectureFive
 
 open Verso.Genre
 open Verso.Genre.Manual

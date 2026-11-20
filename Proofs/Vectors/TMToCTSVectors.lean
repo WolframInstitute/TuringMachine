@@ -29,8 +29,8 @@
   else closes by `decide`. No `native_decide`.
 -/
 
-import TagSystem.TMToCTS
-import Smith.Universality
+import Wolfram23.TagToCTS.TMToCTS
+import Wolfram23.Universality.T8
 
 namespace Tests
 
