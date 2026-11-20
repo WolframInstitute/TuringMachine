@@ -85,19 +85,24 @@ jobs:
           lake env lean /tmp/ax.lean | tee /tmp/ax.out
           test "$(grep -c 'depends on axioms: \[propext, Classical.choice, Quot.sound\]' /tmp/ax.out)" = 2
 
+      # The blueprint site is paused while verso-blueprint has no v4.36 branch
+      # (lakefile.lean); the last published site stays up. Restore these steps
+      # and the deploy job with `require VersoBlueprint` and `lean_lib Blueprint`.
       - name: Build the blueprint site
+        if: false
         run: |
           lake exe vbp build
           test -f _out/site/html-multi/index.html
 
       - name: Upload the Pages artifact
+        if: false
         uses: actions/upload-pages-artifact@v3
         with:
           path: Proofs/_out/site/html-multi
 
   deploy:
     name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request'
+    if: false
     needs: build
     runs-on: ubuntu-latest
     environment:
