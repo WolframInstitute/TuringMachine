@@ -28,7 +28,7 @@
     * E8  `BlockSpec`'s side conditions, the decode at `dt 0`, a halting machine
 -/
 
-import Smith.Infinite
+import Smith.InfiniteClosed
 import Vectors.TMToCTSVectors
 
 namespace Tests

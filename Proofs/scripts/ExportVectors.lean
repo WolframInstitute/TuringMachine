@@ -12,7 +12,7 @@
 
 import Vectors.SmithVectors
 import Vectors.TMToCTSVectors
-import Smith.Infinite
+import Smith.InfiniteClosed
 
 open Smith BiTM TM TagSystem Tests
 

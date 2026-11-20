@@ -32,23 +32,21 @@
   the theorem needs no hypothesis on halting: a halting machine's run is
   reproduced by every block up to its halting step.
 
-  The tape is in closed form (milestone M9, open item 1): block `k` is
-  `closedBlock tm c k`, built from the closed-form System 5 program
-  `icProg tm c k` of T8 with guards and width sized by the run bounds of
-  `Smith.RunBounds` (`System4.run_bound`); `ITape tm c` is a definition
-  that runs no system.
+  The blocks are existential (`block_exists`), sized by the runs they
+  contain; the tape with every block in closed form, a definition that runs
+  no system, is `ITape` in `Smith.InfiniteClosed` (milestone M9).
 
   Contents: `IConfig`, `istep`, `inSteps`, `Agree`, `agree_run`, `truncI`,
   `decodeTM_trunc`, `rep3_exit_zero`, `blockTape`, `blockAC`, `blockAC_OK`,
-  `block_run`, `BlockData`, `BlockSpec`, `blkProg`, `blkN`, `blkR`,
-  `blkOrig`, `blkH`, `blkW`, `closedBlock`, `block_exists`, `entry3`,
+  `block_run`, `BlockData`, `BlockSpec`, `block_exists`, `entry3`,
   `block_sys3`, `segCells`, `chain_sys3`, `start3`, `startFin`, `stage_w23`,
-  `tape`, `istart`, `IValid`, `inSteps_valid`, `stage_infinite`, `ITape`,
-  `wolfram23_infinite_ic`, `wolfram23_infinite`.
+  `tape`, `istart`, `IValid`, `inSteps_valid`, `stage_infinite`,
+  `wolfram23_infinite`.
 -/
 
 import Smith.Universality
 import Smith.Guards
+import TagSystem.RawRuns
 
 namespace Smith
 
@@ -530,130 +528,74 @@ theorem BlockSpec.H_pos {tm : Machine} {c : BiTM.Config} {k : Nat} {bd : BlockDa
   obtain rfl := Option.some.inj hcE
   simp [BlockData.tape, blockTape] at hact
 
-/-! ## The closed-form blocks
+/-! ## The blocks
 
-Block `k` is built from the closed-form System 5 program `icProg tm c k`
-of T8 (the cyclic tag system of the machine with `icN c k` cycles): its
-program is the System 4 tape of that program with the parameter `icF`, its
-guards are sized by the bound `icT4` on the program's System 4 run, and its
-width by the bound `blkH` on the block's own System 4 run
-(`System4.run_bound`). Every field of `closedBlock tm c k` other than the
-run data `H` and `dt` (which only the proofs read) is a closed form of
-`tm`, `c` and `k`. -/
+Block `k` is built from the System 5 program of the cyclic tag run of
+`tagTime tm c k` cycles, the tag time of `k` raw steps: its program is the
+System 4 tape of that program with the parameter `f` of `system4_emulation`,
+its guards are sized by the length `T4` of the program's System 4 run, and
+its width `2 ^ w` exceeds the block's own run length, band, guard parameter
+and set elements. -/
 
-/-- The System 5 program of block `k`. -/
-def blkProg (tm : Machine) (c : Config) (k : Nat) : System5Config := icProg tm c k
-
-/-- The guard parameter `n` of block `k`. -/
-def blkN (tm : Machine) (c : Config) (k : Nat) : Nat := icT4 (blkProg tm c k) + 3
-
-/-- The number of guards `r` of block `k`. -/
-def blkR (tm : Machine) (c : Config) (k : Nat) : Nat := icT4 (blkProg tm c k) + 1
-
-/-- The program tape of block `k`. -/
-def blkOrig (tm : Machine) (c : Config) (k : Nat) : List System4Elem :=
-  System4Elem.set (encodeBag (blkProg tm c k).bag) :: icRest (blkProg tm c k)
-
-/-- A bound on the System 4 run of block `k`. -/
-def blkH (tm : Machine) (c : Config) (k : Nat) : Nat :=
-  (2 * (blockTape (blkN tm c k) (blkR tm c k) (blkOrig tm c k)).length + 2) *
-    ((blockTape (blkN tm c k) (blkR tm c k) (blkOrig tm c k)).length + 1)
-
-/-- The width exponent of block `k`: the bit length of the fuel, the guard
-    parameter and the bound on the set elements, so that the block width
-    `2 ^ blkW` is linear in them. -/
-def blkW (tm : Machine) (c : Config) (k : Nat) : Nat :=
-  Nat.size (blkH tm c k + icBand (blkProg tm c k) + blkN tm c k + 3 * icF (blkProg tm c k) + 6)
-
-/-- Block `k` in closed form (the run data `H`, `dt` set to 0; see
-    `block_exists` for the actual ones). -/
-def closedBlock (tm : Machine) (c : Config) (k : Nat) : BlockData :=
-  ⟨blkN tm c k, blkR tm c k, blkW tm c k, icBand (blkProg tm c k),
-    encodeBag (blkProg tm c k).bag, icRest (blkProg tm c k), 0, fun _ => 0⟩
-
-/-- Block `k` emulates the first `k` raw steps of the machine: the closed-form
-    block with its actual run length and decoding times meets `BlockSpec`. -/
+/-- Block `k` emulates the first `k` raw steps of the machine. -/
 theorem block_exists (tm : Machine) (hwf : WF tm) (c : BiTM.Config) (hv : ValidCfg c)
-    (hst : c.state < tm.numStates) (k : Nat) :
-    ∃ (H : Nat) (dt : Nat → Nat), BlockSpec tm c k { closedBlock tm c k with H := H, dt := dt } := by
+    (hst : c.state < tm.numStates) (k : Nat) : ∃ bd : BlockData, BlockSpec tm c k bd := by
   obtain ⟨K, hK⟩ : ∃ K, K = 1 + 84 * tm.numStates := ⟨_, rfl⟩
   have hlen : (ctsOf tm).appendants.length = 2 * K := by
     rw [hK]; exact tagToCTS_appendants_length _ _
-  obtain ⟨N, hN⟩ : ∃ N, N = icN c k := ⟨_, rfl⟩
-  -- the cyclic tag run lasts the budget and leaves a nonempty word
-  obtain ⟨wN1, hwN1, -, -⟩ := cts_run_tag tm hwf c hv hst (N + 1)
-  obtain ⟨wN, hwN, -, hctsN⟩ := cts_run_tag tm hwf c hv hst N
-  have hwN2 : 2 ≤ wN.length := by
-    rw [nStepsP_add, hwN, Option.bind_some, nStepsP_succ] at hwN1
-    cases hs : stepP (prod tm) wN with
-    | none => rw [hs] at hwN1; cases hwN1
-    | some v => exact length_ge_two_of_stepP _ _ _ hs
-  have hne : (tagConfigToCTS (1 + 84 * tm.numStates) (wN.map (enc tm.numStates))).data ≠ [] := by
+  have hn' : ∀ q h, q < tm.numStates → nxt tm q h < tm.numStates := fun q h hq => WF_nxt tm hwf q h hq
+  -- the cyclic tag configuration at the tag time of raw step `i`
+  have hcts : ∀ i, (ctsOf tm).nSteps (ctsOfCfg tm.numStates c) (2 * K * tagTime tm c i)
+      = some (ctsOfCfg tm.numStates (rawRun tm c i)) := by
+    intro i
+    have henc := nStepsP_enc tm tm.numStates hn' (tagTime tm c i) (word c) (WordOK_cword _ _ _ _ hst)
+    rw [tag_rawRun tm hwf c hv hst i, Option.map_some] at henc
+    rw [hK]; exact cts_of_tag (tagK tm tm.numStates) (K_pos _) (tagTime tm c i) _ _ henc
+  obtain ⟨N, hN⟩ : ∃ N, N = tagTime tm c k := ⟨_, rfl⟩
+  have hrunC : (ctsOf tm).nSteps (ctsOfCfg tm.numStates c) ((ctsOf tm).appendants.length * N)
+      = some (ctsOfCfg tm.numStates (rawRun tm c k)) := by
+    rw [hlen, hN]; exact hcts k
+  have hne : (ctsOfCfg tm.numStates (rawRun tm c k)).data ≠ [] := by
     show tagWordEncode _ _ ≠ []
     intro h
-    have h1 := tagWordEncode_length (1 + 84 * tm.numStates) (wN.map (enc tm.numStates))
+    have h1 := tagWordEncode_length (1 + 84 * tm.numStates) ((word (rawRun tm c k)).map (enc tm.numStates))
     rw [h, List.length_nil, List.length_map] at h1
-    have : 0 < (1 + 84 * tm.numStates) * wN.length := Nat.mul_pos (by omega) (by omega)
+    have h2 := length_word (rawRun tm c k)
+    have h3 : 0 < (1 + 84 * tm.numStates) * (word (rawRun tm c k)).length :=
+      Nat.mul_pos (by omega) (by omega)
     omega
-  have hrunC : (ctsOf tm).nSteps (ctsOfCfg tm.numStates c) ((ctsOf tm).appendants.length * N)
-      = some (tagConfigToCTS (1 + 84 * tm.numStates) (wN.map (enc tm.numStates))) := by
-    rw [hlen, hK]; exact hctsN
   -- the System 4 emulation of that cyclic tag run
-  obtain ⟨T4, cE, t4, hT4le, hrunT4, hstE, hactE, h4mono, h4tr⟩ :=
+  obtain ⟨s, f, b, T4, cE, t4, -, hf1, hbag1, hrules1, hrunT4, hstE, hactE, h4mono, h4tr⟩ :=
     system4_emulation (ctsOf tm) (ctsOfCfg tm.numStates c) N _ hrunC hne
-  obtain ⟨hf1, hbag1, hrules0⟩ := icF_facts (ctsOf tm) (ctsOfCfg tm.numStates c) N
-  have hs : ctsToSystem5 (ctsOf tm) (ctsOfCfg tm.numStates c) N = blkProg tm c k := by
-    rw [hN]; rfl
-  rw [hs] at hT4le hrunT4 h4tr hf1 hbag1 hrules0
-  obtain ⟨s, hsd⟩ : ∃ s, s = blkProg tm c k := ⟨_, rfl⟩
-  rw [← hsd] at hT4le hrunT4 h4tr hf1 hbag1 hrules0
-  have hrules1 : ∀ r ∈ s.rules, ∀ x ∈ r, 0 ≤ x ∧ x < icF s := by
-    intro r hr x hx
-    have := (hrules0 r hr).2 x hx
-    constructor <;> omega
   have hpos : 0 < 2 * K := by omega
   have hT4 : 1 ≤ T4 := by
     have := (h4tr 0 (Nat.zero_le _)).1
     omega
-  have hc40 : system5ToSystem4 s (icF s) = ⟨blkOrig tm c k, 0, System4State.A⟩ := by
-    rw [hsd]; rfl
-  rw [hc40] at hrunT4 h4tr
-  obtain ⟨n, hn⟩ : ∃ n, n = blkN tm c k := ⟨_, rfl⟩
-  obtain ⟨r, hr⟩ : ∃ r, r = blkR tm c k := ⟨_, rfl⟩
-  have hne' : n = icT4 s + 3 := by rw [hn, hsd]; rfl
-  have hre : r = icT4 s + 1 := by rw [hr, hsd]; rfl
-  have horig : blkOrig tm c k = System4Elem.set (encodeBag s.bag) :: icRest s := by rw [hsd]; rfl
-  rw [horig] at hrunT4 h4tr
+  obtain ⟨rest, hrest⟩ : ∃ rest, rest = starredEmptyPairs f ++
+      s.rules.flatMap (fun r => encodeS5RuleToS4Elems r f) := ⟨_, rfl⟩
+  have hc40 : system5ToSystem4 s f = ⟨System4Elem.set (encodeBag s.bag) :: rest, 0, System4State.A⟩ := by
+    rw [hrest]; rfl
+  have hwf4 := system5ToSystem4_wellFormed s f hf1
+  have hlast4 := system5ToSystem4_last_set s f hf1
+  rw [hc40] at hrunT4 h4tr hwf4 hlast4
+  obtain ⟨n, hn⟩ : ∃ n, n = T4 + 3 := ⟨_, rfl⟩
+  obtain ⟨r, hr⟩ : ∃ r, r = T4 + 1 := ⟨_, rfl⟩
   obtain ⟨H, padT, turns, hH, hsafe, hpmono, hptr⟩ :=
-    block_run n r (by omega) (encodeBag s.bag) (icRest s) T4 cE hT4 (by omega) (by omega) hrunT4 hactE
-  have hHle : H ≤ blkH tm c k := by
-    have := System4.run_bound _ H _ hH
-    rw [blkH, ← hn, ← hr, horig]
-    exact this
-  obtain ⟨w, hw⟩ : ∃ w, w = blkW tm c k := ⟨_, rfl⟩
-  have hw2 : blkH tm c k + icBand s + n + 3 * icF s + 6 < 2 ^ w := by
-    rw [hw, blkW, ← hn, ← hsd]; exact Nat.lt_size_self _
-  have hwf4 := system5ToSystem4_wellFormed s (icF s) hf1
-  have hlast4 := system5ToSystem4_last_set s (icF s) hf1
-  rw [hc40, horig] at hwf4 hlast4
+    block_run n r (by omega) (encodeBag s.bag) rest T4 cE hT4 (by omega) (by omega) hrunT4 hactE
+  obtain ⟨w, hw⟩ : ∃ w, w = H + b + n + 3 * f + 6 := ⟨_, rfl⟩
+  have hw2 : H + b + n + 3 * f + 6 < 2 ^ w := by rw [hw]; exact Nat.lt_two_pow_self
   -- decoding times: the tag times of the raw steps
   have htag_le : ∀ i, i ≤ k → 2 * K * tagTime tm c i ≤ (ctsOf tm).appendants.length * N := by
     intro i hi
-    rw [hlen]
-    apply Nat.mul_le_mul_left
-    have h1 := tagTime_mono tm c i k hi
-    have h2 := tagTime_le tm hwf c hv hst k
-    rw [hN]; unfold icN; omega
-  refine ⟨H, fun i => 2 * r + padT (t4 (2 * K * tagTime tm c i)), ?_⟩
-  have hcl : closedBlock tm c k = ⟨n, r, w, icBand s, encodeBag s.bag, icRest s, 0, fun _ => 0⟩ := by
-    rw [hn, hr, hw, hsd]; rfl
-  rw [hcl]
-  refine ⟨?_, ?_, ?_, hwf4, hlast4, ?_, hsafe _, ⟨_, hH, ?_, ?_⟩, ?_, ?_⟩
+    rw [hlen, hN]
+    exact Nat.mul_le_mul_left _ (tagTime_mono tm c i k hi)
+  refine ⟨⟨n, r, w, b, encodeBag s.bag, rest, H, fun i => 2 * r + padT (t4 (2 * K * tagTime tm c i))⟩,
+    ?_, ?_, ?_, hwf4, hlast4, ?_, hsafe _, ⟨_, hH, ?_, ?_⟩, ?_, ?_⟩
   · show 3 ≤ n; omega
-  · show H + icBand s + 3 ≤ 2 ^ w; omega
+  · show H + b + 3 ≤ 2 ^ w; omega
   · show n < 2 ^ w; omega
   · intro S hS e he
-    have := system5ToSystem4_elem_lt s (icF s) hbag1 hrules1 S (by rw [hc40, horig]; exact hS) e he
+    have := system5ToSystem4_elem_lt s f hbag1 hrules1 S (by rw [hc40]; exact hS) e he
     show 0 ≤ e ∧ e.toNat < 2 ^ w
     constructor <;> omega
   · simp only [padCfg]; exact hstE
@@ -671,15 +613,7 @@ theorem block_exists (tm : Machine) (hwf : WF tm) (c : BiTM.Config) (hv : ValidC
     omega
   · intro i hi
     obtain ⟨hT, ci', Kl, R, hci', hKne, hc4i, hdec⟩ := h4tr _ (htag_le i hi)
-    -- the cyclic tag configuration at that time is the encoding of the raw configuration
-    have hn' : ∀ q h, q < tm.numStates → nxt tm q h < tm.numStates := fun q h hq => WF_nxt tm hwf q h hq
-    have henc := nStepsP_enc tm tm.numStates hn' (tagTime tm c i) (word c) (WordOK_cword _ _ _ _ hst)
-    rw [tag_rawRun tm hwf c hv hst i, Option.map_some] at henc
-    have hctsi := cts_of_tag (tagK tm tm.numStates) (K_pos _) (tagTime tm c i) _ _ henc
-    have hctsi' : (ctsOf tm).nSteps (ctsOfCfg tm.numStates c) (2 * K * tagTime tm c i)
-        = some (ctsOfCfg tm.numStates (rawRun tm c i)) := by
-      rw [hK]; exact hctsi
-    rw [hctsi'] at hci'
+    rw [hcts i] at hci'
     obtain rfl := Option.some.inj hci'
     obtain ⟨hpt, ci4, hci4, hpad⟩ := hptr (t4 (2 * K * tagTime tm c i)) hT
     rw [hc4i] at hci4
@@ -688,7 +622,7 @@ theorem block_exists (tm : Machine) (hwf : WF tm) (c : BiTM.Config) (hv : ValidC
       [System4Elem.star] ++ guardPairs n (r - 1 - turns (t4 (2 * K * tagTime tm c i)))
         ++ sets (merged n (turns (t4 (2 * K * tagTime tm c i)))),
       Kl, R, hKne, ?_, hdec⟩
-    show System4.nSteps ⟨blockTape n r (System4Elem.set (encodeBag s.bag) :: icRest s), 0,
+    show System4.nSteps ⟨blockTape n r (System4Elem.set (encodeBag s.bag) :: rest), 0,
       System4State.C⟩ _ = _
     rw [hpad]
     simp only [padCfg, List.append_assoc, List.append_nil, List.length_append,
@@ -1090,50 +1024,19 @@ theorem stage_infinite (tm : Machine) (hwf : WF tm) (c : Config) (hv : ValidCfg 
     obtain ⟨hvi, hsti⟩ := nSteps_valid tm hwf c hv hst i ci hci
     exact decodeCTS_word tm.numStates ci hvi hsti
 
-/-- The closed-form right-infinite tape of T6: the cells of the closed-form
-    blocks `closedBlock tm c 0`, `closedBlock tm c 1`, ... after a 0. Cell
-    `i` is a closed form of `tm`, `c` and `i`; no system is run to compute
-    it. -/
-def ITape (tm : Machine) (c : Config) : Nat → Nat := tape (closedBlock tm c)
-
-/-- T6 (PLAN.md section 2), Smith's Conjecture 0 in infinite form, with the
-    tape in closed form. For a well-formed binary machine `tm` and a valid
-    configuration `c`, wolfram23 started at the left end of the tape
-    `ITape tm c` in state B on a 2 runs forever without ever moving left
-    from the first cell, and emulates the run of `tm` from `c`: for every
-    `k` there are a window `W` and strictly increasing times, the last of
-    them later than `k`, such that at time `times i` for `i <= k` wolfram23
-    is in state B and, whenever the `i`-th configuration of the run exists,
-    the cells right of the head decode by `decodeTM`, with the block width
-    `2 ^ blkW tm c k` and the band `icBand (blkProg tm c k)` of block `k`,
-    on the window `W` and on every larger window, to that configuration
-    (without trailing blanks). Block `k` of the tape re-emulates the first
-    `k` steps with its own width and band, as in Smith's construction; the
-    decoder reads only the head and the cells to its right up to the first
-    0. -/
-theorem wolfram23_infinite_ic (tm : Machine) (hwf : WF tm) (c : Config) (hv : ValidCfg c)
-    (hst : c.state < tm.numStates) :
-    (∀ i, ITape tm c i < 3) ∧
-      (∀ τ, ∃ d, inSteps wolfram23 (istart (ITape tm c)) τ = some d ∧
-        (d.left = [] → (wolfram23.transition d.state d.head).dir = Dir.R)) ∧
-      ∀ k, ∃ (W : Nat) (times : Nat → Nat), k < times k ∧
-        (∀ i, i < k → times i < times (i + 1)) ∧
-        (∀ i ci, i ≤ k → BiTM.nSteps tm c i = some ci → ∃ d,
-          inSteps wolfram23 (istart (ITape tm c)) (times i) = some d ∧ d.state = 2 ∧
-          ∀ W', W ≤ W' → decodeTM tm.numStates (2 ^ blkW tm c k) (icBand (blkProg tm c k))
-            (truncI W' d) = some (canon ci)) := by
-  choose H dt hbd using block_exists tm hwf c hv hst
-  have htape : tape (fun j => { closedBlock tm c j with H := H j, dt := dt j }) = ITape tm c := rfl
-  rw [← htape]
-  refine ⟨tape_lt _, fun τ => ?_, fun k => ?_⟩
-  · obtain ⟨dτ, hdτ, -⟩ := inSteps_valid _ (istart_valid _ (tape_lt _)) τ
-    obtain ⟨-, times, hkt, -, hleft, -⟩ := stage_infinite tm hwf c hv hst _ hbd τ
-    exact ⟨dτ, hdτ, hleft τ hkt dτ hdτ⟩
-  · obtain ⟨W, times, hkt, hmono, -, hdec⟩ := stage_infinite tm hwf c hv hst _ hbd k
-    exact ⟨W, times, hkt, hmono, hdec⟩
-
-/-- T6 with the tape, the block widths and the bands left existential (the
-    form of the original statement): a corollary of `wolfram23_infinite_ic`. -/
+/-- T6 (PLAN.md section 2), Smith's Conjecture 0 in infinite form. For a
+    well-formed binary machine `tm` and a valid configuration `c` there is a
+    right-infinite tape `t` of cells 0, 1, 2 such that wolfram23, started at
+    its left end in state B on a 2, runs forever without ever moving left
+    from the first cell, and emulates the run of `tm` from `c`: for every `k`
+    there are a block width `2 ^ w`, a band `b`, a window `W` and times, the
+    last of them later than `k` and strictly increasing while the machine
+    runs, such that at time `times i` for `i <= k` wolfram23 is in state B
+    and, whenever the `i`-th configuration of the run exists, the cells right
+    of the head decode by `decodeTM`, on the window `W` and on every larger
+    window, to that configuration (without trailing blanks). The tape is the
+    concatenation of the blocks of `block_exists`; the same theorem with the
+    tape in closed form is `wolfram23_infinite_ic` in `Smith.InfiniteClosed`. -/
 theorem wolfram23_infinite (tm : Machine) (hwf : WF tm) (c : Config) (hv : ValidCfg c)
     (hst : c.state < tm.numStates) :
     ∃ t : Nat → Nat, (∀ i, t i < 3) ∧
@@ -1144,9 +1047,12 @@ theorem wolfram23_infinite (tm : Machine) (hwf : WF tm) (c : Config) (hv : Valid
         (∀ i ci, i ≤ k → BiTM.nSteps tm c i = some ci → ∃ d,
           inSteps wolfram23 (istart t) (times i) = some d ∧ d.state = 2 ∧
           ∀ W', W ≤ W' → decodeTM tm.numStates (2 ^ w) b (truncI W' d) = some (canon ci)) := by
-  obtain ⟨hlt, hleft, hk⟩ := wolfram23_infinite_ic tm hwf c hv hst
-  refine ⟨ITape tm c, hlt, hleft, fun k => ?_⟩
-  obtain ⟨W, times, hkt, hmono, hdec⟩ := hk k
-  exact ⟨blkW tm c k, icBand (blkProg tm c k), W, times, hkt, fun i hi _ => hmono i hi, hdec⟩
+  choose bd hbd using block_exists tm hwf c hv hst
+  refine ⟨tape bd, tape_lt _, fun τ => ?_, fun k => ?_⟩
+  · obtain ⟨dτ, hdτ, -⟩ := inSteps_valid _ (istart_valid _ (tape_lt _)) τ
+    obtain ⟨-, times, hkt, -, hleft, -⟩ := stage_infinite tm hwf c hv hst _ hbd τ
+    exact ⟨dτ, hdτ, hleft τ hkt dτ hdτ⟩
+  · obtain ⟨W, times, hkt, hmono, -, hdec⟩ := stage_infinite tm hwf c hv hst _ hbd k
+    exact ⟨(bd k).w, (bd k).b, W, times, hkt, fun i hi _ => hmono i hi, hdec⟩
 
 end Smith

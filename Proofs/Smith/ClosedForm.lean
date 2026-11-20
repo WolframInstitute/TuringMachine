@@ -31,8 +31,7 @@
 
   Contents: `icB`, `icT5`, `icM`, `icH`, `icF`, `icBand`, `icRest`,
   `icLen4`, `icT4`, `icFuel`, `icW`, `icStart`, `Inv5_ctsToSystem5`,
-  `icF_facts`, `system4_emulation`, `conjecture0_closed`,
-  `conjecture0_finite`. T8 with the closed-form initial condition
+  `icF_facts`, `system4_emulation_closed`, `conjecture0_closed`. T8 with the closed-form initial condition
   (`IC`, `wolfram23_universal_ic`) is in `Smith.Universality`.
 -/
 
@@ -125,7 +124,7 @@ just turned at the left end (on the first set in state B, a star after the
 leading conglomerate), which decode below the band `icBand` to the cyclic
 tag configurations, and then exits in state C, within `icT4` steps. -/
 
-theorem system4_emulation (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfig)
+theorem system4_emulation_closed (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfig)
     (hrun : C0.nSteps cfg (C0.appendants.length * N) = some c') (hne : c'.data ≠ []) :
     ∃ (T4 : Nat) (cE : System4Config) (times : Nat → Nat),
       T4 ≤ icT4 (ctsToSystem5 C0 cfg N) ∧
@@ -284,7 +283,7 @@ theorem conjecture0_closed (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfi
         biSize cfgτ = biSize (icStart (ctsToSystem5 C0 cfg N))) ∧
       (∃ L : List Nat, BiTM.nSteps wolfram23 (icStart (ctsToSystem5 C0 cfg N)) (T + 1)
         = some ⟨1, L, 0, []⟩ ∧ L.length = biSize (icStart (ctsToSystem5 C0 cfg N))) := by
-  obtain ⟨T4, cE, t4, hT4le, hrunT4, hstE, hactE, h4mono, h4tr⟩ := system4_emulation C0 cfg N c' hrun hne
+  obtain ⟨T4, cE, t4, hT4le, hrunT4, hstE, hactE, h4mono, h4tr⟩ := system4_emulation_closed C0 cfg N c' hrun hne
   obtain ⟨hf1, hbag1, hrules0⟩ := icF_facts C0 cfg N
   obtain ⟨n, hn⟩ : ∃ n, n = C0.appendants.length * N := ⟨_, rfl⟩
   rw [← hn] at h4mono h4tr ⊢
@@ -355,21 +354,5 @@ theorem conjecture0_closed (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfi
       exact wolfram23_exit_step _
     · rw [biSize_toBi, ← lnSteps_length sys0 start3 _ _ hrun0T, phi_exit]
       simp [LConfig.toList]
-
-/-- T4 with an existential initial condition: the form of the statement
-    before the closed form, a corollary of `conjecture0_closed`. -/
-theorem conjecture0_finite (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfig)
-    (hrun : C0.nSteps cfg (C0.appendants.length * N) = some c') (hne : c'.data ≠ []) :
-    ∃ (start : BiTM.Config) (w b : Nat) (times : Nat → Nat) (T : Nat),
-      IsValidWolfram23Cfg start ∧ start.state = 1 ∧
-      (∀ i, i < C0.appendants.length * N → times i < times (i + 1)) ∧
-      (∀ i, i ≤ C0.appendants.length * N → times i ≤ T ∧
-        ∃ ci cfgi, C0.nSteps cfg i = some ci ∧ BiTM.nSteps wolfram23 start (times i) = some cfgi ∧
-          decodeW23 (2 ^ w) b cfgi = some (dbl ci.data)) ∧
-      (∀ τ, τ ≤ T → ∃ cfgτ, BiTM.nSteps wolfram23 start τ = some cfgτ ∧ biSize cfgτ = biSize start) ∧
-      (∃ L : List Nat, BiTM.nSteps wolfram23 start (T + 1) = some ⟨1, L, 0, []⟩ ∧
-        L.length = biSize start) := by
-  obtain ⟨times, T, h1, h2, h3, h4, h5, h6⟩ := conjecture0_closed C0 cfg N c' hrun hne
-  exact ⟨_, _, _, times, T, h1, h2, h3, h4, h5, h6⟩
 
 end Smith

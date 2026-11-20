@@ -62,8 +62,10 @@ jobs:
       - name: Fetch the Mathlib cache
         run: lake exe cache get
 
-      - name: Build the proofs and the tests
-        run: lake build
+      - name: Build the proofs, the optional corollaries and the tests
+        run: |
+          lake build
+          lake build Extras Vectors
 
       - name: No sorry in the proof modules, no native_decide outside Vectors/
         run: |
