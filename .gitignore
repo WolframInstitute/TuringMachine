@@ -39,3 +39,6 @@ Proofs/lean_dep_full.dot
 # Cloud credentials for scripts/submit.wls (never commit)
 .env
 .env.publish
+
+# PacletPage, fetched by scripts/pacletpage.wl
+/build/

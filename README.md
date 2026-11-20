@@ -162,7 +162,9 @@ Needs["WolframInstitute`TuringMachine`"]
 ```
 
 Rebuild the documentation notebooks and the Paclet Repository definition notebook
-(`TuringMachine/ResourceDefinition.nb`) from their markdown sources:
+(`TuringMachine/ResourceDefinition.nb`) from their markdown sources, with
+[PacletPage](https://github.com/WolframInstitute/PacletPage) (pinned in
+[`scripts/pacletpage.wl`](scripts/pacletpage.wl)):
 
 ```bash
 wolframscript -f scripts/build_docs.wls
@@ -170,14 +172,19 @@ wolframscript -f scripts/build_docs.wls
 
 ## Releasing
 
-Bump `"Version"` in [`TuringMachine/PacletInfo.wl`](TuringMachine/PacletInfo.wl), rebuild the
-docs, then submit to the Paclet Repository. The submitting account is read from a gitignored
-`.env.publish` at the repository root (`WOLFRAM_CLOUD_USER=…`, `WOLFRAM_CLOUD_PASSWORD=…`) and
-must own the `WolframInstitute` publisher:
+Releases go through PacletPage. Bump `"Version"` in
+[`TuringMachine/PacletInfo.wl`](TuringMachine/PacletInfo.wl), rebuild the docs, then submit to the
+Paclet Repository as the account that owns the `WolframInstitute` publisher (`nikm@wolfram.com`),
+and publish the paclet's resource and documentation site in the Wolfram Institute's cloud
+account. The accounts are connected by the `wolfram-cloud-account` skill's `run-as.wls`; every
+archive is checked to hold the Rust libraries of all five platforms.
 
 ```bash
-wolframscript -f scripts/submit.wls --check   # lint the definition notebook only
-wolframscript -f scripts/submit.wls           # PacletBuild into TuringMachine/build/ and submit
+wolframscript -f scripts/build_docs.wls
+RUNAS=~/.claude/skills/wolfram-cloud-account/run-as.wls
+wolframscript -f $RUNAS nikm scripts/submit.wls --dry-run      # everything but the submission
+wolframscript -f $RUNAS nikm scripts/submit.wls                # submit to the Paclet Repository
+wolframscript -f $RUNAS wolframinstitute scripts/release.wls   # resource and documentation site
 ```
 
 CI ([`.github/workflows/build_paclet.yml`](.github/workflows/build_paclet.yml)) builds all
