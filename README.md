@@ -15,7 +15,7 @@ Needs["WolframInstitute`TuringMachine`"]
 
 ## Documentation
 
-Full documentation — a guide page, a reference page for every symbol, and a tutorial — ships with the paclet and is browsable on the [Paclet Repository page](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/). The markdown sources live under [`TuringMachine/docs/`](TuringMachine/docs) and are built into the paclet's documentation notebooks by [`scripts/build_docs.wls`](scripts/build_docs.wls).
+Full documentation — a guide page, a reference page for every symbol, and a tutorial — ships with the paclet and is browsable on its [documentation site](https://www.wolframcloud.com/obj/wolframinstitute/TuringMachine) and the [Paclet Repository page](https://resources.wolframcloud.com/PacletRepository/resources/WolframInstitute/TuringMachine/). The markdown sources live under [`TuringMachine/docs/`](TuringMachine/docs) and are built into the paclet's documentation notebooks by [`scripts/build_docs.wls`](scripts/build_docs.wls).
 
 ## Usage
 
