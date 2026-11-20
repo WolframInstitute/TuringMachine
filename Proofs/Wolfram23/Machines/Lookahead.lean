@@ -152,7 +152,7 @@ theorem lstep_length (M : LMachine) (c c' : LConfig) (h : lstep M c = some c') :
     cases hr : M.trans st a 0 with
     | one st' a' d =>
       cases d <;> cases L <;> simp [lstep, hr] at h
-      all_goals (subst h; simp)
+      subst h; simp
     | two _ _ _ _ => simp [lstep, hr] at h
   | cons b R' =>
     cases hr : M.trans st a b with

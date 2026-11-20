@@ -980,7 +980,7 @@ theorem case_setA (w h : Nat) (ls rs : List Item) (le : LeftEnd) (rc : Closing) 
           have hS : SafeC h ⟨[System4Elem.star] ++ System4Elem.set S :: List.map Item.toElem rs,
               [System4Elem.star].length - 1, System4State.A⟩ := by
             have := hle'
-            simp only [Item.toElem, List.map_cons, List.map_nil, List.singleton_append,
+            simp only [List.singleton_append,
               List.length_singleton, Nat.sub_self] at this ⊢
             exact this
           rcases SafeC_now _ _ hS with h0 | h0

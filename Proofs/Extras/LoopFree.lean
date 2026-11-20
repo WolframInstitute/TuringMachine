@@ -77,7 +77,7 @@ theorem W_eq (c : LConfig) :
     W c = V c - (if c.state = A ∧ c.head = 0 then c.left.length + 1 else 0) := by
   unfold W V
   by_cases hs : c.state = A <;> by_cases hh : c.head = 0 <;> simp [hs, hh]
-  all_goals omega
+  omega
 
 /-! ## The measure decreases -/
 
@@ -291,9 +291,9 @@ theorem biSize_step (tm : Machine) (cfg cfg' : BiTM.Config) (h : BiTM.step tm cf
   · simp only [BiTM.step, beq_iff_eq, hs, ite_false] at h
     cases hd : (tm.transition st a).dir <;> rw [hd] at h
     · cases L <;> simp [BiTM.readHead] at h <;> subst h <;> simp [biSize]
-      all_goals omega
+      omega
     · cases R <;> simp [BiTM.readHead] at h <;> subst h <;> simp [biSize]
-      all_goals omega
+      omega
 
 theorem biSize_nSteps (tm : Machine) (cfg cfg' : BiTM.Config) (n : Nat)
     (h : BiTM.nSteps tm cfg n = some cfg') : biSize cfg ≤ biSize cfg' := by

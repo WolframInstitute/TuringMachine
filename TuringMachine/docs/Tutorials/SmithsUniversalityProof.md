@@ -10,18 +10,18 @@ RelatedGuides: [TuringMachine]
 RelatedTutorials: [ExploringOneSidedTuringMachines]
 ---
 
-In 2007 Alex Smith proved that Wolfram's 2-state 3-color Turing machine, rule 596440 and here called *wolfram23*, is universal. The proof is a chain of emulations: every binary Turing machine is emulated by a 2-tag system (Cocke and Minsky), every 2-tag system by a cyclic tag system (Cook), and every cyclic tag system by wolfram23 through four intermediate systems of Smith's design, System 5 to System 3. The whole chain is formalized in Lean in the `Proofs/` directory of this paclet's repository, and its web blueprint is at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/).
+In 2007 Alex Smith proved that Wolfram's 2-state 3-color Turing machine, rule 596440 and here called *wolfram23*, is universal. The proof is a chain of emulations: every binary Turing machine is emulated by a 2-tag system (Cocke and Minsky), every 2-tag system by a cyclic tag system (Cook), and every cyclic tag system by wolfram23 through four intermediate systems of Smith's design, System 5 to System 3. The whole chain is formalized in Lean in the `Proofs/` directory of this paclet's repository, one module per arrow, and its web blueprint is at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/).
 
 This paclet has one function for each arrow of the chain, one for each way back, and an evolution function for each system. Each transcribes the Lean definition named on its reference page, and the paclet tests compare the two on shared examples. This tutorial walks along the chain on small examples and checks at every stage that the emulating system reproduces the emulated one.
 
-| arrow | encoder | decoder |
-|---|---|---|
-| Turing machine → 2-tag system | `TuringMachineToTagSystem` | `TagSystemToTuringMachine` |
-| 2-tag system → cyclic tag system | `TagSystemToCyclicTagSystem` | `CyclicTagSystemToTagSystem` |
-| cyclic tag system → System 5 | `CyclicTagSystemToSystem5` | `System5ToCyclicTagSystem` |
-| System 5 → System 4 | `System5ToSystem4` | `System4ToSystem5` |
-| System 4 → System 3 | `System4ToSystem3` | |
-| System 3 → wolfram23 | `System3ToWolfram23` | `Wolfram23ToSystem5` |
+| arrow | encoder | decoder | Lean module |
+|---|---|---|---|
+| Turing machine → 2-tag system | `TuringMachineToTagSystem` | `TagSystemToTuringMachine` | `Wolfram23.TMToTag` |
+| 2-tag system → cyclic tag system | `TagSystemToCyclicTagSystem` | `CyclicTagSystemToTagSystem` | `Wolfram23.TagToCTS` |
+| cyclic tag system → System 5 | `CyclicTagSystemToSystem5` | `System5ToCyclicTagSystem` | `Wolfram23.CTSToSystem5` |
+| System 5 → System 4 | `System5ToSystem4` | `System4ToSystem5` | `Wolfram23.System5ToSystem4` |
+| System 4 → System 3 | `System4ToSystem3` | | `Wolfram23.System4ToSystem3` |
+| System 3 → wolfram23 | `System3ToWolfram23` | `Wolfram23ToSystem5` | `Wolfram23.System3ToWolfram23` |
 
 ## Definition
 
@@ -256,7 +256,7 @@ The sizes for one step of a two-state machine that writes 1, moves right and hal
 EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
 ```
 
-The formal proof uses closed-form bounds in place of the run lengths, so that its initial condition is a definition that runs no system. The bounds are far larger than the runs:
+The headline theorems of the formal proof take these parameters from the run lengths, as above, so their initial condition exists but is not written out. An optional corollary writes it out as a definition that runs no system, with closed-form bounds in place of the run lengths; the bounds are far larger than the runs:
 
 ```wl
 EmulationParameters[program, "ClosedForm"]
@@ -264,4 +264,4 @@ EmulationParameters[program, "ClosedForm"]
 
 ## The formal proof
 
-The Lean development proves each arrow as a simulation and composes them: `Smith.wolfram23_universal_ic` states that wolfram23 started on the initial condition `Smith.IC tm c n` reproduces *n* steps of any well-formed binary machine `tm` from `c`, read off by a fixed decoder, and `Smith.wolfram23_infinite_ic` does the same for the whole run on one right-infinite tape. The blueprint at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/) describes every link, and Smith's paper is at [wolframscience.com/prizes/tm23](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf).
+The Lean development proves each arrow as a simulation, in the module named in the table above, and composes them. `Smith.wolfram23_universal`, in `Wolfram23.Universality`, states that for every well-formed binary machine `tm`, configuration `c` and run of *n* steps there is a finite tape from which wolfram23 reproduces those *n* steps, read off by a fixed decoder at increasing times, and then leaves the tape to the right in state A. `Smith.wolfram23_infinite`, in `Wolfram23.Infinite`, does the same for the whole run on one right-infinite tape. Both rest on Lean's three standard axioms only. Their tapes are existential; the corollaries `Smith.wolfram23_universal_ic` and `Smith.wolfram23_infinite_ic` write them out in closed form. The blueprint at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/) describes every link, and Smith's paper is at [wolframscience.com/prizes/tm23](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf).

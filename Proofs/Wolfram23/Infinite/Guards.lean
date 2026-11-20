@@ -284,7 +284,6 @@ theorem entryLast (n : Nat) (hn : 3 ≤ n) (Lc T : List System4Elem) :
   have h2 : Lc.length + 1 = (Lc ++ [System4Elem.star]).length := by simp
   rw [h1, h2, step_setBC _ _ _ System4State.C (by decide), decr_preM' n]
   simp [flip, tog]
-  try omega
 
 /-- The entry through `k` guard pairs and the innermost guard: `2k + 2`
     steps, the head ending on the first original element in state B, all
@@ -414,7 +413,7 @@ theorem pad_turn (n r t : Nat) (Lc Rc : List System4Elem) (s : List Int) (R : Li
     rw [h1, h2, step_setA _ _ _ (by simp)]
     simp only [Option.some.injEq, System4Config.mk.injEq, true_and, and_true, List.length_append,
       List.length_singleton, sets, List.length_map, length_merged]
-    try omega
+    omega
   have s12 : System4.nSteps c1 t = some c2 := by
     rw [hc1, hc2]
     exact moveLeft _ (merged n t) _ t (by rw [length_merged]; omega)
@@ -493,7 +492,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
     intro L' act' st'
     simp only [padCfg, List.length_append, length_guardPairs, sets, List.length_map,
       length_merged, List.append_assoc, System4Config.mk.injEq, true_and, and_true]
-    try omega
+    omega
   have one_step : ∀ (c1 : System4Config), System4.step (padCfg n r t Lc Rc ⟨L ++ e :: R, L.length, st⟩)
       = some (padCfg n r t Lc Rc c1) →
       ∃ k t', 1 ≤ k ∧ t' ≤ t + 1 ∧
@@ -512,7 +511,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
     rw [hpad, hP]
     simp only [System4Config.mk.injEq, List.append_assoc, List.cons_append, List.length_append,
       length_guardPairs, sets, List.length_map, length_merged, true_and, and_true]
-    try omega
+    omega
   cases e with
   | set s =>
     cases st with
@@ -532,7 +531,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
         simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.cons_append,
           List.length_append, length_guardPairs, sets, List.length_map, length_merged, List.length_cons,
           true_and, and_true]
-        try omega
+        omega
     | B =>
       rw [step_setB] at hs
       obtain rfl := Option.some.inj hs
@@ -540,7 +539,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
       rw [hfocus, step_setB, hpad, hP]
       simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.cons_append,
         List.length_append, length_guardPairs, sets, List.length_map, length_merged, true_and, and_true]
-      try omega
+      omega
     | C =>
       rw [step_setC] at hs
       obtain rfl := Option.some.inj hs
@@ -548,7 +547,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
       rw [hfocus, step_setC, hpad, hP]
       simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.cons_append,
         List.length_append, length_guardPairs, sets, List.length_map, length_merged, true_and, and_true]
-      try omega
+      omega
   | star =>
     cases st with
     | A =>
@@ -558,7 +557,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
       rw [hfocus, step_starA, hpad, hP]
       simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.length_append,
         length_guardPairs, sets, List.length_map, length_merged, true_and, and_true]
-      try omega
+      omega
     | B =>
       cases L with
       | nil =>
@@ -572,7 +571,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
         simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.cons_append,
           List.length_append, length_guardPairs, sets, List.length_map, length_merged, List.length_cons,
           true_and, and_true]
-        try omega
+        omega
     | C =>
       cases R with
       | nil =>
@@ -590,7 +589,7 @@ theorem pad_step (n r t : Nat) (Lc Rc : List System4Elem) (c c1 : System4Config)
           rw [hfocus, List.cons_append, step_starC, hpad, hP]
           simp only [Option.some.injEq, System4Config.mk.injEq, List.append_assoc, List.cons_append,
             List.length_append, length_guardPairs, sets, List.length_map, length_merged, true_and, and_true]
-          try omega
+          omega
 
 theorem System4_nSteps_some_of_le_aux (c0 cN : System4Config) (N : Nat)
     (hrun : System4.nSteps c0 (N + 1) = some cN) : ∃ cN', System4.nSteps c0 N = some cN' := by
