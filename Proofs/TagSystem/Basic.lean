@@ -13,6 +13,8 @@ import Smith.StepSys
 
 namespace TagSystem
 
+universe u
+
 -- ============================================================================
 -- 2-Tag Systems
 -- ============================================================================
@@ -27,31 +29,17 @@ structure Tag (k : Nat) where
 /-- Configuration of a tag system: just the current data word -/
 abbrev TagConfig (k : Nat) := List (Fin k)
 
-/-- A tag system halts when the data word has fewer than 2 symbols -/
-def tagHalted {k : Nat} (cfg : TagConfig k) : Bool :=
-  cfg.length < 2
-
-/-- Single step of a 2-tag system.
-    Returns none if halted (word too short). -/
-def Tag.step {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Option (TagConfig k) :=
-  match cfg with
+/-- The 2-tag step with productions `P`: read the first symbol, delete the
+    first two, append the production of the symbol read; `none` on a word of
+    fewer than two symbols. -/
+def stepP {σ : Type u} (P : σ → List σ) : List σ → Option (List σ)
   | [] => none
   | [_] => none
-  | a :: _ :: rest => some (rest ++ ts.productions a)
+  | a :: _ :: rest => some (rest ++ P a)
 
-/-- Run a tag system for up to `fuel` steps.
-    Returns the final configuration if halted, none if fuel exhausted. -/
-def Tag.eval {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Nat → Option (TagConfig k)
-  | 0 => if tagHalted cfg then some cfg else none
-  | fuel + 1 =>
-    if tagHalted cfg then some cfg
-    else match ts.step cfg with
-      | none => some cfg  -- halted
-      | some cfg' => ts.eval cfg' fuel
-
--- ============================================================================
--- Basic lemmas for Tag
--- ============================================================================
+/-- Single step of a 2-tag system. -/
+def Tag.step {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Option (TagConfig k) :=
+  stepP ts.productions cfg
 
 -- ============================================================================
 -- Cyclic Tag Systems
@@ -77,10 +65,6 @@ structure CTSConfig where
   phase : Nat
   deriving DecidableEq, BEq, Repr
 
-/-- A CTS halts when the data word is empty -/
-def ctsHalted (cfg : CTSConfig) : Bool :=
-  cfg.data.isEmpty
-
 /-- Get the current appendant for a given phase -/
 def CTS.currentAppendant (cts : CTS) (phase : Nat) : List Bool :=
   cts.appendants.get ⟨phase % cts.appendants.length, Nat.mod_lt _ cts.nonempty⟩
@@ -94,27 +78,10 @@ def CTS.step (cts : CTS) (cfg : CTSConfig) : Option CTSConfig :=
     let newData := if head then rest ++ cts.currentAppendant cfg.phase else rest
     some { data := newData, phase := (cfg.phase + 1) % cts.appendants.length }
 
-/-- Run a CTS for up to `fuel` steps. -/
-def CTS.eval (cts : CTS) (cfg : CTSConfig) : Nat → Option CTSConfig
-  | 0 => if ctsHalted cfg then some cfg else none
-  | fuel + 1 =>
-    if ctsHalted cfg then some cfg
-    else match cts.step cfg with
-      | none => some cfg
-      | some cfg' => cts.eval cfg' fuel
-
 /-- A cyclic tag system as a step system. -/
 def ctsSys (cts : CTS) : Smith.StepSys CTSConfig := ⟨cts.step⟩
 
 /-- Run CTS for exactly n steps -/
 def CTS.nSteps (cts : CTS) (cfg : CTSConfig) (n : Nat) : Option CTSConfig := (ctsSys cts).nSteps cfg n
-
--- ============================================================================
--- Basic lemmas
--- ============================================================================
-
--- ============================================================================
--- Examples
--- ============================================================================
 
 end TagSystem

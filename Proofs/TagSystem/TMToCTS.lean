@@ -224,12 +224,6 @@ theorem nStepsP_enc (S : Nat) (hn : ∀ q h, q < S → nxt tm q h < S) (k : Nat)
 
 /-! ## From the tag system to the cyclic tag system -/
 
-theorem Tag.step_eq_stepP {k : Nat} (ts : Tag k) (w : List (Fin k)) : ts.step w = stepP ts.productions w := by
-  match w with
-  | [] => rfl
-  | [_] => rfl
-  | _ :: _ :: _ => rfl
-
 /-- `k` tag steps are `2 K k` cyclic tag steps. -/
 theorem cts_of_tag {K : Nat} (ts : Tag K) (hK : K > 0) (k : Nat) :
     ∀ (w w' : List (Fin K)), nStepsP ts.productions w k = some w' →
@@ -247,7 +241,7 @@ theorem cts_of_tag {K : Nat} (ts : Tag K) (hK : K > 0) (k : Nat) :
     | none => rw [hs] at h; cases h
     | some w1 =>
       rw [hs, Option.bind_some] at h
-      have h1 := tagToCTS_simulation ts hK w w1 (by rw [Tag.step_eq_stepP]; exact hs)
+      have h1 := tagToCTS_simulation ts hK w w1 hs
       rw [show 2 * K * (k + 1) = 2 * K + 2 * K * k from by ring, CTS.nSteps_add_step, h1,
         Option.bind_some]
       exact ih w1 w' h

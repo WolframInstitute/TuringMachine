@@ -26,13 +26,6 @@ universe u
 
 variable {σ : Type u}
 
-/-- The 2-tag step with productions `P`: read the first symbol, delete the
-    first two, append the production of the symbol read. -/
-def stepP (P : σ → List σ) : List σ → Option (List σ)
-  | [] => none
-  | [_] => none
-  | a :: _ :: rest => some (rest ++ P a)
-
 /-- The 2-tag system with productions `P` as a step system. -/
 def tagSys (P : σ → List σ) : Smith.StepSys (List σ) := ⟨stepP P⟩
 

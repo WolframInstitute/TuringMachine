@@ -249,17 +249,4 @@ theorem ForwardSim_fueled_of_fun {S : Type u} {T : Type v}
       rw [fueled_nSteps MT (enc s) (k * (n + 1)) k (by rw [Nat.mul_succ]; omega),
           h s s1 hs, Option.map_some, Nat.mul_succ, Nat.add_sub_cancel]
 
-/-! ## Decoder variant -/
-
-/-! ## Non-degeneracy examples
-
-`ForwardSim` is not decidable (the witness `k` is unbounded), so the
-examples below are explicit rather than `decide`-checked: one relation that
-is a forward simulation with a genuine two-step target run, and one that is
-not because the target cannot move at all.  `IsSimSchedule` gets the same
-treatment at the end of the section: the schedule `j |-> 2 * j` witnesses
-two source steps of the same worked example, and the constant schedule
-`j |-> 0`, the degenerate witness the strict monotonicity clause exists to
-exclude, is refuted. -/
-
 end Smith

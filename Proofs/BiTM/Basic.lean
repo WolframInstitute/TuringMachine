@@ -38,10 +38,6 @@ structure Config where
   right : List Nat
   deriving DecidableEq, BEq, Repr
 
-/-- A TM has halted when it reaches state 0 -/
-def halted (cfg : Config) : Bool :=
-  cfg.state == 0
-
 /-- Read from a list, returning 0 (blank) if beyond bounds -/
 def readHead (l : List Nat) : Nat × List Nat :=
   match l with
@@ -67,15 +63,6 @@ def step (tm : Machine) (cfg : Config) : Option Config :=
              left  := r.write :: cfg.left,
              head  := newHead,
              right := newRight }
-
-/-- Run with fuel. Returns some if halted, none if fuel exhausted. -/
-def eval (tm : Machine) (cfg : Config) : Nat → Option Config
-  | 0 => if halted cfg then some cfg else none
-  | fuel + 1 =>
-    if halted cfg then some cfg
-    else match step tm cfg with
-    | none => some cfg
-    | some cfg' => eval tm cfg' fuel
 
 /-- The machine as a step system. -/
 def tmSys (tm : Machine) : Smith.StepSys Config := ⟨step tm⟩
@@ -120,9 +107,4 @@ def wolfram23 : Machine where
     | 2, 2 => { nextState := 1, write := 0, dir := Dir.R }  -- B,2 -> 0,R,A
     | _, _ => { nextState := 0, write := 0, dir := Dir.R }  -- unused/halt
 
--- ============================================================================
--- Evolution verification
--- ============================================================================
-
--- Step 1: A reads 0 -> write 1, move R, go to B
 end BiTM

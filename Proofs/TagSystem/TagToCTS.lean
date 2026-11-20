@@ -244,12 +244,12 @@ theorem tagToCTS_simulation {k : Nat} (ts : Tag k) (hk : k > 0)
     some (tagConfigToCTS k cfg') := by
   intro h_step
   cases cfg with
-  | nil => simp [Tag.step] at h_step
+  | nil => simp [Tag.step, stepP] at h_step
   | cons a tl =>
     cases tl with
-    | nil => simp [Tag.step] at h_step
+    | nil => simp [Tag.step, stepP] at h_step
     | cons b rest =>
-      simp [Tag.step] at h_step
+      simp [Tag.step, stepP] at h_step
       
       have h_len : (tagToCTS ts hk).appendants.length = 2 * k := tagToCTS_appendants_length ts hk
       have hk_lt : 0 < (tagToCTS ts hk).appendants.length := by omega
@@ -289,29 +289,5 @@ theorem tagToCTS_simulation {k : Nat} (ts : Tag k) (hk : k > 0)
       rw [h_step2]
       rw [←h_step]
       simp [tagConfigToCTS, tagWordEncode_append]
-
--- ============================================================================
--- Forward halting direction
--- ============================================================================
-
-/-- A tag system halts completely empty if it evaluates to [] -/
-def Tag.HaltsEmpty {k : Nat} (ts : Tag k) (cfg : TagConfig k) : Prop :=
-  ∃ fuel, ts.eval cfg fuel = some []
-
--- ============================================================================
--- Backward direction: CTS halts -> Tag halts
--- ============================================================================
-
--- ============================================================================
--- Verification examples
--- ============================================================================
-
--- ============================================================================
--- Simulation verification (decide)
--- ============================================================================
-
--- Verify the corrected CTS (2k appendants) simulates correctly.
--- Tag step on [0, 1, 0] -> [0] ++ productions(0) = [0, 1, 0] (fixed point)
--- 2k = 4 CTS steps on encoded [0,1,0] should yield encoded [0,1,0]
 
 end TagSystem

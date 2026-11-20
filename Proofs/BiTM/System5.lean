@@ -314,7 +314,4 @@ theorem System5_nSteps_k_pure_decrement (cfg : System5Config) (k : Nat)
       simp only [Function.comp]
       rw [← List_Int_map_add_succ]
 
-
-/-! ## The Nodup invariant -/
-
 end BiTM

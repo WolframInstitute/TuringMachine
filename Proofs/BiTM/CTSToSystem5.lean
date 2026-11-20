@@ -498,12 +498,6 @@ theorem encodeAppendant_r2_nodup (rule : List Bool) (i : Int) :
       · intro h
         have := encodeAppendant_r2_ge tail (i+4) (i+1) h; omega
 
-/-! ## The rule pair and its cancellation -/
-
-/-! ## Decrement bookkeeping -/
-
-/-! ## Emptiness and the first step -/
-
 /-! ## Well-formedness of the encoder output -/
 
 /-- The encoded System 5 bag has no duplicates.  This is the invariant under
