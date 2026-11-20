@@ -12,6 +12,7 @@
 -/
 
 import TM.Defs
+import Smith.StepSys
 
 namespace BiTM
 
@@ -76,14 +77,12 @@ def eval (tm : Machine) (cfg : Config) : Nat → Option Config
     | none => some cfg
     | some cfg' => eval tm cfg' fuel
 
+/-- The machine as a step system. -/
+def tmSys (tm : Machine) : Smith.StepSys Config := ⟨step tm⟩
+
 /-- Run for exactly n steps without checking halting. Returns none if
     the machine halts before n steps. -/
-def nSteps (tm : Machine) (cfg : Config) : Nat → Option Config
-  | 0 => some cfg
-  | n + 1 =>
-    match step tm cfg with
-    | none => none
-    | some cfg' => nSteps tm cfg' n
+def nSteps (tm : Machine) (cfg : Config) (n : Nat) : Option Config := (tmSys tm).nSteps cfg n
 
 -- ============================================================================
 -- Wolfram's (2,3) Universal Turing Machine

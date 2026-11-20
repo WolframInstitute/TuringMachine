@@ -9,6 +9,8 @@
   Imported by both Rule110 and BiTM universality proofs.
 -/
 
+import Smith.StepSys
+
 namespace TagSystem
 
 -- ============================================================================
@@ -101,13 +103,11 @@ def CTS.eval (cts : CTS) (cfg : CTSConfig) : Nat → Option CTSConfig
       | none => some cfg
       | some cfg' => cts.eval cfg' fuel
 
+/-- A cyclic tag system as a step system. -/
+def ctsSys (cts : CTS) : Smith.StepSys CTSConfig := ⟨cts.step⟩
+
 /-- Run CTS for exactly n steps -/
-def CTS.nSteps (cts : CTS) (cfg : CTSConfig) : Nat → Option CTSConfig
-  | 0 => some cfg
-  | n + 1 =>
-    match cts.step cfg with
-    | none => none
-    | some cfg' => cts.nSteps cfg' n
+def CTS.nSteps (cts : CTS) (cfg : CTSConfig) (n : Nat) : Option CTSConfig := (ctsSys cts).nSteps cfg n
 
 -- ============================================================================
 -- Basic lemmas

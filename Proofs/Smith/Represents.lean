@@ -73,23 +73,13 @@ open BiTM
 
 /-! ## The System 5 step system -/
 
-/-- System 5 as a `StepSys`. -/
-def system5Sys : StepSys System5Config := ⟨System5.step⟩
-
 /-- The step function of `system5Sys`. -/
 @[simp] theorem system5Sys_step (s : System5Config) :
     system5Sys.step s = System5.step s := rfl
 
 /-- The generic `nSteps` of `system5Sys` is the hand-rolled `System5.nSteps`. -/
 theorem system5Sys_nSteps (s : System5Config) (n : Nat) :
-    system5Sys.nSteps s n = System5.nSteps s n := by
-  induction n generalizing s with
-  | zero => rfl
-  | succ n ih =>
-    rw [StepSys.nSteps_succ_left, system5Sys_step]
-    cases h : System5.step s with
-    | none => simp [System5.nSteps, h]
-    | some s' => simp [System5.nSteps, h, ih]
+    system5Sys.nSteps s n = System5.nSteps s n := rfl
 
 /-! ## The bag side: pairs of integers -/
 

@@ -78,20 +78,17 @@ def istep (tm : Machine) (c : IConfig) : Option IConfig :=
     | Dir.R =>
       some ⟨r.nextState, r.write :: c.left, c.right 0, fun i => c.right (i + 1)⟩
 
+/-- The machine on a right-infinite tape as a step system. -/
+def isys (tm : Machine) : StepSys IConfig := ⟨istep tm⟩
+
 /-- `n` steps. -/
-def inSteps (tm : Machine) (c : IConfig) : Nat → Option IConfig
-  | 0 => some c
-  | n + 1 =>
-    match istep tm c with
-    | none => none
-    | some c' => inSteps tm c' n
+def inSteps (tm : Machine) (c : IConfig) (n : Nat) : Option IConfig := (isys tm).nSteps c n
 
 @[simp] theorem inSteps_zero (tm : Machine) (c : IConfig) : inSteps tm c 0 = some c := rfl
 
 theorem inSteps_succ (tm : Machine) (c : IConfig) (n : Nat) :
-    inSteps tm c (n + 1) = (istep tm c).bind fun c' => inSteps tm c' n := by
-  show (match istep tm c with | none => none | some c' => inSteps tm c' n) = _
-  cases istep tm c <;> rfl
+    inSteps tm c (n + 1) = (istep tm c).bind fun c' => inSteps tm c' n :=
+  StepSys.nSteps_succ_left _ _ _
 
 /-- The finite configuration `c` agrees with the infinite one `d` on the
     state, the left tape, the head and the explicit cells right of the head. -/
@@ -150,9 +147,8 @@ theorem agree_step (tm : Machine) (c : BiTM.Config) (d : IConfig) (h : Agree c d
       simpa using this
 
 theorem biNSteps_succ' (tm : Machine) (cfg : BiTM.Config) (n : Nat) :
-    BiTM.nSteps tm cfg (n + 1) = (BiTM.step tm cfg).bind fun c => BiTM.nSteps tm c n := by
-  show (match BiTM.step tm cfg with | none => none | some c => BiTM.nSteps tm c n) = _
-  cases BiTM.step tm cfg <;> rfl
+    BiTM.nSteps tm cfg (n + 1) = (BiTM.step tm cfg).bind fun c => BiTM.nSteps tm c n :=
+  StepSys.nSteps_succ_left _ _ _
 
 /-- A run that stays on the finite tape is matched by the infinite tape. -/
 theorem agree_run (tm : Machine) (n : Nat) : ∀ (c : BiTM.Config) (d : IConfig), Agree c d →
@@ -161,7 +157,7 @@ theorem agree_run (tm : Machine) (n : Nat) : ∀ (c : BiTM.Config) (d : IConfig)
   induction n with
   | zero =>
     intro c d h _ cn hcn
-    simp only [BiTM.nSteps, Option.some.injEq] at hcn
+    simp only [BiTM.nSteps, Smith.StepSys.nSteps, Option.some.injEq] at hcn
     subst hcn
     exact ⟨d, rfl, h⟩
   | succ n ih =>
@@ -933,7 +929,7 @@ theorem nSteps_valid (tm : Machine) (hwf : WF tm) (c : Config) (hv : ValidCfg c)
   induction n generalizing c with
   | zero =>
     intro cn h
-    simp only [BiTM.nSteps, Option.some.injEq] at h
+    simp only [BiTM.nSteps, Smith.StepSys.nSteps, Option.some.injEq] at h
     subst h
     exact ⟨hv, hst⟩
   | succ n ih =>
@@ -981,7 +977,7 @@ theorem stage_infinite (tm : Machine) (hwf : WF tm) (c : Config) (hv : ValidCfg 
     rw [hd] at hdτ
     obtain rfl := Option.some.inj hdτ
     obtain ⟨hs, hl, hh, -⟩ := hag
-    rw [biNSteps_add, hcτ, Option.bind_some, biNSteps_one] at hcτ1
+    rw [BiTM.nSteps_add, hcτ, Option.bind_some, BiTM.nSteps_one] at hcτ1
     by_contra hdir
     have hdirL : (wolfram23.transition cτ.state cτ.head).dir = Dir.L := by
       rw [hs, hh]

@@ -128,10 +128,7 @@ theorem nSteps_wolfram23_preserves_valid (cfg : Config)
     obtain ⟨cfg'', h_step, h_valid''⟩ := step_wolfram23_preserves_valid cfg h
     obtain ⟨cfg', h_nstep, h_valid'⟩ := ih cfg'' h_valid''
     refine ⟨cfg', ?_, h_valid'⟩
-    show (match step wolfram23 cfg with
-          | none => none
-          | some c => nSteps wolfram23 c n) = some cfg'
-    rw [h_step]
+    rw [BiTM_nSteps_succ_unfold, h_step]
     exact h_nstep
 
 /-- The post-step-1 cfg of wolfram23 from init is valid.

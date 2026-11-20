@@ -38,21 +38,11 @@ open System4Elem System4State
 
 /-! ## System 4 as a step system -/
 
-/-- System 4 as a `StepSys`. -/
-def system4Sys : StepSys System4Config := ⟨System4.step⟩
-
 @[simp] theorem system4Sys_step (c : System4Config) :
     system4Sys.step c = System4.step c := rfl
 
 theorem system4Sys_nSteps (c : System4Config) (n : Nat) :
-    system4Sys.nSteps c n = System4.nSteps c n := by
-  induction n generalizing c with
-  | zero => rfl
-  | succ n ih =>
-    rw [StepSys.nSteps_succ_left, system4Sys_step]
-    cases h : System4.step c with
-    | none => simp [System4.nSteps, h]
-    | some c' => simp [System4.nSteps, h, ih]
+    system4Sys.nSteps c n = System4.nSteps c n := rfl
 
 /-! ## The five rules at a focus -/
 

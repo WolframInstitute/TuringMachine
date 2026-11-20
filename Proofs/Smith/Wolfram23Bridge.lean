@@ -98,26 +98,7 @@ theorem toBi_run (c : LConfig) (hst : c.state ≠ C) (n : Nat) (c' : LConfig)
       rw [hs, Option.bind_some] at h
       obtain ⟨h1, hst1⟩ := ih c1 (sys0_state c c1 hst hs) h
       refine ⟨?_, hst1⟩
-      show (match BiTM.step wolfram23 (toBi c) with
-            | none => none
-            | some cfg' => BiTM.nSteps wolfram23 cfg' n) = some (toBi c')
-      rw [toBi_step c c1 hst hs]
+      rw [BiTM_nSteps_succ_unfold, toBi_step c c1 hst hs]
       exact h1
-
-theorem biNSteps_add (tm : Machine) (cfg : BiTM.Config) (n m : Nat) :
-    BiTM.nSteps tm cfg (n + m) = (BiTM.nSteps tm cfg n).bind fun c => BiTM.nSteps tm c m := by
-  induction n generalizing cfg with
-  | zero => simp [BiTM.nSteps]
-  | succ n ih =>
-    rw [Nat.succ_add]
-    show (match BiTM.step tm cfg with
-          | none => none
-          | some c => BiTM.nSteps tm c (n + m))
-        = (match BiTM.step tm cfg with
-            | none => none
-            | some c => BiTM.nSteps tm c n).bind fun c => BiTM.nSteps tm c m
-    cases BiTM.step tm cfg with
-    | none => rfl
-    | some c => exact ih c
 
 end Smith

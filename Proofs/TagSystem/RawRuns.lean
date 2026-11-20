@@ -170,7 +170,7 @@ theorem rawRun_eq (c : Config) (n : Nat) (c' : Config) (h : BiTM.nSteps tm c n =
     rawRun tm c n = c' := by
   induction n generalizing c with
   | zero =>
-    simp only [BiTM.nSteps, Option.some.injEq] at h
+    simp only [BiTM.nSteps, Smith.StepSys.nSteps, Option.some.injEq] at h
     exact h
   | succ n ih =>
     have hq : c.state ≠ 0 := by
@@ -178,9 +178,9 @@ theorem rawRun_eq (c : Config) (n : Nat) (c' : Config) (h : BiTM.nSteps tm c n =
       obtain ⟨q, l, a, r⟩ := c
       simp only at h0
       subst h0
-      simp [BiTM.nSteps, BiTM.step] at h
+      simp [BiTM.nSteps, Smith.StepSys.nSteps, BiTM.tmSys, BiTM.step] at h
     have h' : BiTM.nSteps tm (rawStep tm c) n = some c' := by
-      simp only [BiTM.nSteps, step_eq_rawStep tm c hq] at h
+      simp only [BiTM.nSteps, Smith.StepSys.nSteps, BiTM.tmSys, step_eq_rawStep tm c hq] at h
       exact h
     exact ih (rawStep tm c) h'
 

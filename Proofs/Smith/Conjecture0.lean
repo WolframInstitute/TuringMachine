@@ -764,10 +764,6 @@ theorem toBi_valid (c : LConfig) (hc : c.state ≠ C) : IsValidWolfram23Cfg (toB
     obtain ⟨d, _, rfl⟩ := List.mem_map.mp hx
     exact d.isLt
 
-theorem biNSteps_one (cfg : BiTM.Config) : BiTM.nSteps wolfram23 cfg 1 = BiTM.step wolfram23 cfg := by
-  simp only [BiTM.nSteps]
-  cases BiTM.step wolfram23 cfg <;> rfl
-
 /-! ## The System 4 emulation of a cyclic tag run
 
 The System 4 side of T4, shared by the finite form below and by the
@@ -1101,7 +1097,7 @@ theorem conjecture0_finite (C0 : CTS) (cfg : CTSConfig) (N : Nat) (c' : CTSConfi
     refine ⟨toBi cτ, (toBi_run start3 hst3 τ cτ hcτ).1, ?_⟩
     rw [biSize_toBi, biSize_toBi, lnSteps_length sys0 start3 τ cτ hcτ]
   · refine ⟨0 :: (L3.map sw).map Fin.val, ?_, ?_⟩
-    · rw [biNSteps_add, (toBi_run start3 hst3 _ _ hrun0T).1, Option.bind_some, biNSteps_one, phi_exit]
+    · rw [BiTM.nSteps_add, (toBi_run start3 hst3 _ _ hrun0T).1, Option.bind_some, BiTM.nSteps_one, phi_exit]
       exact wolfram23_exit_step _
     · rw [biSize_toBi, ← lnSteps_length sys0 start3 _ _ hrun0T, phi_exit]
       simp [LConfig.toList]

@@ -33,25 +33,21 @@ def stepP (P : σ → List σ) : List σ → Option (List σ)
   | [_] => none
   | a :: _ :: rest => some (rest ++ P a)
 
+/-- The 2-tag system with productions `P` as a step system. -/
+def tagSys (P : σ → List σ) : Smith.StepSys (List σ) := ⟨stepP P⟩
+
 /-- `n` steps. -/
-def nStepsP (P : σ → List σ) (w : List σ) : Nat → Option (List σ)
-  | 0 => some w
-  | n + 1 => (stepP P w).bind fun w' => nStepsP P w' n
+def nStepsP (P : σ → List σ) (w : List σ) (n : Nat) : Option (List σ) := (tagSys P).nSteps w n
 
 @[simp] theorem nStepsP_zero (P : σ → List σ) (w : List σ) : nStepsP P w 0 = some w := rfl
 
 theorem nStepsP_succ (P : σ → List σ) (w : List σ) (n : Nat) :
-    nStepsP P w (n + 1) = (stepP P w).bind fun w' => nStepsP P w' n := rfl
+    nStepsP P w (n + 1) = (stepP P w).bind fun w' => nStepsP P w' n :=
+  Smith.StepSys.nSteps_succ_left _ _ _
 
 theorem nStepsP_add (P : σ → List σ) (w : List σ) (n m : Nat) :
-    nStepsP P w (n + m) = (nStepsP P w n).bind fun w' => nStepsP P w' m := by
-  induction n generalizing w with
-  | zero => simp
-  | succ n ih =>
-    rw [Nat.add_right_comm, nStepsP_succ, nStepsP_succ]
-    cases stepP P w with
-    | none => rfl
-    | some w' => simp only [Option.bind_some]; exact ih w'
+    nStepsP P w (n + m) = (nStepsP P w n).bind fun w' => nStepsP P w' m :=
+  Smith.StepSys.nSteps_add _ _ _ _
 
 theorem stepP_cons_cons (P : σ → List σ) (a b : σ) (rest : List σ) :
     stepP P (a :: b :: rest) = some (rest ++ P a) := rfl

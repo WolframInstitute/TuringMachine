@@ -300,9 +300,7 @@ theorem biSize_nSteps (tm : Machine) (cfg cfg' : BiTM.Config) (n : Nat)
   induction n generalizing cfg with
   | zero => obtain rfl := Option.some.inj h; exact le_refl _
   | succ n ih =>
-    change (match BiTM.step tm cfg with
-            | none => none
-            | some c => BiTM.nSteps tm c n) = some cfg' at h
+    rw [BiTM_nSteps_succ_unfold] at h
     cases hs : BiTM.step tm cfg with
     | none => rw [hs] at h; cases h
     | some c1 =>
@@ -323,11 +321,7 @@ theorem wolfram23_leaves (cfg : BiTM.Config) (hv : IsValidWolfram23Cfg cfg) :
   rw [toBi_ofBi cfg hv] at hrun
   refine ⟨m + 1, cfg', ?_, ?_⟩
   · refine BiTM_nSteps_some_compose wolfram23 cfg (toBi c1) m 1 cfg' hrun ?_
-    show (match BiTM.step wolfram23 (toBi c1) with
-          | none => none
-          | some c => BiTM.nSteps wolfram23 c 0) = some cfg'
-    rw [hstep]
-    rfl
+    rw [BiTM.nSteps_one, hstep]
   · have : biSize (toBi c1) = biSize cfg := by
       rw [biSize_toBi, lnSteps_length sys0 _ _ _ hm, ← biSize_toBi, toBi_ofBi cfg hv]
     omega
@@ -345,7 +339,7 @@ theorem wolfram23_not_periodic (cfg : BiTM.Config) (hv : IsValidWolfram23Cfg cfg
     | succ k ih => rw [Nat.succ_mul]; exact BiTM_nSteps_some_compose _ _ _ _ _ _ ih hper
   have h1 := hiter (n + 1)
   have hle : n + 1 ≤ (n + 1) * p := Nat.le_mul_of_pos_right (n + 1) hp
-  rw [show (n + 1) * p = n + ((n + 1) * p - n) by omega, biNSteps_add, hn, Option.bind_some] at h1
+  rw [show (n + 1) * p = n + ((n + 1) * p - n) by omega, BiTM.nSteps_add, hn, Option.bind_some] at h1
   have := biSize_nSteps wolfram23 cfg' cfg _ h1
   omega
 

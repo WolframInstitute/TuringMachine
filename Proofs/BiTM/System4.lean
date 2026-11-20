@@ -122,14 +122,12 @@ def System4.step (cfg : System4Config) : Option System4Config :=
         else none
   else none
 
+/-- System4 as a step system. -/
+def system4Sys : Smith.StepSys System4Config := ⟨System4.step⟩
+
 /-- Run System 4 for exactly `m` steps; halts if any intermediate step
     returns `none`. -/
-def System4.nSteps (cfg : System4Config) : Nat → Option System4Config
-  | 0 => some cfg
-  | m + 1 =>
-    match System4.step cfg with
-    | none => none
-    | some cfg' => System4.nSteps cfg' m
+def System4.nSteps (cfg : System4Config) (m : Nat) : Option System4Config := system4Sys.nSteps cfg m
 
 /-- 0-step iteration is the identity. -/
 @[simp] theorem System4.nSteps_zero (cfg : System4Config) :
@@ -137,39 +135,23 @@ def System4.nSteps (cfg : System4Config) : Nat → Option System4Config
 
 /-- 1-step iteration is `System4.step`. -/
 theorem System4.nSteps_one (cfg : System4Config) :
-    System4.nSteps cfg 1 = System4.step cfg := by
-  show (match System4.step cfg with
-        | none => none
-        | some cfg' => System4.nSteps cfg' 0) = System4.step cfg
-  cases System4.step cfg <;> rfl
+    System4.nSteps cfg 1 = System4.step cfg :=
+  Smith.StepSys.nSteps_one _ _
 
 /-- Additive composition:
     `nSteps cfg (n + m) = nSteps cfg n >>= (fun c => nSteps c m)`. -/
 theorem System4.nSteps_add (cfg : System4Config) (n m : Nat) :
     System4.nSteps cfg (n + m)
-      = (System4.nSteps cfg n).bind (fun c => System4.nSteps c m) := by
-  induction n generalizing cfg with
-  | zero => simp [System4.nSteps]
-  | succ n ih =>
-    rw [Nat.succ_add]
-    show (match System4.step cfg with
-          | none => none
-          | some c => System4.nSteps c (n + m))
-        = (match System4.step cfg with
-            | none => none
-            | some c => System4.nSteps c n).bind
-          (fun c => System4.nSteps c m)
-    cases System4.step cfg with
-    | none => rfl
-    | some c => exact ih c
+      = (System4.nSteps cfg n).bind (fun c => System4.nSteps c m) :=
+  Smith.StepSys.nSteps_add _ _ _ _
 
 /-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= (fun c => nSteps c n)`.
     Definitional, but stated explicitly for ergonomic use.
     Mirrors `System5.nSteps_succ`. -/
 theorem System4.nSteps_succ (cfg : System4Config) (n : Nat) :
     System4.nSteps cfg (n + 1)
-      = (System4.step cfg).bind (fun c => System4.nSteps c n) := by
-  rw [Nat.add_comm, System4.nSteps_add, System4.nSteps_one]
+      = (System4.step cfg).bind (fun c => System4.nSteps c n) :=
+  Smith.StepSys.nSteps_succ_left _ _ _
 
 /-- **Sanity check** against PDF p. 34/35 trace.  Initial config from
     `system4.pl 0,6,8 "" _ B 3,4 _ 8 11,20`.  After step 1 (rule 3:

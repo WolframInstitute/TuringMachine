@@ -119,19 +119,10 @@ theorem CTS.nSteps_add (cts : CTS) (cfg cfg' : CTSConfig) (n m : Nat) :
     cts.nSteps cfg n = some cfg' →
     cts.nSteps cfg' m = cts.nSteps cfg (n + m) := by
   intro h
-  induction n generalizing cfg with
-  | zero =>
-    simp [nSteps] at h
-    rw [h]
-    simp [Nat.zero_add]
-  | succ n ih =>
-    simp only [nSteps] at h ⊢
-    split at h
-    · simp at h  -- none case
-    · rename_i cfg'' h_step
-      rw [Nat.succ_add]
-      simp only [nSteps, h_step]
-      exact ih cfg'' h
+  show (ctsSys cts).nSteps cfg' m = (ctsSys cts).nSteps cfg (n + m)
+  rw [Smith.StepSys.nSteps_add]
+  change _ = (CTS.nSteps cts cfg n).bind _
+  rw [h]; rfl
 
 -- ============================================================================
 -- One-hot symbol processing through CTS
@@ -169,7 +160,7 @@ theorem symbolEncode_nSteps_helper (cts : CTS) (a : Nat) (len : Nat) (offset : N
   some { data := tail ++ if a >= offset ∧ a < offset + len then cts.currentAppendant (phase + a - offset) else [], phase := (phase + len) % cts.appendants.length } := by
   induction len generalizing offset phase tail with
   | zero =>
-    simp [CTS.nSteps]
+    simp [CTS.nSteps, Smith.StepSys.nSteps]
     constructor
     · intro _ h_gt
       exfalso; omega
@@ -178,7 +169,7 @@ theorem symbolEncode_nSteps_helper (cts : CTS) (a : Nat) (len : Nat) (offset : N
     rw [map_range_succ]
     by_cases heq : offset = a
     · have heq' : (offset == a) = true := by simp [heq]
-      simp [CTS.nSteps, CTS.step, heq']
+      simp [CTS.nSteps, Smith.StepSys.nSteps, ctsSys, CTS.step, heq']
       change cts.nSteps { data := (List.range len).map (fun i => i + (offset + 1) == a) ++ (tail ++ cts.currentAppendant phase), phase := (phase + 1) % cts.appendants.length } len = _
       rw [ih (offset + 1) (tail ++ cts.currentAppendant phase) ((phase + 1) % cts.appendants.length)]
       · congr 1
@@ -191,7 +182,8 @@ theorem symbolEncode_nSteps_helper (cts : CTS) (a : Nat) (len : Nat) (offset : N
         · exact phase_succ_mod phase len cts.appendants.length
       · exact Nat.mod_lt _ cts.nonempty
     · have hne' : (offset == a) = false := by simp [heq]
-      simp [CTS.nSteps, CTS.step, hne']
+      simp [CTS.nSteps, Smith.StepSys.nSteps, ctsSys, CTS.step, hne']
+      change CTS.nSteps cts _ len = _
       rw [ih (offset + 1) tail ((phase + 1) % cts.appendants.length)]
       · congr 1
         congr 1
@@ -224,19 +216,8 @@ theorem symbolEncode_nSteps (cts : CTS) (a : Nat) (len : Nat) (tail : List Bool)
   · next h_not => exfalso; exact h_not hCond
 
 theorem CTS.nSteps_add_step (cts : CTS) (cfg : CTSConfig) (n m : Nat) :
-  cts.nSteps cfg (n + m) = (cts.nSteps cfg n).bind (fun c => cts.nSteps c m) := by
-  induction n generalizing cfg with
-  | zero => 
-    rw [Nat.zero_add]
-    rfl
-  | succ n ih =>
-    rw [Nat.succ_add]
-    change (match cts.step cfg with | none => none | some c => cts.nSteps c (n + m)) = 
-           (match cts.step cfg with | none => none | some c => cts.nSteps c n).bind _
-    cases h : cts.step cfg
-    · rfl
-    · change cts.nSteps _ (n + m) = _
-      rw [ih]
+    cts.nSteps cfg (n + m) = (cts.nSteps cfg n).bind (fun c => cts.nSteps c m) :=
+  Smith.StepSys.nSteps_add _ _ _ _
 
 theorem tagToCTS_appendant_first {k : Nat} (ts : Tag k) (hk : k > 0) (a : Fin k) :
   (tagToCTS ts hk).currentAppendant a.1 = tagWordEncode k (ts.productions a) := by

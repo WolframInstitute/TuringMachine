@@ -181,14 +181,12 @@ theorem System5_one_mem_iff_zero_in_decremented (bag : List Int) :
     rw [this] at hx_mem
     exact hx_mem
 
+/-- System5 as a step system. -/
+def system5Sys : Smith.StepSys System5Config := ⟨System5.step⟩
+
 /-- Run System 5 for exactly `m` steps; halts (returns `none`) if the
     intermediate `System5.step` returns `none`. -/
-def System5.nSteps (cfg : System5Config) : Nat → Option System5Config
-  | 0 => some cfg
-  | m + 1 =>
-    match System5.step cfg with
-    | none => none
-    | some cfg' => System5.nSteps cfg' m
+def System5.nSteps (cfg : System5Config) (m : Nat) : Option System5Config := system5Sys.nSteps cfg m
 
 /-- 0-step iteration is the identity. -/
 @[simp] theorem System5.nSteps_zero (cfg : System5Config) :
@@ -196,38 +194,22 @@ def System5.nSteps (cfg : System5Config) : Nat → Option System5Config
 
 /-- 1-step iteration is `System5.step`. -/
 theorem System5.nSteps_one (cfg : System5Config) :
-    System5.nSteps cfg 1 = System5.step cfg := by
-  show (match System5.step cfg with
-        | none => none
-        | some cfg' => System5.nSteps cfg' 0) = System5.step cfg
-  cases System5.step cfg <;> rfl
+    System5.nSteps cfg 1 = System5.step cfg :=
+  Smith.StepSys.nSteps_one _ _
 
 /-- Additive composition:
     `nSteps cfg (n + m) = nSteps cfg n >>= (fun c => nSteps c m)`. -/
 theorem System5.nSteps_add (cfg : System5Config) (n m : Nat) :
     System5.nSteps cfg (n + m)
-      = (System5.nSteps cfg n).bind (fun c => System5.nSteps c m) := by
-  induction n generalizing cfg with
-  | zero => simp [System5.nSteps]
-  | succ n ih =>
-    rw [Nat.succ_add]
-    show (match System5.step cfg with
-          | none => none
-          | some c => System5.nSteps c (n + m))
-        = (match System5.step cfg with
-            | none => none
-            | some c => System5.nSteps c n).bind
-          (fun c => System5.nSteps c m)
-    cases System5.step cfg with
-    | none => rfl
-    | some c => exact ih c
+      = (System5.nSteps cfg n).bind (fun c => System5.nSteps c m) :=
+  Smith.StepSys.nSteps_add _ _ _ _
 
 /-- Direct-recursion form: `nSteps cfg (n+1) = step cfg >>= (fun c => nSteps c n)`.
     Definitional, but stated explicitly for ergonomic use. -/
 theorem System5.nSteps_succ (cfg : System5Config) (n : Nat) :
     System5.nSteps cfg (n + 1)
-      = (System5.step cfg).bind (fun c => System5.nSteps c n) := by
-  rw [Nat.add_comm, System5.nSteps_add, System5.nSteps_one]
+      = (System5.step cfg).bind (fun c => System5.nSteps c n) :=
+  Smith.StepSys.nSteps_succ_left _ _ _
 
 /-- Shift composition: two `(fun x => x + _)` maps compose to a single map of
     the sum.  `(l.map (fun x => x + a)).map (fun x => x + b)` equals

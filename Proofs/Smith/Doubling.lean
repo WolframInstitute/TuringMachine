@@ -37,8 +37,6 @@ open TagSystem
 
 /-! ## The step system of a cyclic tag system -/
 
-/-- A cyclic tag system as a `StepSys`. -/
-def ctsSys (C : CTS) : StepSys CTSConfig := ⟨C.step⟩
 
 /-- The step function of `ctsSys`. -/
 @[simp] theorem ctsSys_step (C : CTS) (c : CTSConfig) :
@@ -46,14 +44,7 @@ def ctsSys (C : CTS) : StepSys CTSConfig := ⟨C.step⟩
 
 /-- The generic `nSteps` of `ctsSys` is the hand-rolled `CTS.nSteps`. -/
 theorem ctsSys_nSteps (C : CTS) (c : CTSConfig) (n : Nat) :
-    (ctsSys C).nSteps c n = C.nSteps c n := by
-  induction n generalizing c with
-  | zero => rfl
-  | succ n ih =>
-    rw [StepSys.nSteps_succ_left, ctsSys_step]
-    cases h : C.step c with
-    | none => simp [CTS.nSteps, h]
-    | some c' => simp [CTS.nSteps, h, ih]
+    (ctsSys C).nSteps c n = C.nSteps c n := rfl
 
 /-- The step of a cyclic tag system on a nonempty working string. -/
 theorem CTS_step_cons (C : CTS) (b : Bool) (rest : List Bool) (p : Nat) :

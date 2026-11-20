@@ -309,18 +309,8 @@ theorem step_valid (hwf : WF tm) (c c' : Config) (hv : ValidCfg c) (hst : c.stat
     · exact hw
     · exact hr a ha
 
-/-- The machine as a `StepSys`. -/
-def tmSys : StepSys Config := ⟨BiTM.step tm⟩
 
-theorem tmSys_nSteps (c : Config) (n : Nat) : (tmSys tm).nSteps c n = BiTM.nSteps tm c n := by
-  induction n generalizing c with
-  | zero => rfl
-  | succ n ih =>
-    rw [StepSys.nSteps_succ_left]
-    show (BiTM.step tm c).bind _ = _
-    cases h : BiTM.step tm c with
-    | none => simp [BiTM.nSteps, h]
-    | some c' => simp [BiTM.nSteps, h, ih]
+theorem tmSys_nSteps (c : Config) (n : Nat) : (tmSys tm).nSteps c n = BiTM.nSteps tm c n := rfl
 
 theorem K_pos (S : Nat) : 1 + 84 * S > 0 := by omega
 
@@ -666,18 +656,10 @@ theorem t7_finite (hwf : WF tm) (c : Config) (hv : ValidCfg c) (hst : c.state < 
 /-! ## The tag-level schedule -/
 
 /-- The tag system on the finite alphabet as a `StepSys`. -/
-def tagSysK (S : Nat) : StepSys (List (Fin (1 + 84 * S))) := ⟨stepP (tagK tm S).productions⟩
+def tagSysK (S : Nat) : StepSys (List (Fin (1 + 84 * S))) := tagSys (tagK tm S).productions
 
 theorem tagSysK_nSteps (S : Nat) (w : List (Fin (1 + 84 * S))) (n : Nat) :
-    (tagSysK tm S).nSteps w n = nStepsP (tagK tm S).productions w n := by
-  induction n generalizing w with
-  | zero => rfl
-  | succ n ih =>
-    rw [StepSys.nSteps_succ_left, nStepsP_succ]
-    show (stepP (tagK tm S).productions w).bind _ = _
-    cases stepP (tagK tm S).productions w with
-    | none => rfl
-    | some w' => simp only [Option.bind_some]; exact ih w'
+    (tagSysK tm S).nSteps w n = nStepsP (tagK tm S).productions w n := rfl
 
 /-- T7 at the tag level: the tag system `tagK tm S` tracks the machine
     through the encoding of configurations. -/
