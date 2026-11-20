@@ -50,7 +50,7 @@
   Contents:
     * `gap`, `pairsOf`, `pairsAsc` and their structural lemmas.
     * `encodePaired`, `ruleBlocks`, `appendantsFrom`: the rule side.
-    * `Represents`, its structural consequences, and `Represents_shift`.
+    * `Represents` and its structural consequences.
     * `ctsToSystem5_represents`: the canonical encoder satisfies it.
     * Non-degeneracy: the PDF p. 29 example holds by `decide`; a bag paired
       with the wrong word and the empty bag with a nonempty word do not,
@@ -329,27 +329,6 @@ theorem ruleBlocks_cons (w : List Bool) (ws : List (List Bool)) (i : Int) :
            (ruleBlocks ws (encodePaired w i).2.2).1,
          (ruleBlocks ws (encodePaired w i).2.2).2) := rfl
 
-/-- Rule blocks of a concatenation. -/
-theorem ruleBlocks_append (l1 l2 : List (List Bool)) (i : Int) :
-    ruleBlocks (l1 ++ l2) i
-      = ((ruleBlocks l1 i).1 ++ (ruleBlocks l2 (ruleBlocks l1 i).2).1,
-         (ruleBlocks l2 (ruleBlocks l1 i).2).2) := by
-  induction l1 generalizing i with
-  | nil => rfl
-  | cons w ws ih =>
-    rw [List.cons_append, ruleBlocks_cons, ruleBlocks_cons, ih]
-    rfl
-
-/-- Two rules per appendant. -/
-theorem ruleBlocks_length (l : List (List Bool)) (i : Int) :
-    (ruleBlocks l i).1.length = 2 * l.length := by
-  induction l generalizing i with
-  | nil => rfl
-  | cons w ws ih =>
-    rw [ruleBlocks_cons]
-    simp only [List.length_cons, ih]
-    omega
-
 /-- The appendants a cyclic tag system reads at the `n` consecutive phases
     starting at `phase`. -/
 def appendantsFrom (C : CTS) (phase : Nat) : Nat → List (List Bool)
@@ -545,37 +524,6 @@ theorem encodePaired_counter_ge (w : List Bool) (i : Int) : i ≤ (encodePaired 
         | true => exact (h1 b2 rest rfl).elim
         | false => exact (h2 b2 rest rfl).elim
 
-/-- Every integer of the first rule of a pair is at least the rule counter. -/
-theorem encodePaired_fst_ge (w : List Bool) (i : Int) :
-    ∀ x ∈ (encodePaired w i).1, i ≤ x := by
-  induction w, i using encodePaired.induct with
-  | case1 b rest i r1 r2 i' heq ih =>
-    show ∀ x ∈ (i + 2) :: (i + 5) :: (encodePaired rest (i + 6)).1, i ≤ x
-    intro x hx
-    rcases List.mem_cons.mp hx with rfl | hx
-    · omega
-    rcases List.mem_cons.mp hx with rfl | hx
-    · omega
-    · have := ih x hx; omega
-  | case2 b rest i r1 r2 i' heq ih =>
-    show ∀ x ∈ (i + 2) :: (i + 3) :: (encodePaired rest (i + 4)).1, i ≤ x
-    intro x hx
-    rcases List.mem_cons.mp hx with rfl | hx
-    · omega
-    rcases List.mem_cons.mp hx with rfl | hx
-    · omega
-    · have := ih x hx; omega
-  | case3 t i h1 h2 =>
-    cases t with
-    | nil => intro x hx; cases hx
-    | cons b t' =>
-      cases t' with
-      | nil => cases b <;> (intro x hx; cases hx)
-      | cons b2 rest =>
-        cases b with
-        | true => exact (h1 b2 rest rfl).elim
-        | false => exact (h2 b2 rest rfl).elim
-
 /-- Every integer of the second rule of a pair is at least the rule counter. -/
 theorem encodePaired_snd_ge (w : List Bool) (i : Int) :
     ∀ x ∈ (encodePaired w i).2.1, i ≤ x := by
@@ -606,35 +554,6 @@ theorem encodePaired_snd_ge (w : List Bool) (i : Int) :
         cases b with
         | true => exact (h1 b2 rest rfl).elim
         | false => exact (h2 b2 rest rfl).elim
-
-/-- A block of rules never lowers the rule counter. -/
-theorem ruleBlocks_counter_ge (L : List (List Bool)) (i : Int) : i ≤ (ruleBlocks L i).2 := by
-  induction L generalizing i with
-  | nil => exact Int.le_refl i
-  | cons w ws ih =>
-    rw [ruleBlocks_cons]
-    have h1 := encodePaired_counter_ge w i
-    have h2 := ih (encodePaired w i).2.2
-    omega
-
-/-- Every integer of every rule of a block is at least the starting rule
-    counter.  With the `Represents` clause `x + 3 <= i` for every bag
-    element this is Smith's condition that the second rule of each pair sits
-    at least 3 above everything in the bag (TM23Proof.pdf p. 19). -/
-theorem ruleBlocks_ge (L : List (List Bool)) (i : Int) :
-    ∀ r ∈ (ruleBlocks L i).1, ∀ x ∈ r, i ≤ x := by
-  induction L generalizing i with
-  | nil => intro r hr; cases hr
-  | cons w ws ih =>
-    rw [ruleBlocks_cons]
-    intro r hr x hx
-    rcases List.mem_cons.mp hr with rfl | hr
-    · exact encodePaired_fst_ge w i x hx
-    rcases List.mem_cons.mp hr with rfl | hr
-    · exact encodePaired_snd_ge w i x hx
-    · have h1 := ih (encodePaired w i).2.2 r hr x hx
-      have h2 := encodePaired_counter_ge w i
-      omega
 
 /-! ## The canonical encoder as a family of pairs -/
 
@@ -776,28 +695,12 @@ def Represents (s : System5Config) (C : CTS) (c : CTSConfig) (budget : Nat) : Pr
       (∀ x ∈ s.bag, x + 3 ≤ i) ∧
       s.rules = (ruleBlocks (appendantsFrom C c.phase budget) i).1 ++ rest)
 
-/-- The bag clause as an equality of multisets. -/
-theorem Represents_bag_multiset (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
-    (h : Represents s C c b) :
-    ∃ a : List Int, pairsAsc 0 c.data a = true ∧
-      (s.bag : Multiset Int) = (pairsOf c.data a : Multiset Int) := by
-  obtain ⟨⟨a, hasc, hperm⟩, -⟩ := h
-  exact ⟨a, hasc, Quot.sound hperm⟩
-
 /-- A represented bag has no duplicates, the invariant under which
     `System5.step` is faithful to `system5.pl`. -/
 theorem Represents_bag_nodup (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
     (h : Represents s C c b) : s.bag.Nodup := by
   obtain ⟨⟨a, hasc, hperm⟩, -⟩ := h
   exact hperm.symm.nodup (pairsOf_nodup 0 c.data a hasc)
-
-/-- A represented bag contains no 0, as Conjecture 5 requires. -/
-theorem Represents_bag_ge_one (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
-    (h : Represents s C c b) : ∀ x ∈ s.bag, 1 ≤ x := by
-  obtain ⟨⟨a, hasc, hperm⟩, -⟩ := h
-  intro x hx
-  have := pairsOf_gt 0 c.data a hasc x (hperm.subset hx)
-  omega
 
 /-- Two bag entries per bit of the working string. -/
 theorem Represents_bag_length (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
@@ -817,61 +720,6 @@ theorem Represents_bag_ne_nil_of_data_ne_nil (s : System5Config) (C : CTS)
     intro hc
     exact hd (List.eq_nil_of_length_eq_zero hc)
   omega
-
-/-- Non-degeneracy, converse form: a nonempty bag forces a nonempty working
-    string. -/
-theorem Represents_data_ne_nil_of_bag_ne_nil (s : System5Config) (C : CTS)
-    (c : CTSConfig) (b : Nat) (h : Represents s C c b) (hb : s.bag ≠ []) :
-    c.data ≠ [] := by
-  intro hdata
-  have hlen := Represents_bag_length s C c b h
-  rw [hdata, List.length_nil] at hlen
-  exact hb (List.eq_nil_of_length_eq_zero (by omega))
-
-/-- Structural fact: the first rule of the leading pair is the second with 2
-    added to each integer, which is what makes the second cancel the first
-    when it surfaces. -/
-theorem Represents_rules_pair (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
-    (h : Represents s C c b) (hb : 1 ≤ b) :
-    ∃ r1 r2 tl, s.rules = r1 :: r2 :: tl ∧ r1 = r2.map (· + 2) := by
-  obtain ⟨-, i, rest, -, hrules⟩ := h
-  obtain ⟨b', rfl⟩ : ∃ b', b = b' + 1 := ⟨b - 1, by omega⟩
-  rw [appendantsFrom_succ, ruleBlocks_cons] at hrules
-  refine ⟨_, _, _, hrules, ?_⟩
-  exact encodePaired_fst_eq_snd_add_two (C.currentAppendant c.phase) i
-
-/-- Structural fact: every integer of every rule of the leading blocks sits
-    at least 3 above every element of the bag. -/
-theorem Represents_rules_ge (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
-    (h : Represents s C c b) :
-    ∃ i, (∀ x ∈ s.bag, x + 3 ≤ i) ∧
-      (∀ r ∈ (ruleBlocks (appendantsFrom C c.phase b) i).1, ∀ x ∈ r,
-        ∀ y ∈ s.bag, y + 3 ≤ x) := by
-  obtain ⟨-, i, rest, hbound, hrules⟩ := h
-  refine ⟨i, hbound, ?_⟩
-  intro r hr x hx y hy
-  have h1 := ruleBlocks_ge (appendantsFrom C c.phase b) i r hr x hx
-  have h2 := hbound y hy
-  omega
-
-/-- Structural fact: in a doubled system an odd phase reads the blank
-    appendant, so its rule pair is a pair of blank rules. -/
-theorem ruleBlocks_odd_phase_blank (C : CTS) (p m : Nat) (i : Int) :
-    (ruleBlocks (appendantsFrom (double C) (2 * p + 1) (m + 1)) i).1
-      = [] :: [] :: (ruleBlocks (appendantsFrom (double C) (2 * p + 2) m) i).1 := by
-  rw [appendantsFrom_succ, ruleBlocks_cons, double_currentAppendant_odd,
-      encodePaired_nil, show 2 * p + 1 + 1 = 2 * p + 2 from rfl]
-
-/-- Structural fact, at the level of the relation: a System 5 configuration
-    representing a doubled system at an odd phase has two blank rules in
-    front. -/
-theorem Represents_blank_rules (s : System5Config) (C : CTS) (c : CTSConfig)
-    (p b : Nat) (h : Represents s (double C) c b) (hphase : c.phase = 2 * p + 1)
-    (hb : 1 ≤ b) : ∃ tl, s.rules = [] :: [] :: tl := by
-  obtain ⟨-, i, rest, -, hrules⟩ := h
-  obtain ⟨b', rfl⟩ : ∃ b', b = b' + 1 := ⟨b - 1, by omega⟩
-  rw [hphase, ruleBlocks_odd_phase_blank] at hrules
-  exact ⟨_, hrules⟩
 
 /-! ## The base case: the `cy2s5.pl` encoder represents -/
 
@@ -1129,58 +977,5 @@ theorem ruleBlocks_shift (L : List (List Bool)) (i m : Int) :
     simp only []
     rw [ih ((encodePaired w i).2.2)]
     simp
-
-/-- Shifting the starts shifts the bag. -/
-theorem pairsOf_map_add (w : List Bool) (a : List Int) (m : Int) :
-    pairsOf w (a.map (· + m)) = (pairsOf w a).map (· + m) := by
-  induction w generalizing a with
-  | nil => rfl
-  | cons b w ih =>
-    cases a with
-    | nil => rfl
-    | cons x a =>
-      show (x + m) :: (x + m + gap b) :: pairsOf w (a.map (· + m))
-         = (x + m) :: (x + gap b + m) :: (pairsOf w a).map (· + m)
-      rw [ih a, show x + m + gap b = x + gap b + m from by omega]
-
-/-- Shifting the starts preserves the ascending condition. -/
-theorem pairsAsc_map_add (lo : Int) (w : List Bool) (a : List Int) (m : Int)
-    (h : pairsAsc lo w a = true) : pairsAsc (lo + m) w (a.map (· + m)) = true := by
-  induction w generalizing lo a with
-  | nil => cases a with
-    | nil => rfl
-    | cons x a => simp at h
-  | cons b w ih =>
-    cases a with
-    | nil => simp at h
-    | cons x a =>
-      rw [pairsAsc_cons_cons, Bool.and_eq_true, decide_eq_true_eq] at h
-      show (decide (lo + m < x + m) && pairsAsc (x + m + gap b) w (a.map (· + m))) = true
-      rw [show x + m + gap b = x + gap b + m from by omega, ih (x + gap b) a h.2]
-      simp only [Bool.and_true, decide_eq_true_eq]
-      omega
-
-/-- The relation survives a uniform increment of bag and rules by any
-    `m >= 0`.  Together with the unconstrained tail of the rules clause this
-    is what lets `Represents` be re-established after a System 5 step. -/
-theorem Represents_shift (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat) (m : Int)
-    (hm : 0 ≤ m) (h : Represents s C c b) :
-    Represents { bag := s.bag.map (· + m), rules := s.rules.map (List.map (· + m)) }
-      C c b := by
-  obtain ⟨⟨a, hasc, hperm⟩, i, rest, hbound, hrules⟩ := h
-  constructor
-  · refine ⟨a.map (· + m), ?_, ?_⟩
-    · exact pairsAsc_mono (0 + m) 0 c.data (a.map (· + m)) (by omega)
-        (pairsAsc_map_add 0 c.data a m hasc)
-    · show (s.bag.map (· + m)).Perm (pairsOf c.data (a.map (· + m)))
-      rw [pairsOf_map_add]
-      exact hperm.map _
-  · refine ⟨i + m, rest.map (List.map (· + m)), ?_, ?_⟩
-    · intro x hx
-      obtain ⟨y, hy, rfl⟩ := List.mem_map.mp hx
-      have := hbound y hy
-      omega
-    · show s.rules.map (List.map (· + m)) = _
-      rw [hrules, List.map_append, ruleBlocks_shift]
 
 end Smith

@@ -53,11 +53,6 @@ def stB (s : Bool) : LState := if s then C else B
 @[simp] theorem ofBits_cons (b : Bool) (x : Bits) : ofBits (b :: x) = toCell b :: ofBits x := rfl
 @[simp] theorem length_ofBits (x : Bits) : (ofBits x).length = x.length := by simp [ofBits]
 theorem toCell_ne_zero (b : Bool) : toCell b ≠ 0 := by cases b <;> decide
-theorem toBits_ofBits (x : Bits) : toBits (ofBits x) = x := by
-  induction x with
-  | nil => rfl
-  | cons b x ih => cases b <;> simp [toBits, ofBits, toCell] at ih ⊢ <;> exact ih
-
 /-! ## The walk to the left in state A -/
 
 /-- In state A the head walks left over 1s and 2s, unchanged (`A1 -> A1<`,

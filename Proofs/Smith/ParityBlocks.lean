@@ -18,8 +18,6 @@
     * `xorB`, `shiftR`, `scanFrom`, `T`, `parity`, `stepR`, `row`.
     * Linearity and commutation: `scanFrom_xor`, `T_xor`, `shiftR_xor`,
       `stepR_xor`, `T_shiftR`, `T_stepR`, `stepR_shiftR`.
-    * `scanC_eq`: a C-scan is a B-scan of the block with its first bit
-      toggled (the "state parity" of Lemma 1).
     * `T_row_succ`, `stepR_iterate_two_pow` (Frobenius), `row_two_pow`,
       `T_row_zero`, `row_last_ones`, `parity_row`.
     * `parAt`, `parAt_xor`, `parAt_T`, `parAt_row`.
@@ -190,15 +188,6 @@ theorem scanFrom_zeros (s : Bool) (n : Nat) : scanFrom s (zeros n) = List.replic
 
 theorem T_zeros (n : Nat) : T (zeros n) = zeros n := scanFrom_zeros false n
 
-theorem scanFrom_true_zeros (n : Nat) : scanFrom true (zeros n) = ones n := scanFrom_zeros true n
-
-/-- A scan in state C is a scan in state B of the block with its first bit
-    toggled: Smith's state parity (p. 6-7). -/
-theorem scanC_eq (x : Bits) : scanFrom true x = xorB (T x) (ones x.length) := by
-  have h := scanFrom_xor false true x (zeros x.length) (by simp)
-  rw [Bool.false_xor, xorB_zeros_right, scanFrom_true_zeros] at h
-  exact h
-
 theorem scanC_eq_T_toggle (a : Bool) (x : Bits) :
     scanFrom true (a :: x) = T ((!a) :: x) := by
   simp [T, scanFrom]
@@ -286,11 +275,6 @@ theorem T_iterate_row (n i k : Nat) (hn : 1 ≤ n) (hk : k ≤ i) : T^[k] (row n
     omega
 
 /-! ## The period `2^w` -/
-
-theorem length_stepR_iterate (m : Nat) (x : Bits) : (stepR^[m] x).length = x.length := by
-  induction m generalizing x with
-  | zero => rfl
-  | succ m ih => rw [Function.iterate_succ_apply, ih, length_stepR]
 
 theorem length_shiftR_iterate (m : Nat) (x : Bits) : (shiftR^[m] x).length = x.length := by
   induction m generalizing x with

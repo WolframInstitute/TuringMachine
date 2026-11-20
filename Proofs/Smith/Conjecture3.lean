@@ -147,9 +147,6 @@ theorem SafeC_now (h : Nat) (c : System4Config) (hS : SafeC h c) :
     c.active ≠ 0 ∨ c.state = System4State.C :=
   hS 0 (Nat.zero_le _) c rfl
 
-theorem SafeC_mono (h h' : Nat) (c : System4Config) (hS : SafeC h c) (hh : h' ≤ h) : SafeC h' c :=
-  fun j hj => hS j (le_trans hj hh)
-
 /-- The condition on the left end with `h` System 4 steps left: enough
     zeros for the turns, or no turn at all. -/
 def LeftEnd.OK (h : Nat) (c4 : System4Config) : LeftEnd → Prop
@@ -399,14 +396,6 @@ theorem RightOK_set (x : Bits) (S : List Int) (rs : List Item) :
   cases rs with
   | nil => rfl
   | cons it rest => cases it <;> rfl
-
-theorem HeadSet_of_lastTrue (ls : List Item) (h : HeadLastTrue ls) : HeadSet ls := by
-  match ls, h with
-  | Item.set x S :: rest, _ => trivial
-
-theorem HeadSet_of_firstTrue (rs : List Item) (h : HeadFirstTrue rs) : HeadSet rs := by
-  match rs, h with
-  | Item.set x S :: rest, _ => trivial
 
 /-! ## The parity side of a scan -/
 

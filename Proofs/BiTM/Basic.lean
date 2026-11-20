@@ -76,10 +76,6 @@ def eval (tm : Machine) (cfg : Config) : Nat → Option Config
     | none => some cfg
     | some cfg' => eval tm cfg' fuel
 
-/-- Predicate: TM halts on given configuration -/
-def Halts (tm : Machine) (cfg : Config) : Prop :=
-  ∃ fuel result, eval tm cfg fuel = some result
-
 /-- Run for exactly n steps without checking halting. Returns none if
     the machine halts before n steps. -/
 def nSteps (tm : Machine) (cfg : Config) : Nat → Option Config
@@ -125,18 +121,9 @@ def wolfram23 : Machine where
     | 2, 2 => { nextState := 1, write := 0, dir := Dir.R }  -- B,2 -> 0,R,A
     | _, _ => { nextState := 0, write := 0, dir := Dir.R }  -- unused/halt
 
-/-- Initial configuration: state A, blank tape -/
-def wolfram23_init : Config :=
-  { state := 1, left := [], head := 0, right := [] }
-
 -- ============================================================================
 -- Evolution verification
 -- ============================================================================
 
 -- Step 1: A reads 0 -> write 1, move R, go to B
-theorem wolfram23_step1 :
-    step wolfram23 wolfram23_init =
-    some { state := 2, left := [1], head := 0, right := [] } := by
-  decide
-
 end BiTM

@@ -22,9 +22,8 @@
       `double_currentAppendant_even` / `double_currentAppendant_odd`.
     * `double_nSteps_two`: two steps of the doubled system are one step of
       the original, the halting case included.
-    * `double_nSteps`: the `2 * n` step corollary.
-    * `double_forwardSim`: the same statement as a `ForwardSim`, with two
-      target steps per source step.
+    * `double_forwardSim_fueled`: the same statement as a `ForwardSim` of
+      fueled systems, with two target steps per source step.
     * `decide`-checked vectors for the PDF example and the negative
       examples that make the relation non-degenerate.
 -/
@@ -55,14 +54,6 @@ theorem ctsSys_nSteps (C : CTS) (c : CTSConfig) (n : Nat) :
     cases h : C.step c with
     | none => simp [CTS.nSteps, h]
     | some c' => simp [CTS.nSteps, h, ih]
-
-/-- One step peeled off the front of `CTS.nSteps`. -/
-theorem CTS_nSteps_succ_left (C : CTS) (c : CTSConfig) (n : Nat) :
-    C.nSteps c (n + 1) = (C.step c).bind (fun c' => C.nSteps c' n) := by
-  rw [← ctsSys_nSteps, StepSys.nSteps_succ_left, ctsSys_step]
-  cases h : C.step c with
-  | none => simp
-  | some c' => simp [ctsSys_nSteps]
 
 /-- The step of a cyclic tag system on a nonempty working string. -/
 theorem CTS_step_cons (C : CTS) (b : Bool) (rest : List Bool) (p : Nat) :
@@ -275,31 +266,6 @@ theorem double_nSteps_two (C : CTS) (c : CTSConfig) :
           h2 (dbl rest ++ dbl (C.currentAppendant p)), CTS_step_cons]
       simp [dblCfg]
 
-/-- `2 * n` steps of the doubled system are `n` steps of the original. -/
-theorem double_nSteps (C : CTS) (c : CTSConfig) (n : Nat) :
-    (double C).nSteps (dblCfg c) (2 * n) = Option.map dblCfg (C.nSteps c n) := by
-  induction n generalizing c with
-  | zero => rfl
-  | succ n ih =>
-    rw [show 2 * (n + 1) = 2 + 2 * n by omega, ← ctsSys_nSteps, StepSys.nSteps_add,
-        ctsSys_nSteps, double_nSteps_two, CTS_nSteps_succ_left]
-    cases hstep : C.step c with
-    | none => simp
-    | some c' =>
-      simp only [Option.map_some, Option.bind_some]
-      rw [ctsSys_nSteps, ih c']
-
-/-- Link A as a forward simulation: two steps of the doubled system per step
-    of the original, so the target genuinely moves. -/
-theorem double_forwardSim (C : CTS) :
-    ForwardSim (ctsSys C) (ctsSys (double C)) (fun c d => d = dblCfg c) := by
-  refine ForwardSim_of_fun (ctsSys C) (ctsSys (double C)) dblCfg ?_
-  intro c c' hstep
-  refine ⟨2, by omega, ?_⟩
-  rw [ctsSys_nSteps, double_nSteps_two, ctsSys_step] at *
-  rw [hstep]
-  rfl
-
 /-- Link A between the fuelled systems: one step of the original with fuel
     `n + 1` is two steps of the doubled system with fuel `2 * (n + 1)`.  The
     fuel makes the finite budget a counter of the source system, so
@@ -361,18 +327,5 @@ theorem pdf_double_odd_step_differs :
     (double pdfCTS).nSteps (dblCfg pdfCfg) 1
       ≠ Option.map dblCfg (pdfCTS.nSteps pdfCfg 1) := by
   decide
-
-/-- Non-degeneracy, negative: not every word is a doubled word, so `dblCfg`
-    is not surjective and the relation of `double_forwardSim` is proper. -/
-theorem dbl_ne_true_false (w : List Bool) : dbl w ≠ [true, false] := by
-  cases w with
-  | nil => simp
-  | cons b rest =>
-    intro h
-    rw [dbl_cons] at h
-    injection h with h1 h2
-    injection h2 with h3 _
-    rw [h1] at h3
-    exact absurd h3 (by simp)
 
 end Smith

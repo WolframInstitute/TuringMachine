@@ -131,11 +131,6 @@ def tagTime (c : Config) : Nat → Nat
   | 0 => 0
   | n + 1 => roundLen tm c + tagTime (rawStep tm c) n
 
-theorem rawRun_succ (c : Config) (n : Nat) : rawRun tm c (n + 1) = rawStep tm (rawRun tm c n) := by
-  induction n generalizing c with
-  | zero => rfl
-  | succ n ih => exact ih (rawStep tm c)
-
 theorem tagTime_succ (c : Config) (n : Nat) :
     tagTime tm c (n + 1) = tagTime tm c n + roundLen tm (rawRun tm c n) := by
   induction n generalizing c with

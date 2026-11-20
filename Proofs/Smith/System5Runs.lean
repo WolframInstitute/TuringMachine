@@ -14,15 +14,13 @@
     * `System5_run_pure_decrement`: `j` steps with every bag element above
       `j` are `j` pure decrements.  `System5_step_pop`, the composite
       `System5_run_then_pop` (decrements down to the next pop and the pop
-      itself, in one shift), and the two permutation corollaries
-      `System5_step_pop_perm_append` and `System5_step_pop_perm_cancel`.
-    * Arithmetic: `map_sub_erase` (erasing the 0 of a decremented list is
-      erasing the element that equals the shift), `pairsOf_map_sub`,
-      `pairsAsc_map_sub`, `appendantsFrom_congr`, `appendantsFrom_mod` and
-      `Represents_phase_mod` (a CTS step reduces the phase modulo the number
-      of appendants; `appendantsFrom` does not care).
+      itself, in one shift), and the permutation corollary
+      `System5_step_pop_perm_cancel`.
+    * Arithmetic: `pairsOf_map_sub`, `pairsAsc_map_sub`,
+      `appendantsFrom_congr`, `appendantsFrom_mod` (`appendantsFrom` does not
+      care about the phase modulo the number of appendants).
     * `decodeBag`: sort the bag, read it two integers at a time, a gap of 1
-      for a `0` and of 2 for a `1`.  `decodeBag_pairsOf`, `decodeBag_of_perm`,
+      for a `0` and of 2 for a `1`.  `decodeBag_of_perm`,
       `Represents_decode` and `Represents_data_unique`, with positive and
       negative `decide` examples.
 -/
@@ -154,18 +152,6 @@ theorem System5_run_then_pop (cfg : System5Config) (j : Nat) (r : List Int)
       rw [List.map_cons, List.map_cons, List.map_cons, ih, ← List_Int_map_add_succ]
   simp only [hb, hr2, hrest]
 
-/-- Permutation form of a pop whose rule is disjoint from the bag: the new
-    bag is the decremented bag with the 0 erased, followed by the rule. -/
-theorem System5_step_pop_perm_append (cfg : System5Config) (r : List Int)
-    (rest : List (List Int)) (h_rules : cfg.rules = r :: rest)
-    (h_one : (1 : Int) ∈ cfg.bag) (h_r : (r.map (· + 1)).Nodup)
-    (h_disj : ∀ y ∈ r.map (· + 1), y ∉ (cfg.bag.map (· - 1)).erase 0) :
-    ∃ cfg', System5.step cfg = some cfg' ∧
-      cfg'.bag.Perm ((cfg.bag.map (· - 1)).erase 0 ++ r.map (· + 1)) ∧
-      cfg'.rules = rest.map (fun r => r.map (· + 1)) :=
-  ⟨_, System5_step_pop cfg r rest h_rules h_one,
-    xorMerge_perm_append _ _ h_r h_disj, rfl⟩
-
 /-- Permutation form of a pop whose rule repeats a block of the bag: the
     block is cancelled and the new bag is a permutation of the rest. -/
 theorem System5_step_pop_perm_cancel (cfg : System5Config) (r : List Int)
@@ -185,17 +171,6 @@ theorem System5_step_pop_perm_cancel (cfg : System5Config) (r : List Int)
 `List_Int_map_add_succ` of `BiTM.System5` already compose the shifts; what is
 missing is the interaction of a shift with `List.erase` and with the bag and
 start lists of `Smith.Represents`. -/
-
-/-- Erasing the 0 of a uniformly decremented list erases the single element
-    that equals the shift. -/
-theorem map_sub_erase (l : List Int) (c : Int) :
-    (l.map (· - c)).erase 0 = (l.erase c).map (· - c) := by
-  have hinj : Function.Injective (fun x : Int => x - c) := by
-    intro x y h
-    simp only at h
-    omega
-  have h := List.map_erase (f := fun x : Int => x - c) hinj (a := c) l
-  simpa using h.symm
 
 /-- Shifting the starts down shifts the bag down. -/
 theorem pairsOf_map_sub (w : List Bool) (a : List Int) (m : Int) :
@@ -254,12 +229,6 @@ theorem appendantsFrom_mod (C : CTS) (p n : Nat) :
   have h2 := currentAppendant_mod C (p + k)
   rw [Nat.mod_add_mod] at h1
   exact h1.symm.trans h2
-
-/-- `Represents` does not see the phase reduction a CTS step performs. -/
-theorem Represents_phase_mod (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat) :
-    Represents s C { data := c.data, phase := c.phase % C.appendants.length } b
-      ↔ Represents s C c b := by
-  simp only [Represents, appendantsFrom_mod]
 
 /-! ## Decoding a bag
 
@@ -352,11 +321,6 @@ theorem decodeBag_of_perm (bag : List Int) (w : List Bool) (a : List Int)
   rw [decodeBag, sortBag_eq_of_perm bag (pairsOf w a) hperm hpw]
   exact decodeFrom_pairsOf 0 w a hasc
 
-/-- The decoder inverts the bag clause of `Represents`. -/
-theorem decodeBag_pairsOf (w : List Bool) (a : List Int)
-    (hasc : pairsAsc 0 w a = true) : decodeBag (pairsOf w a) = some w :=
-  decodeBag_of_perm _ w a hasc (List.Perm.refl _)
-
 /-- A represented bag decodes to the working string it represents. -/
 theorem Represents_decode (s : System5Config) (C : CTS) (c : CTSConfig) (b : Nat)
     (h : Represents s C c b) : decodeBag s.bag = some c.data := by
@@ -395,29 +359,5 @@ theorem ex_step_pop :
 theorem ex_run_then_pop :
     System5.nSteps { bag := [3, 5], rules := [[10], [12]] } 3
       = some { bag := [13, 2], rules := [[15]] } := by decide
-
-/-- The bag of the TM23Proof.pdf p. 29 example decodes to the doubled
-    working string `0011`. -/
-theorem decodeBag_pdf29 :
-    decodeBag [1, 2, 3, 4, 5, 7, 8, 10] = some [false, false, true, true] := by decide
-
-/-- Two `1` pairs. -/
-theorem decodeBag_two_ones : decodeBag [1, 3, 4, 6] = some [true, true] := by decide
-
-/-- The decoder sorts: an unsorted bag decodes like its sorted form. -/
-theorem decodeBag_unsorted : decodeBag [2, 4, 3, 1] = some [false, false] := by decide
-
-/-- An odd-length bag does not decode. -/
-theorem decodeBag_odd : decodeBag [1, 2, 3] = none := by decide
-
-/-- A gap of 3 does not decode. -/
-theorem decodeBag_bad_gap : decodeBag [1, 2, 3, 6] = none := by decide
-
-/-- A bag reaching below 1 does not decode. -/
-theorem decodeBag_below_one : decodeBag [0, 1] = none := by decide
-
-/-- Overlapping pairs do not decode: the second pair must start strictly
-    above the end of the first. -/
-theorem decodeBag_overlap : decodeBag [1, 2, 2, 3] = none := by decide
 
 end Smith

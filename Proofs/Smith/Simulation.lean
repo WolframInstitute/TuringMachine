@@ -16,12 +16,10 @@
     * `ForwardSim_nSteps`: lifting to `n` source steps with an explicit
       schedule `times : Nat -> Nat` that is strictly increasing on `[0, n]`
       and starts at 0, plus the weaker `ForwardSim_nSteps_weak`.
-    * `ForwardSim_of_fun`: a functional encoder is a special case.
     * `ForwardSim_of_stuck` and `ForwardSim_nontrivial`: the vacuity guard.
       A relation all of whose source states are stuck is a `ForwardSim` for
       free; `ForwardSim_nontrivial` is the lemma that rules this out for a
       relation whose source states do step.
-    * `ForwardSimDecode`: the partial-decoder variant and its functionality.
     * Non-degeneracy examples for `ForwardSim` and for `IsSimSchedule`,
       positive and negative.
 -/
@@ -236,16 +234,6 @@ theorem ForwardSim_nSteps {S : Type u} {T : Type v}
         rw [StepSys.nSteps_add, htn]
         simpa using ht'
 
-/-- A functional encoder is a forward simulation. -/
-theorem ForwardSim_of_fun {S : Type u} {T : Type v}
-    (MS : StepSys S) (MT : StepSys T) (enc : S → T)
-    (h : ∀ s s', MS.step s = some s' →
-      ∃ k, 1 ≤ k ∧ MT.nSteps (enc s) k = some (enc s')) :
-    ForwardSim MS MT (fun s t => t = enc s) := by
-  rintro s t rfl s' hstep
-  obtain ⟨k, hk, hrun⟩ := h s s' hstep
-  exact ⟨k, hk, enc s', hrun, rfl⟩
-
 /-! ## The vacuity guard
 
 `ForwardSim_of_stuck` is the degenerate witness the discipline of PLAN.md
@@ -313,23 +301,6 @@ theorem fueled_nSteps {S : Type u} (M : StepSys S) (s : S) (f j : Nat) (hj : j �
       rw [Option.map_some, Option.bind_some, Option.bind_some,
           ih s1 g (by omega), Nat.succ_sub_succ]
 
-/-- A fuelled run that is still defined has not exhausted its budget. -/
-theorem fueled_nSteps_le {S : Type u} (M : StepSys S) (s : S) (f j : Nat)
-    (p : S × Nat) (h : (fueled M).nSteps (s, f) j = some p) : j ≤ f := by
-  induction j generalizing s f with
-  | zero => omega
-  | succ j ih =>
-    cases f with
-    | zero => rw [StepSys.nSteps_succ_left, fueled_step_zero] at h; simp at h
-    | succ g =>
-      rw [StepSys.nSteps_succ_left, fueled_step_succ] at h
-      cases hs : M.step s with
-      | none => rw [hs] at h; simp at h
-      | some s1 =>
-        rw [hs, Option.map_some, Option.bind_some] at h
-        have := ih s1 g h
-        omega
-
 /-- A `k`-step functional emulation lifts to the fuelled systems, with the
     target budget scaled by `k`.  This is the shape every link of the chain
     uses to make a finite budget a source-side counter. -/
@@ -353,28 +324,6 @@ theorem ForwardSim_fueled_of_fun {S : Type u} {T : Type v}
 
 /-! ## Decoder variant -/
 
-/-- The decoder variant of `ForwardSim`: the relation is the graph of a
-    partial decoding function from target states to source states. -/
-def ForwardSimDecode {S : Type u} {T : Type v}
-    (MS : StepSys S) (MT : StepSys T) (decode : T → Option S) : Prop :=
-  ForwardSim MS MT (fun s t => decode t = some s)
-
-/-- The relation of a decoder is functional in the source state: one target
-    state decodes to at most one source state. -/
-theorem ForwardSimDecode_functional {S : Type u} {T : Type v}
-    (decode : T → Option S) (t : T) (s₁ s₂ : S)
-    (h₁ : decode t = some s₁) (h₂ : decode t = some s₂) : s₁ = s₂ := by
-  rw [h₁] at h₂
-  exact Option.some.inj h₂
-
-/-- Unfolding of `ForwardSimDecode`. -/
-theorem ForwardSimDecode_iff {S : Type u} {T : Type v}
-    (MS : StepSys S) (MT : StepSys T) (decode : T → Option S) :
-    ForwardSimDecode MS MT decode ↔
-      ∀ s t, decode t = some s → ∀ s', MS.step s = some s' →
-        ∃ k, 1 ≤ k ∧ ∃ t', MT.nSteps t k = some t' ∧ decode t' = some s' :=
-  Iff.rfl
-
 /-! ## Non-degeneracy examples
 
 `ForwardSim` is not decidable (the witness `k` is unbounded), so the
@@ -385,84 +334,5 @@ treatment at the end of the section: the schedule `j |-> 2 * j` witnesses
 two source steps of the same worked example, and the constant schedule
 `j |-> 0`, the degenerate witness the strict monotonicity clause exists to
 exclude, is refuted. -/
-
-/-- Worked example, source: `0 -> 1 -> 2`, stuck at 2. -/
-def demoSrc : StepSys Nat := ⟨fun n => if n < 2 then some (n + 1) else none⟩
-
-/-- Worked example, target: `0 -> 1 -> 2 -> 3 -> 4`, stuck at 4. -/
-def demoTgt : StepSys Nat := ⟨fun n => if n < 4 then some (n + 1) else none⟩
-
-/-- Worked example, target with no moves at all. -/
-def demoStuck : StepSys Nat := ⟨fun _ => none⟩
-
-/-- Worked example relation: the target sits at twice the source position. -/
-def demoRel (s t : Nat) : Prop := t = 2 * s ∧ s ≤ 2
-
-/-- Positive example: `demoTgt` emulates `demoSrc` at two target steps per
-    source step. -/
-theorem demo_forwardSim : ForwardSim demoSrc demoTgt demoRel := by
-  rintro s t ⟨rfl, _⟩ s' hstep
-  have hlt : s < 2 := by
-    by_cases hc : s < 2
-    · exact hc
-    · rw [show demoSrc.step s = if s < 2 then some (s + 1) else none from rfl,
-          ite_eq_right hc] at hstep
-      exact absurd hstep (by simp)
-  have hs' : s' = s + 1 := by
-    rw [show demoSrc.step s = if s < 2 then some (s + 1) else none from rfl,
-        ite_eq_left hlt] at hstep
-    exact Option.some.inj hstep.symm
-  have e1 : demoTgt.step (2 * s) = some (2 * s + 1) := by
-    show (if 2 * s < 4 then some (2 * s + 1) else none) = some (2 * s + 1)
-    rw [ite_eq_left (by omega)]
-  have e2 : demoTgt.step (2 * s + 1) = some (2 * s + 2) := by
-    show (if 2 * s + 1 < 4 then some (2 * s + 1 + 1) else none) = some (2 * s + 2)
-    rw [ite_eq_left (by omega)]
-  refine ⟨2, Nat.le_of_lt (by omega), 2 * s + 2, ?_, ?_⟩
-  · rw [StepSys.nSteps_succ_left, e1, Option.bind_some, StepSys.nSteps_one, e2]
-  · simp only [demoRel]
-    omega
-
-/-- Negative example: no relation with a stepping source state is a forward
-    simulation into a target that cannot step. -/
-theorem demo_not_forwardSim :
-    ¬ ForwardSim demoSrc demoStuck (fun s t => s = 0 ∧ t = 0) := by
-  intro h
-  obtain ⟨t1, ht1⟩ :=
-    ForwardSim_nontrivial h 0 0 ⟨rfl, rfl⟩ 1 rfl
-  exact absurd ht1 (by simp [demoStuck])
-
-/-- Positive example for `IsSimSchedule`: `j |-> 2 * j` is a schedule for
-    two steps of `demoSrc` tracked by `demoTgt`. -/
-theorem demo_isSimSchedule :
-    IsSimSchedule demoSrc demoTgt demoRel 0 0 2 (fun j => 2 * j) := by
-  refine ⟨rfl, ?_, ?_⟩
-  · intro j _
-    show 2 * j < 2 * (j + 1)
-    omega
-  · intro j hj
-    have hj3 : j = 0 ∨ j = 1 ∨ j = 2 := by omega
-    rcases hj3 with rfl | rfl | rfl
-    · exact ⟨0, 0, rfl, rfl, ⟨by omega, by omega⟩⟩
-    · exact ⟨1, 2, rfl, rfl, ⟨by omega, by omega⟩⟩
-    · exact ⟨2, 4, rfl, rfl, ⟨by omega, by omega⟩⟩
-
-/-- Positive example for `fueled`: with fuel to spare the fuelled run is the
-    underlying run, with the fuel spent. -/
-theorem demo_fueled_run : (fueled demoSrc).nSteps (0, 2) 2 = some (2, 0) := by decide
-
-/-- Negative example for `fueled`: the fuel is real.  The same run with one
-    unit less fuel is stuck, which is what makes a finite budget expressible
-    as a source-side counter. -/
-theorem demo_fueled_out_of_fuel : (fueled demoSrc).nSteps (0, 1) 2 = none := by decide
-
-/-- Negative example for `IsSimSchedule`: the constant schedule is not one,
-    even for a single source step, because the target has to move.  This is
-    the trivial witness the strict monotonicity clause forbids. -/
-theorem demo_not_isSimSchedule :
-    ¬ IsSimSchedule demoSrc demoTgt demoRel 0 0 1 (fun _ => 0) := by
-  rintro ⟨-, hmono, -⟩
-  have := hmono 0 (by omega)
-  simp at this
 
 end Smith

@@ -124,9 +124,6 @@ theorem forall_mem_pairs2 {P : Sym → Prop} (a b : Sym) (ha : P a) (hb : P b) (
     · exact hb
     · exact ih s hs
 
-theorem forall_mem_pad {P : Sym → Prop} (hX : P X) (h : Bool) : ∀ s ∈ pad h, P s := by
-  cases h <;> simp [pad, hX]
-
 theorem forall_mem_pairs2_iff (P : Sym → Prop) (a b : Sym) (m : Nat) :
     (∀ s ∈ pairs2 a b m, P s) ↔ (m = 0 ∨ (P a ∧ P b)) := by
   cases m with

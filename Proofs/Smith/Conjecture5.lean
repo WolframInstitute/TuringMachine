@@ -33,9 +33,7 @@
       of a pair is strictly increasing.  `encodePaired_snd_pairwise_gap`,
       `no_gap_two_of_pairwise`, `encodePaired_snd_no_gap_two`: consecutive
       integers of a second rule are 1 or at least 3 apart, so no two of them
-      are exactly 2 apart.  `encodePaired_snd_lt_counter`,
-      `encodePaired_fst_lt_counter`: every rule integer of one appendant
-      block lies in `[i, i' - 1]`.
+      are exactly 2 apart.
     * `Represents_cons_decomp`: the decomposition of `Represents` at a
       nonempty working string, extracting the first start `x`, the remaining
       starts `a'`, the rule counters `i`, `i'`, the leading rule pair
@@ -177,80 +175,6 @@ theorem no_gap_two_of_pairwise (l : List Int)
       rcases hv' with hv1 | hv1
       · omega
       · exact ih h.2 u hu1 v hv1
-
-/-- Every integer of the second rule of a pair lies strictly below the
-    counter the encoding ends at. -/
-theorem encodePaired_snd_lt_counter (w : List Bool) (i : Int) :
-    ∀ v ∈ (encodePaired w i).2.1, v < (encodePaired w i).2.2 := by
-  induction w, i using encodePaired.induct with
-  | case1 b rest i r1 r2 i' heq ih =>
-    show ∀ v ∈ ((i : Int) :: (i + 3) :: (encodePaired rest (i + 6)).2.1),
-      v < (encodePaired rest (i + 6)).2.2
-    have hc := encodePaired_counter_ge rest (i + 6)
-    intro v hv
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    · exact ih v hv
-  | case2 b rest i r1 r2 i' heq ih =>
-    show ∀ v ∈ ((i : Int) :: (i + 1) :: (encodePaired rest (i + 4)).2.1),
-      v < (encodePaired rest (i + 4)).2.2
-    have hc := encodePaired_counter_ge rest (i + 4)
-    intro v hv
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    · exact ih v hv
-  | case3 t i h1 h2 =>
-    cases t with
-    | nil => intro v hv; cases hv
-    | cons b t' =>
-      cases t' with
-      | nil => cases b <;> (intro v hv; cases hv)
-      | cons b2 rest =>
-        cases b with
-        | true => exact (h1 b2 rest rfl).elim
-        | false => exact (h2 b2 rest rfl).elim
-
-/-- Every integer of the first rule of a pair lies strictly below the
-    counter the encoding ends at.  Together with `encodePaired_snd_ge` this
-    is the containment `i <= r <= i' - 1` of every rule integer of one
-    appendant block. -/
-theorem encodePaired_fst_lt_counter (w : List Bool) (i : Int) :
-    ∀ v ∈ (encodePaired w i).1, v < (encodePaired w i).2.2 := by
-  induction w, i using encodePaired.induct with
-  | case1 b rest i r1 r2 i' heq ih =>
-    show ∀ v ∈ ((i + 2 : Int) :: (i + 5) :: (encodePaired rest (i + 6)).1),
-      v < (encodePaired rest (i + 6)).2.2
-    have hc := encodePaired_counter_ge rest (i + 6)
-    intro v hv
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    · exact ih v hv
-  | case2 b rest i r1 r2 i' heq ih =>
-    show ∀ v ∈ ((i + 2 : Int) :: (i + 3) :: (encodePaired rest (i + 4)).1),
-      v < (encodePaired rest (i + 4)).2.2
-    have hc := encodePaired_counter_ge rest (i + 4)
-    intro v hv
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    rcases List.mem_cons.mp hv with rfl | hv
-    · omega
-    · exact ih v hv
-  | case3 t i h1 h2 =>
-    cases t with
-    | nil => intro v hv; cases hv
-    | cons b t' =>
-      cases t' with
-      | nil => cases b <;> (intro v hv; cases hv)
-      | cons b2 rest =>
-        cases b with
-        | true => exact (h1 b2 rest rfl).elim
-        | false => exact (h2 b2 rest rfl).elim
 
 /-- No two integers of the second rule of a pair are exactly 2 apart, which
     is what keeps the two blocks of the 1-head case disjoint. -/

@@ -103,12 +103,6 @@ def Agree (c : BiTM.Config) (d : IConfig) : Prop :=
 def truncI (W : Nat) (d : IConfig) : BiTM.Config :=
   ⟨d.state, d.left, d.head, (List.range W).map d.right⟩
 
-theorem truncI_agree (W : Nat) (d : IConfig) : Agree (truncI W d) d := by
-  refine ⟨rfl, rfl, rfl, ?_⟩
-  intro i hi
-  simp only [truncI, List.length_map, List.length_range] at hi
-  simp [truncI, hi]
-
 /-- A step that does not read the blank right of the finite tape is matched
     by the infinite tape. -/
 theorem agree_step (tm : Machine) (c : BiTM.Config) (d : IConfig) (h : Agree c d)
