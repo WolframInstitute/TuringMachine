@@ -12,7 +12,7 @@ $repositoryDirectory = ParentDirectory[DirectoryName[$InputFileName]];
 $pacletDirectory = FileNameJoin[{$repositoryDirectory, "TuringMachine"}];
 $toolsDirectory = FileNameJoin[{$repositoryDirectory, "build", "tools"}];
 
-$pacletPageRef = Replace[Environment["PACLETPAGE_REF"], Except[_String?(StringLength[#] > 0 &)] -> "v0.3.85"];
+$pacletPageRef = Replace[Environment["PACLETPAGE_REF"], Except[_String?(StringLength[#] > 0 &)] -> "v0.3.87"];
 
 (* PacletPage's archive of a tag, extracted afresh, and its one top directory; the network is
    enabled for this kernel alone, since $AllowInternet is a machine-wide setting other kernels

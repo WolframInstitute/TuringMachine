@@ -15,18 +15,6 @@ $ProgressReporting = False
 
 Get[FileNameJoin[{DirectoryName[$InputFileName], "pacletpage.wl"}]]
 
-(* Stopgap until PacletPage 0.3.87 (remove it then): the file listing BuildPacletDocumentation fills
-   into the definition notebook has no CellIDs, and the repository's check needs the CellID of the
-   PacletInfo.wl cell (NoPacletInfoFileCell). A front end assigns CellIDs: the notebook is saved with
-   CreateCellID, its file listing rebuilt, and saved again. *)
-With[{definition = FileNameJoin[{$pacletDirectory, "ResourceDefinition.nb"}]},
-    If[ ! FileExistsQ[definition], Print["FATAL: no ", definition, "; run build_docs.wls first."]; Exit[1]];
-    Needs["PacletResource`DefinitionNotebook`"];
-    UsingFrontEnd @ With[{nb = NotebookOpen[definition, Visible -> False]},
-        SetOptions[nb, CreateCellID -> True]; NotebookSave[nb];
-        PacletResource`DefinitionNotebook`RefreshNotebookPacletFiles[nb]; NotebookSave[nb]; NotebookClose[nb]]
-]
-
 result = Block[{$AllowInternet = True},
     SubmitPacletResource[$pacletDirectory,
         "Account" -> "nikm@wolfram.com",
