@@ -6,7 +6,7 @@
    its sources, and checks the site. submit.wls submits the paclet to the Paclet Repository.
 
        wolframscript -f ~/.claude/skills/wolfram-cloud-account/run-as.wls wolframinstitute scripts/release.wls
-       (or --dry-run: the build and the resource, not deployed)
+       (or --dry-run: the build and the resource, not deployed; --republish: replace an existing deploy of this version)
 
    The account is PACLETPAGE_ACCOUNT, by default the Wolfram Institute's. *)
 
@@ -21,7 +21,9 @@ result = Block[{$AllowInternet = True},
         "DryRun" -> MemberQ[$ScriptCommandLine, "--dry-run"],
         "Monitor" -> True,
         "BuildOptions" -> $documentationOptions,
-        "ResourceOptions" -> {"ArchiveCheck" -> $archiveCheck},
+        "ResourceOptions" -> Join[{"ArchiveCheck" -> $archiveCheck},
+            If[MemberQ[$ScriptCommandLine, "--republish"] || Environment["PACLETPAGE_REPUBLISH"] === "1",
+                {"Republish" -> True}, {}]],
         "SiteOptions" -> {"FeedbackOptions" -> {"Domains" -> {"wolframinstitute.org", "wolfram.com"}}, "VersionLabel" -> True, "Footer" -> True}
     ]
 ]

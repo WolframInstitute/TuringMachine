@@ -5,23 +5,37 @@ Title: The Chain of Smith's Universality Proof
 Context: WolframInstitute`TuringMachine`
 Paclet: WolframInstitute/TuringMachine
 URI: WolframInstitute/TuringMachine/tutorial/SmithsUniversalityProof
-Keywords: [Wolfram 2,3 Turing machine, universality, Alex Smith, tag system, cyclic tag system, System 5, System 4, System 3, Lean]
+Keywords: [Wolfram 2,3 Turing machine, universality, Alex Smith, tag system, cyclic tag system, System 5, System 4, System 3, TypeTheory, formal proof]
 RelatedGuides: [TuringMachine]
 RelatedTutorials: [ExploringOneSidedTuringMachines]
 ---
 
-In 2007 Alex Smith proved that Wolfram's 2-state 3-color Turing machine, rule 596440 and here called *wolfram23*, is universal. The proof is a chain of emulations: every binary Turing machine is emulated by a 2-tag system (Cocke and Minsky), every 2-tag system by a cyclic tag system (Cook), and every cyclic tag system by wolfram23 through four intermediate systems of Smith's design, System 5 to System 3. The whole chain is formalized in Lean in the `Proofs/` directory of this paclet's repository, one module per arrow, and its web blueprint is at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/).
+In 2007 Alex Smith proved that Wolfram's 2-state 3-color Turing machine, rule 596440 and here called *wolfram23*, is universal. The proof is a chain of emulations: every binary Turing machine is emulated by a 2-tag system (Cocke and Minsky), every 2-tag system by a cyclic tag system (Cook), and every cyclic tag system by wolfram23 through four intermediate systems of Smith's design, System 5 to System 3. The entire chain is formally proved in the Wolfram Language inside the `"WolframInstitute/TypeTheory"` paclet (`TypeTheoryEnvironment["Wolfram23"]`), checked by TypeTheory's kernel with no axioms.
 
-This paclet has one function for each arrow of the chain, one for each way back, and an evolution function for each system. Each transcribes the Lean definition named on its reference page, and the paclet tests compare the two on shared examples. This tutorial walks along the chain on small examples and checks at every stage that the emulating system reproduces the emulated one.
+This paclet has one function for each arrow of the chain, one for each way back, and an evolution function for each system. This tutorial walks along the chain on small examples, checks at every stage that the emulating system reproduces the emulated one, and inspects the corresponding formal simulation theorem from `"WolframInstitute/TypeTheory"` at each rung.
 
-| arrow | encoder | decoder | Lean module |
+| arrow | encoder | decoder | TypeTheory theorem |
 |---|---|---|---|
-| Turing machine → 2-tag system | `TuringMachineToTagSystem` | `TagSystemToTuringMachine` | `Wolfram23.TMToTag` |
-| 2-tag system → cyclic tag system | `TagSystemToCyclicTagSystem` | `CyclicTagSystemToTagSystem` | `Wolfram23.TagToCTS` |
-| cyclic tag system → System 5 | `CyclicTagSystemToSystem5` | `System5ToCyclicTagSystem` | `Wolfram23.CTSToSystem5` |
-| System 5 → System 4 | `System5ToSystem4` | `System4ToSystem5` | `Wolfram23.System5ToSystem4` |
-| System 4 → System 3 | `System4ToSystem3` | | `Wolfram23.System4ToSystem3` |
-| System 3 → wolfram23 | `System3ToWolfram23` | `Wolfram23ToSystem5` | `Wolfram23.System3ToWolfram23` |
+| Turing machine → 2-tag system | `TuringMachineToTagSystem` | `TagSystemToTuringMachine` | `"minskySimulation"` |
+| 2-tag system → cyclic tag system | `TagSystemToCyclicTagSystem` | `CyclicTagSystemToTagSystem` | `"cookSimulation"` |
+| cyclic tag system → System 5 | `CyclicTagSystemToSystem5` | `System5ToCyclicTagSystem` | `"system5Simulation"` |
+| System 5 → System 4 | `System5ToSystem4` | `System4ToSystem5` | `"system4Simulation"` |
+| System 4 → System 3 | `System4ToSystem3` | | `"system3Simulation"` |
+| System 3 → wolfram23 | `System3ToWolfram23` | `Wolfram23ToSystem5` | `"wolfram23Simulates3"` |
+
+Install and load `"WolframInstitute/TypeTheory"` from its deployed cloud resource, then load the verified proof environment for Wolfram's (2,3) machine:
+
+```wl
+PacletInstall[ResourceObject["https://www.wolframcloud.com/obj/wolframinstitute/DeployedResources/Paclet/WolframInstitute/TypeTheory"]]
+```
+
+```wl
+Needs["WolframInstitute`TypeTheory`"]
+```
+
+```wl
+wolfram23 = TypeTheoryEnvironment["Wolfram23"]
+```
 
 ## Definition
 
@@ -97,6 +111,12 @@ At the tag times the words decode, by <code>[TagSystemToTuringMachine]()</code>,
 TagSystemToTuringMachine[#, 3] & /@ TagSystemEvolution[tag, 85][[tag["TagTimes"] + 1]]
 ```
 
+In `wolfram23`, `"minskySimulation"` proves that Cocke and Minsky's 2-tag system forward-simulates every binary Turing machine (three tag rounds per right move, five per left move):
+
+```wl
+wolfram23["minskySimulation"]
+```
+
 ## A 2-tag system as a cyclic tag system
 
 A cyclic tag system deletes the first bit of its working string and, if the bit was 1, appends the current appendant; the appendants are used in turn. Cook's construction writes each tag symbol as a block of bits with a single 1 and gives one appendant for each symbol's production, then as many empty ones. One cycle of the appendants is one tag step. For the tag system of a Turing machine the cyclic tag system is large (the section on sizes below counts it), so the construction is shown on the tag system `a -> bc`, `b -> a`, `c -> aaa` started on `baa`.
@@ -131,6 +151,16 @@ The run of the tag system, for comparison:
 TagSystemEvolution[tag3, 5]
 ```
 
+In `wolfram23`, `"cookSimulation"` proves Cook's emulation for any 2-tag system over `k` symbols, and `"machineToCyclicTag"` composes it with `"minskySimulation"` over the `84 s + 1` symbol alphabet:
+
+```wl
+wolfram23["cookSimulation"]
+```
+
+```wl
+wolfram23["machineToCyclicTag"]
+```
+
 ## A cyclic tag system as System 5
 
 Smith's System 5 keeps a bag of integers and a list of rules. Every step decrements the bag and increments the rules; when a bag element reaches 0 it is removed and the next rule is merged into the bag, an integer already present cancelling. It emulates the *doubled* cyclic tag system, which has every bit of the working string twice and an empty appendant after each doubled one. A bit becomes two pairs of bag integers, with gaps 1 for a 0 and 2 for a 1.
@@ -157,6 +187,18 @@ The run of the doubled cyclic tag system, for comparison:
 
 ```wl
 CyclicTagSystemEvolution[CyclicTagSystem[{{1, 1}, {}, {1, 1, 0, 0}, {}}, {0, 0, 1, 1}], 8]
+```
+
+Because a finite System 5 rule queue terminates when its rules run out, `"system5Simulation"` proves that System 5 forward-simulates any *fueled* cyclic tag system (carrying a remaining step budget) along `"system5Represents"`:
+
+```wl
+wolfram23["system5Simulation"]
+```
+
+The algebraic identity `"xorMergeAppendant"` drives the 1-bit pop: XOR-merging a rule pair's two shifted copies yields the doubled appendant's pairs directly:
+
+```wl
+wolfram23["xorMergeAppendant"]
 ```
 
 ## System 5 as System 4
@@ -198,6 +240,12 @@ The System 5 run, for comparison:
 
 ```wl
 System5Evolution[twoRules, 100]
+```
+
+In `wolfram23`, `"system4Simulation"` proves that System 4 forward-simulates fueled System 5 for every parameter *f* large enough for the run:
+
+```wl
+wolfram23["system4Simulation"]
 ```
 
 ## System 4 as System 3 and wolfram23
@@ -246,6 +294,22 @@ The first six times wolfram23 is back at the left end of the tape in state B, 12
 Wolfram23ToSystem5[#, 7, 20] & /@ Values[Take[Wolfram23Evolution[System3ToWolfram23[System4ToSystem3[s4small, 7, 120]], 50000, #1 == 2 && #2 == 123 &], 6]]
 ```
 
+In `wolfram23`, `"system3Simulation"` proves that System 3 emulates fueled System 4 using width-`2^w` parity blocks (via the GF(2) Frobenius identity `"stepRIteratePow2"` and orthogonality `"parAtRowBits"`), and `"wolfram23Simulates3"` proves that wolfram23 follows System 3 through the relabelings `"phi3"` and `"phi2"` in 1 or 3 steps:
+
+```wl
+wolfram23["system3Simulation"]
+```
+
+```wl
+wolfram23["wolfram23Simulates3"]
+```
+
+The derivation of `"system0Simulates3"` shows how the relabelings compose:
+
+```wl
+TypeTheoryProofTree[wolfram23["system0Simulates3"]["Term"]]
+```
+
 ## How large the emulation is
 
 Every encoder is a direct construction, but the sizes multiply. System 4 needs *f* above twice the length of the System 5 run, and wolfram23 needs blocks of width above the length of the System 4 run. <code>[EmulationSizes]()</code> runs the chain up to System 5 and computes the rest from the parameters.
@@ -256,7 +320,7 @@ The sizes for one step of a two-state machine that writes 1, moves right and hal
 EmulationSizes[{{1, 0} -> {0, 1, 1}}, {1, {}, 0, {}}, 1]
 ```
 
-The headline theorems of the formal proof take these parameters from the run lengths, as above, so their initial condition exists but is not written out. An optional corollary writes it out as a definition that runs no system, with closed-form bounds in place of the run lengths; the bounds are far larger than the runs:
+The headline theorems `"conjecture0Finite"` and `"wolfram23Universal"` take these parameters from the run lengths, as above, so their initial condition exists without writing out a closed-form bound. Closed-form upper bounds that run no system are far larger than the runs:
 
 ```wl
 EmulationParameters[program, "ClosedForm"]
@@ -264,4 +328,26 @@ EmulationParameters[program, "ClosedForm"]
 
 ## The formal proof
 
-The Lean development proves each arrow as a simulation, in the module named in the table above, and composes them. `Smith.wolfram23_universal`, in `Wolfram23.Universality`, states that for every well-formed binary machine `tm`, configuration `c` and run of *n* steps there is a finite tape from which wolfram23 reproduces those *n* steps, read off by a fixed decoder at increasing times, and then leaves the tape to the right in state A. `Smith.wolfram23_infinite`, in `Wolfram23.Infinite`, does the same for the whole run on one right-infinite tape. Both rest on Lean's three standard axioms only. Their tapes are existential; the corollaries `Smith.wolfram23_universal_ic` and `Smith.wolfram23_infinite_ic` write them out in closed form. The blueprint at [wolframinstitute.github.io/TuringMachine](https://wolframinstitute.github.io/TuringMachine/) describes every link, and Smith's paper is at [wolframscience.com/prizes/tm23](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf).
+In `TypeTheoryEnvironment["Wolfram23"]`, every arrow above is proved as a forward simulation and composed end-to-end inside TypeTheory's kernel. `"conjecture0Finite"` composes rungs 3 through 6 into Smith's finite-form Conjecture 0 for arbitrary cyclic tag systems:
+
+```wl
+wolfram23["conjecture0Finite"]
+```
+
+Composing `"machineToCyclicTag"` with `"conjecture0Finite"` and the computable four-layer decoder `"decodeTM"` yields `"wolfram23Universal"`: for every binary Turing machine whose states stay below `S`, every starting configuration with state below `S`, and every finite `n`-step run, there exist a state-A starting configuration of wolfram23, decoding parameters `w` and `b`, a strictly increasing schedule `times`, and a final time `T` such that the run stays confined to its tape through `T`, decodes via `"decodeTM"` to each configuration of the run (up to trailing blanks), and exits cleanly to the right in state A at `T + 1`:
+
+```wl
+wolfram23["wolfram23Universal"]
+```
+
+Both theorems rest on the kernel alone, with empty axiom closures:
+
+```wl
+TypeTheoryAxiomClosure[TypeTheoryTerm["conjecture0Finite", wolfram23]]
+```
+
+```wl
+TypeTheoryAxiomClosure[TypeTheoryTerm["wolfram23Universal", wolfram23]]
+```
+
+Smith's original paper is at [wolframscience.com/prizes/tm23](https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf).
